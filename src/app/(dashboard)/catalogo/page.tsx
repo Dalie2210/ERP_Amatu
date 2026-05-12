@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { useDebounce } from "@/hooks/useDebounce"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,12 +34,29 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Search, Package, Edit, Trash2, ChevronRight } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Plus,
+  Search,
+  Package,
+  Edit,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react"
 import Link from "next/link"
 import type { TipoPrecio } from "@/types"
 
+// ---------- Constants ----------
+const PAGE_SIZE = 20
+
 // ---------- Types ----------
 interface Categoria {
+  id: string
+  nombre: string
+  slug: string
+}
+
+interface CategoriaProducto {
   id: string
   nombre: string
   slug: string
@@ -55,19 +73,45 @@ interface Producto {
   is_active: boolean
   notas: string | null
   created_at: string
-  categorias_producto?: Categoria
+  categorias_producto?: CategoriaProducto
   variantes_count?: number
+}
+
+// ---------- Skeleton Loader ----------
+function TableSkeleton() {
+  return (
+    <div className="p-6 space-y-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-5 w-[100px]" />
+          <Skeleton className="h-5 w-[200px]" />
+          <Skeleton className="h-5 w-[120px]" />
+          <Skeleton className="h-5 w-[100px]" />
+          <Skeleton className="h-5 w-[80px]" />
+          <Skeleton className="h-5 w-[80px] ml-auto" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // ---------- Component ----------
 export default function CatalogoPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [productos, setProductos] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategoria, setSelectedCategoria] = useState<string>("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+
+  // Pagination
+  const [page, setPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  // Debounce the search query (400ms)
+  const debouncedSearch = useDebounce(searchQuery, 400)
 
   // Create form state
   const [newProduct, setNewProduct] = useState({
@@ -84,28 +128,33 @@ export default function CatalogoPage() {
 
   const fetchProductos = useCallback(async () => {
     setIsLoading(true)
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
     let query = supabase
       .from("productos")
-      .select("*, categorias_producto(id, nombre, slug)")
+      .select("*, categorias_producto(id, nombre, slug)", { count: "exact" })
       .order("nombre", { ascending: true })
+      .range(from, to)
 
     if (selectedCategoria !== "all") {
       query = query.eq("categoria_id", selectedCategoria)
     }
 
-    if (searchQuery.trim()) {
+    if (debouncedSearch.trim()) {
       query = query.or(
-        `nombre.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`
+        `nombre.ilike.%${debouncedSearch}%,sku.ilike.%${debouncedSearch}%`
       )
     }
 
-    const { data, error } = await query
+    const { data, error, count } = await query
 
     if (!error && data) {
       setProductos(data as Producto[])
+      setTotalCount(count ?? 0)
     }
     setIsLoading(false)
-  }, [selectedCategoria, searchQuery])
+  }, [supabase, selectedCategoria, debouncedSearch, page])
 
   const fetchCategorias = useCallback(async () => {
     const { data } = await supabase
@@ -113,11 +162,16 @@ export default function CatalogoPage() {
       .select("*")
       .order("nombre")
     if (data) setCategorias(data)
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     fetchCategorias()
   }, [fetchCategorias])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(0)
+  }, [debouncedSearch, selectedCategoria])
 
   useEffect(() => {
     fetchProductos()
@@ -157,12 +211,29 @@ export default function CatalogoPage() {
     setIsSaving(false)
   }
 
+  // Optimistic UI: update state locally, then confirm with server
   const handleToggleActive = async (id: string, currentState: boolean) => {
-    await supabase
+    // 1. Optimistic local update
+    setProductos((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, is_active: !currentState } : p
+      )
+    )
+
+    // 2. Persist to server
+    const { error } = await supabase
       .from("productos")
       .update({ is_active: !currentState })
       .eq("id", id)
-    fetchProductos()
+
+    // 3. Rollback on failure
+    if (error) {
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, is_active: currentState } : p
+        )
+      )
+    }
   }
 
   const tipoPrecioLabels: Record<TipoPrecio, string> = {
@@ -171,8 +242,6 @@ export default function CatalogoPage() {
     por_gramo: "Por Gramo",
     escala: "Por Escala",
   }
-
-  const filteredProducts = productos
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
@@ -187,11 +256,9 @@ export default function CatalogoPage() {
           </p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger >
-            <Button className="gap-2">
+          <DialogTrigger render={<Button className="gap-2" />}>
               <Plus className="h-4 w-4" />
               Nuevo Producto
-            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
@@ -375,10 +442,8 @@ export default function CatalogoPage() {
       <Card className="border-none shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              Cargando productos...
-            </div>
-          ) : filteredProducts.length === 0 ? (
+            <TableSkeleton />
+          ) : productos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
               <Package className="h-12 w-12 opacity-30" />
               <p className="text-lg font-medium">No hay productos aún</p>
@@ -387,72 +452,108 @@ export default function CatalogoPage() {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px]">SKU</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Tipo Precio</TableHead>
-                  <TableHead className="text-center">Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((producto) => (
-                  <TableRow key={producto.id} className="group">
-                    <TableCell className="font-mono text-sm text-muted-foreground">
-                      {producto.sku}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{producto.nombre}</span>
-                        {producto.es_magistral && (
-                          <Badge
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            Magistral
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {(producto as any).categorias_producto?.nombre ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-normal">
-                        {tipoPrecioLabels[producto.tipo_precio]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        variant={producto.is_active ? "default" : "secondary"}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          handleToggleActive(producto.id, producto.is_active)
-                        }
-                      >
-                        {producto.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/catalogo/${producto.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Edit className="h-4 w-4" />
-                          Editar
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[120px]">SKU</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Categoría</TableHead>
+                    <TableHead>Tipo Precio</TableHead>
+                    <TableHead className="text-center">Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {productos.map((producto) => (
+                    <TableRow key={producto.id} className="group">
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {producto.sku}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{producto.nombre}</span>
+                          {producto.es_magistral && (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              Magistral
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {producto.categorias_producto?.nombre ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-normal">
+                          {tipoPrecioLabels[producto.tipo_precio]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant={producto.is_active ? "default" : "secondary"}
+                          className="cursor-pointer"
+                          onClick={() =>
+                            handleToggleActive(producto.id, producto.is_active)
+                          }
+                        >
+                          {producto.is_active ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/catalogo/${producto.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Editar
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {page * PAGE_SIZE + 1}–
+                    {Math.min((page + 1) * PAGE_SIZE, totalCount)} de{" "}
+                    {totalCount} productos
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page === 0}
+                      onClick={() => setPage((p) => p - 1)}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </Button>
+                    <span className="text-sm text-muted-foreground px-2">
+                      {page + 1} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages - 1}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

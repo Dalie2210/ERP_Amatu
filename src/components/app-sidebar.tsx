@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Package, Users, Truck, DollarSign, Settings, LogOut, Leaf } from "lucide-react"
+import { Home, Package, Users, Truck, DollarSign, Settings, LogOut, Leaf, ShoppingBag } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
@@ -23,6 +23,11 @@ const items = [
     title: "Inicio",
     url: "/dashboard",
     icon: Home,
+  },
+  {
+    title: "Ventas",
+    url: "/ventas",
+    icon: ShoppingBag,
   },
   {
     title: "Pedidos",
@@ -90,7 +95,11 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     render={<Link href={item.url} />}
-                    isActive={pathname === item.url}
+                    isActive={
+                      item.url === "/dashboard"
+                        ? pathname === "/dashboard"
+                        : pathname.startsWith(item.url)
+                    }
                     className="rounded-md px-4 py-3"
                   >
                     <item.icon className="w-5 h-5" />

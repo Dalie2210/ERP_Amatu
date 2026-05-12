@@ -146,7 +146,7 @@ export default function ProductoDetallePage() {
     <div className="space-y-8 max-w-[900px] mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon-sm" onClick={() => router.push("/catalogo")}>
+        <Button variant="ghost" size="icon" onClick={() => router.push("/catalogo")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -282,7 +282,7 @@ export default function ProductoDetallePage() {
                       <TableCell className="text-right">{fmt(v.precio_publico)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{v.precio_por_gramo ? `$${v.precio_por_gramo}` : "—"}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteVariante(v.id)} className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteVariante(v.id)} className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -344,7 +344,7 @@ export default function ProductoDetallePage() {
                       <TableCell>{pe.cantidad_minima}+ unidades</TableCell>
                       <TableCell className="text-right">{fmt(pe.precio_total)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteEscala(pe.id)} className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteEscala(pe.id)} className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>

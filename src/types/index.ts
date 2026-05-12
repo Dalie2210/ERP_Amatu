@@ -88,6 +88,9 @@ export interface CartState {
   metodoPago: MetodoPago | null;
   esContraentrega: boolean;
   fechaTentativaEntrega: string | null;
+  esDistribuidor: boolean;
+  pctDescuentoDistribuidor: number;
+  tarifaEnvioBase: number;
 }
 
 // ============================================================
