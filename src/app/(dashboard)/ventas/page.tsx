@@ -138,7 +138,11 @@ export default function VentasPage() {
               <Input placeholder="Buscar por # pedido..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
             <Select value={estadoFilter} onValueChange={(v: string | null) => setEstadoFilter(v ?? "all")}>
-              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Todos los estados" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Todos los estados">
+                  {estadoFilter === "all" ? "Todos los estados" : (estadoLabels[estadoFilter as keyof typeof estadoLabels] ?? estadoFilter)}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
                 {Object.entries(estadoLabels).map(([k, v]) => (

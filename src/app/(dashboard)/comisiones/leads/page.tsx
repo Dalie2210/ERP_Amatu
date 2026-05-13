@@ -206,7 +206,11 @@ export default function LeadsMetaPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar..." />
+                    <SelectValue placeholder="Seleccionar...">
+                      {form.vendedor_id
+                        ? (vendedores.find((v) => v.id === form.vendedor_id)?.full_name ?? form.vendedor_id)
+                        : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.map((v) => (

@@ -11,7 +11,9 @@
       "Bash(xargs grep -l \"Dialog\\\\|dialog\")",
       "mcp__supabase__generate_typescript_types",
       "Bash(python -c \"import json,sys; print\\(json.dumps\\(json.load\\(sys.stdin\\)['scripts'], indent=2\\)\\)\")",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(Get-ChildItem -Recurse -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\app\\\\\\(dashboard\\)\\\\ventas\\\\\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -l \"SelectValue\")"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -45,6 +45,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { TipoPrecio } from "@/types"
+import { TIPO_PRECIO_LABELS } from "@/lib/constants/labels"
 
 // ---------- Constants ----------
 const PAGE_SIZE = 20
@@ -303,7 +304,11 @@ export default function CatalogoPage() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar..." />
+                      <SelectValue placeholder="Seleccionar...">
+                        {newProduct.categoria_id
+                          ? (categorias.find((cat) => cat.id === newProduct.categoria_id)?.nombre ?? null)
+                          : null}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {categorias.map((cat) => (
@@ -326,7 +331,9 @@ export default function CatalogoPage() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Seleccionar...">
+                        {newProduct.tipo_precio ? (TIPO_PRECIO_LABELS[newProduct.tipo_precio] ?? newProduct.tipo_precio) : null}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="fijo">Precio Fijo</SelectItem>
@@ -423,7 +430,11 @@ export default function CatalogoPage() {
               onValueChange={(v: string | null) => setSelectedCategoria(v ?? "all")}
             >
               <SelectTrigger className="w-full sm:w-[220px]">
-                <SelectValue placeholder="Todas las categorías" />
+                <SelectValue placeholder="Todas las categorías">
+                  {selectedCategoria && selectedCategoria !== "all"
+                    ? (categorias.find((cat) => cat.id === selectedCategoria)?.nombre ?? selectedCategoria)
+                    : "Todas las categorías"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las categorías</SelectItem>

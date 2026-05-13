@@ -47,6 +47,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { TipoDocumento, TipoCliente, FuenteCliente } from "@/types"
+import { FUENTE_LABELS, TIPO_DOC_LABELS, TIPO_CLIENTE_LABELS } from "@/lib/constants/labels"
 
 // ---------- Types ----------
 interface ZonaEnvio {
@@ -358,7 +359,11 @@ export default function ClienteDetailPage() {
                       setForm({ ...form, tipo_documento: (v ?? "CC") as TipoDocumento })
                     }
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar...">
+                        {form.tipo_documento ? (TIPO_DOC_LABELS[form.tipo_documento] ?? form.tipo_documento) : null}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="CC">C.C.</SelectItem>
                       <SelectItem value="CE">C.E.</SelectItem>
@@ -435,7 +440,11 @@ export default function ClienteDetailPage() {
                       setForm({ ...form, zona_id: v ?? "" })
                     }
                   >
-                    <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar...">
+                        {form.zona_id ? (zonas.find((z) => z.id === form.zona_id)?.nombre ?? null) : null}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       {zonas.map((z) => (
                         <SelectItem key={z.id} value={z.id}>{z.nombre}</SelectItem>
@@ -451,7 +460,11 @@ export default function ClienteDetailPage() {
                       setForm({ ...form, fuente: (v ?? "otro") as FuenteCliente })
                     }
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar...">
+                        {form.fuente ? (FUENTE_LABELS[form.fuente] ?? form.fuente) : null}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="meta_ads">Meta Ads</SelectItem>
                       <SelectItem value="referido_cliente">Referido — Cliente</SelectItem>
@@ -474,7 +487,11 @@ export default function ClienteDetailPage() {
                       setForm({ ...form, tipo_cliente: (v ?? "publico") as TipoCliente })
                     }
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar...">
+                        {form.tipo_cliente ? (TIPO_CLIENTE_LABELS[form.tipo_cliente] ?? form.tipo_cliente) : null}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="publico">Público</SelectItem>
                       <SelectItem value="distribuidor">Distribuidor</SelectItem>

@@ -15,6 +15,12 @@ import {
 } from "@/components/ui/select"
 import { Settings2 } from "lucide-react"
 import type { FuenteCliente, FranjaHoraria, MetodoPago } from "@/types"
+import {
+  FUENTE_LABELS,
+  REFERIDO_SUBTIPO_LABELS,
+  METODO_PAGO_LABELS,
+  FRANJA_LABELS,
+} from "@/lib/constants/labels"
 
 export function OrderOptionsPanel() {
   const fuente = useCartStore((s) => s.fuente)
@@ -49,7 +55,11 @@ export function OrderOptionsPanel() {
             <Select value={fuente ?? ""} onValueChange={(v) => {
               setFuente((v || null) as FuenteCliente | null, null)
             }}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar...">
+                  {fuente ? (FUENTE_LABELS[fuente] ?? fuente) : null}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="meta_ads">Meta Ads</SelectItem>
                 <SelectItem value="referido_cliente">Referido — Cliente</SelectItem>
@@ -64,7 +74,11 @@ export function OrderOptionsPanel() {
             <div className="space-y-2">
               <Label>Tipo de Referido</Label>
               <Select value={fuenteSubtipo ?? ""} onValueChange={(v) => setFuente(fuente, v || null)}>
-                <SelectTrigger><SelectValue placeholder="Especificar..." /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Especificar...">
+                    {fuenteSubtipo ? (REFERIDO_SUBTIPO_LABELS[fuenteSubtipo] ?? fuenteSubtipo) : null}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="referido_cliente">Cliente</SelectItem>
                   <SelectItem value="referido_veterinario">Veterinario</SelectItem>
@@ -79,7 +93,11 @@ export function OrderOptionsPanel() {
         <div className="space-y-2">
           <Label>Método de Pago</Label>
           <Select value={metodoPago ?? ""} onValueChange={(v: string | null) => setMetodoPago((v || null) as MetodoPago | null)}>
-            <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar...">
+                {metodoPago ? (METODO_PAGO_LABELS[metodoPago] ?? metodoPago) : null}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="nequi">Nequi</SelectItem>
               <SelectItem value="daviplata">Daviplata</SelectItem>
@@ -97,10 +115,14 @@ export function OrderOptionsPanel() {
           <div className="space-y-2">
             <Label>Franja Horaria</Label>
             <Select value={franjaHoraria} onValueChange={(v) => setFranjaHoraria(v as FranjaHoraria)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar...">
+                  {franjaHoraria ? (FRANJA_LABELS[franjaHoraria] ?? franjaHoraria) : null}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="AM">AM</SelectItem>
-                <SelectItem value="PM">PM</SelectItem>
+                <SelectItem value="AM">AM (Mañana)</SelectItem>
+                <SelectItem value="PM">PM (Tarde)</SelectItem>
                 <SelectItem value="intermedia">Intermedia</SelectItem>
                 <SelectItem value="sin_franja">Sin Franja</SelectItem>
               </SelectContent>

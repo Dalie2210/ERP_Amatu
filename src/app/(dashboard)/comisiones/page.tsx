@@ -349,7 +349,9 @@ export default function ComisionesPage() {
       <div className="flex flex-wrap gap-3">
         <Select value={periodo} onValueChange={(v: string | null) => setPeriodo(v ?? periodo)}>
           <SelectTrigger className="w-[220px]">
-            <SelectValue />
+            <SelectValue placeholder="Seleccionar período...">
+              {periodo ? (monthOptions.find((opt) => opt.value === periodo)?.label ?? periodo) : null}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {monthOptions.map((opt) => (
@@ -363,7 +365,11 @@ export default function ComisionesPage() {
         {isAdminOrContable && vendedores.length > 0 && (
           <Select value={selectedVendedor} onValueChange={(v: string | null) => setSelectedVendedor(v ?? "")}>
             <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Seleccionar vendedor..." />
+              <SelectValue placeholder="Todos los vendedores">
+                {selectedVendedor
+                  ? (vendedores.find((v) => v.id === selectedVendedor)?.full_name ?? selectedVendedor)
+                  : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {vendedores.map((v) => (

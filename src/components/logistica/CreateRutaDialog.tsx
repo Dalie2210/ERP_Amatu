@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Plus } from "lucide-react"
+import { FRANJA_LABELS } from "@/lib/constants/labels"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 interface Props {
@@ -112,7 +113,9 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
               <Label>Franja</Label>
               <Select value={franja} onValueChange={(v) => setFranja(v ?? "AM")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Seleccionar...">
+                    {franja ? (FRANJA_LABELS[franja] ?? franja) : null}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="AM">AM (Mañana)</SelectItem>

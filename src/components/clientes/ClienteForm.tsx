@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { PawPrint, Plus, Trash2, User } from "lucide-react"
+import { FUENTE_LABELS, TIPO_DOC_LABELS, TIPO_CLIENTE_LABELS } from "@/lib/constants/labels"
 import type {
   TipoDocumento,
   TipoCliente,
@@ -204,7 +205,9 @@ export function ClienteForm({
               }
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar...">
+                  {form.tipo_documento ? (TIPO_DOC_LABELS[form.tipo_documento] ?? form.tipo_documento) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="CC">C.C.</SelectItem>
@@ -281,7 +284,9 @@ export function ClienteForm({
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar zona..." />
+                <SelectValue placeholder="Seleccionar zona...">
+                  {form.zona_id ? (zonas.find((z) => z.id === form.zona_id)?.nombre ?? null) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {zonas.map((z) => (
@@ -305,7 +310,9 @@ export function ClienteForm({
               }
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar...">
+                  {form.fuente ? (FUENTE_LABELS[form.fuente] ?? form.fuente) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="meta_ads">Meta Ads</SelectItem>
@@ -340,7 +347,9 @@ export function ClienteForm({
             }
           >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Seleccionar...">
+                {form.tipo_cliente ? (TIPO_CLIENTE_LABELS[form.tipo_cliente] ?? form.tipo_cliente) : null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="publico">Público (consumidor final)</SelectItem>

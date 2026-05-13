@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Edit } from "lucide-react"
+import { FRANJA_LABELS, ESTADO_PAGO_LABELS, METODO_PAGO_LABELS } from "@/lib/constants/labels"
 
 interface OrderEditDialogProps {
   pedidoId: string
@@ -102,13 +103,15 @@ export function OrderEditDialog({
             <Label htmlFor="franja">Franja Horaria</Label>
             <Select value={franja} onValueChange={(v) => setFranja(v ?? currentFranja)}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar...">
+                  {franja ? (FRANJA_LABELS[franja] ?? franja) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="AM">AM (Mañana)</SelectItem>
                 <SelectItem value="PM">PM (Tarde)</SelectItem>
                 <SelectItem value="intermedia">Intermedia</SelectItem>
-                <SelectItem value="sin_franja">Sin franja</SelectItem>
+                <SelectItem value="sin_franja">Sin Franja</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -138,7 +141,9 @@ export function OrderEditDialog({
             <Label htmlFor="estado-pago">Estado de Pago</Label>
             <Select value={estadoPago} onValueChange={(v) => setEstadoPago(v ?? currentEstadoPago)}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar...">
+                  {estadoPago ? (ESTADO_PAGO_LABELS[estadoPago] ?? estadoPago) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="pendiente">Pendiente</SelectItem>
@@ -151,14 +156,16 @@ export function OrderEditDialog({
             <Label htmlFor="metodo-pago">Método de Pago</Label>
             <Select value={metodoPago} onValueChange={(v) => setMetodoPago(v ?? "")}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Seleccionar...">
+                  {metodoPago ? (METODO_PAGO_LABELS[metodoPago] ?? metodoPago) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="nequi">Nequi</SelectItem>
-                <SelectItem value="daviplata">DaviPlata</SelectItem>
+                <SelectItem value="daviplata">Daviplata</SelectItem>
                 <SelectItem value="efectivo">Efectivo</SelectItem>
                 <SelectItem value="bancolombia">Bancolombia</SelectItem>
-                <SelectItem value="pse_openpay">PSE/OpenPay</SelectItem>
+                <SelectItem value="pse_openpay">PSE / OpenPay</SelectItem>
                 <SelectItem value="bold">Bold</SelectItem>
                 <SelectItem value="contraentrega">Contraentrega</SelectItem>
               </SelectContent>

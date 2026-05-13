@@ -4,6 +4,8 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useDebounce } from "@/hooks/useDebounce"
 import { useCartStore } from "@/stores/cartStore"
+import { useTopSellers } from "@/hooks/useTopSellers"
+import type { TopSellerProducto } from "@/hooks/useTopSellers"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Package, Beaker } from "lucide-react"
+import { Search, Plus, Package, Beaker, TrendingUp } from "lucide-react"
 import type { CartItem, TipoPrecio } from "@/types"
 
 // ---------- DB types ----------
@@ -60,7 +62,7 @@ interface ProductoResult {
 interface MagistralDialogProps {
   open: boolean
   onClose: () => void
-  producto: ProductoResult
+  producto: ProductoResult | TopSellerProducto
   variantes: ProductoVariante[]
   onAdd: (item: CartItem) => void
 }
@@ -73,7 +75,6 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
     const g = parseFloat(gramaje)
     if (!g || g <= 0 || variantes.length === 0) return 0
 
-    // Sort variants by presentacion (weight) ascending
     const sorted = [...variantes]
       .filter((v) => v.precio_por_gramo)
       .sort((a, b) => {
@@ -84,7 +85,6 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
 
     if (sorted.length === 0) return 0
 
-    // Find correct tier
     let precioPorGramo = sorted[0].precio_por_gramo!
     for (const v of sorted) {
       const weight = parseFloat(v.presentacion.replace(/[^\d.]/g, "")) || 0
@@ -177,7 +177,7 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
 
 // ---------- Variant picker ----------
 interface VariantPickerProps {
-  producto: ProductoResult
+  producto: ProductoResult | TopSellerProducto
   onClose: () => void
 }
 
@@ -225,7 +225,7 @@ function VariantPicker({ producto, onClose }: VariantPickerProps) {
 
 // ---------- Scale price picker ----------
 interface ScalePickerProps {
-  producto: ProductoResult
+  producto: ProductoResult | TopSellerProducto
   onClose: () => void
 }
 
@@ -235,7 +235,6 @@ function ScalePicker({ producto, onClose }: ScalePickerProps) {
 
   const sorted = [...producto.precios_escala].sort((a, b) => a.cantidad_minima - b.cantidad_minima)
 
-  // Find applicable price
   const aplicable = sorted.reduce<PrecioEscala | null>((acc, p) => {
     if (qty >= p.cantidad_minima) return p
     return acc
@@ -293,16 +292,103 @@ function ScalePicker({ producto, onClose }: ScalePickerProps) {
   )
 }
 
+// ---------- Rank badge ----------
+function RankBadge({ rank }: { rank: number }) {
+  const isTop3 = rank <= 3
+  return (
+    <span
+      className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold border shrink-0 ${
+        isTop3
+          ? "bg-amber-50 text-amber-700 border-amber-200"
+          : "bg-muted text-muted-foreground border-border"
+      }`}
+    >
+      {rank}
+    </span>
+  )
+}
+
+// ---------- Shared product row ----------
+interface ProductRowProps {
+  producto: ProductoResult | TopSellerProducto
+  expandedId: string | null
+  onSelect: (producto: ProductoResult | TopSellerProducto) => void
+  onCloseExpanded: () => void
+  rank?: number
+}
+
+function ProductRow({ producto, expandedId, onSelect, onCloseExpanded, rank }: ProductRowProps) {
+  return (
+    <div className="border-b last:border-b-0">
+      <button
+        onClick={() => onSelect(producto)}
+        className="flex items-center w-full px-4 py-3 hover:bg-accent/50 transition-colors text-left gap-3"
+      >
+        {rank !== undefined && <RankBadge rank={rank} />}
+        <div className="h-9 w-9 bg-primary/5 rounded-md flex items-center justify-center shrink-0">
+          {producto.es_magistral ? (
+            <Beaker className="h-4 w-4 text-primary" />
+          ) : (
+            <Package className="h-4 w-4 text-primary" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm truncate">{producto.nombre}</span>
+            {producto.es_magistral && (
+              <Badge variant="secondary" className="text-[10px] shrink-0">Magistral</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-muted-foreground font-mono">{producto.sku}</span>
+            <span className="text-xs text-muted-foreground">
+              · {producto.categorias_producto?.nombre}
+            </span>
+          </div>
+        </div>
+        {producto.tipo_precio === "fijo" && producto.producto_variantes[0] && (
+          <span className="text-sm font-semibold text-primary shrink-0">
+            ${producto.producto_variantes[0].precio_publico.toLocaleString("es-CO")}
+          </span>
+        )}
+        {producto.tipo_precio === "por_variante" && (
+          <Badge variant="outline" className="text-xs shrink-0">
+            {producto.producto_variantes.filter((v) => v.is_active).length} variantes
+          </Badge>
+        )}
+        {producto.tipo_precio === "escala" && (
+          <Badge variant="outline" className="text-xs shrink-0">Escala</Badge>
+        )}
+        {(producto.tipo_precio === "por_gramo" || producto.es_magistral) && (
+          <Badge variant="outline" className="text-xs shrink-0">Por gramo</Badge>
+        )}
+      </button>
+
+      {expandedId === producto.id && (
+        <div className="bg-muted/30 border-t">
+          {producto.tipo_precio === "escala" ? (
+            <ScalePicker producto={producto} onClose={onCloseExpanded} />
+          ) : (
+            <VariantPicker producto={producto} onClose={onCloseExpanded} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---------- MAIN: ProductSearchBox ----------
 export function ProductSearchBox() {
   const supabase = useMemo(() => createClient(), [])
   const addItem = useCartStore((s) => s.addItem)
+  const { topSellers, isLoading: isLoadingTopSellers } = useTopSellers()
 
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<ProductoResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [magistralProduct, setMagistralProduct] = useState<ProductoResult | null>(null)
+  const [magistralProduct, setMagistralProduct] = useState<ProductoResult | TopSellerProducto | null>(null)
 
   const debouncedQuery = useDebounce(query, 300)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -329,8 +415,7 @@ export function ProductSearchBox() {
     search()
   }, [search])
 
-  const handleDirectAdd = (producto: ProductoResult) => {
-    // Product with fixed price and no variants
+  const handleDirectAdd = (producto: ProductoResult | TopSellerProducto) => {
     if (producto.tipo_precio === "fijo") {
       const variant = producto.producto_variantes.find((v) => v.is_active)
       addItem({
@@ -348,6 +433,7 @@ export function ProductSearchBox() {
       })
       setQuery("")
       setResults([])
+      setIsFocused(false)
       return
     }
 
@@ -356,14 +442,12 @@ export function ProductSearchBox() {
       return
     }
 
-    if (producto.tipo_precio === "escala") {
-      setExpandedId(expandedId === producto.id ? null : producto.id)
-      return
-    }
-
-    // por_variante → expand to show variants
+    // por_variante or escala → expand inline picker
     setExpandedId(expandedId === producto.id ? null : producto.id)
   }
+
+  const showTopSellers = (isFocused || expandedId !== null) && query === "" && (topSellers.length > 0 || isLoadingTopSellers)
+  const showSearchResults = results.length > 0 || isSearching || (debouncedQuery.length > 0 && results.length === 0)
 
   return (
     <div className="space-y-2">
@@ -374,6 +458,8 @@ export function ProductSearchBox() {
           placeholder="Buscar producto por nombre o SKU..."
           className="pl-10"
           value={query}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
           onChange={(e) => {
             setQuery(e.target.value)
             setExpandedId(null)
@@ -381,82 +467,50 @@ export function ProductSearchBox() {
         />
       </div>
 
-      {(results.length > 0 || isSearching || (debouncedQuery && results.length === 0)) && (
+      {(showTopSellers || showSearchResults) && (
         <div className="border rounded-lg bg-white shadow-lg overflow-hidden">
           <ScrollArea className="max-h-[380px]">
-            {isSearching ? (
+            {showTopSellers ? (
+              <>
+                <div className="px-4 py-2 border-b flex items-center gap-2 bg-muted/30">
+                  <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Top 10 más vendidos
+                  </span>
+                </div>
+                {isLoadingTopSellers ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">Cargando...</div>
+                ) : (
+                  topSellers.map((producto, index) => (
+                    <ProductRow
+                      key={producto.id}
+                      producto={producto}
+                      rank={index + 1}
+                      expandedId={expandedId}
+                      onSelect={handleDirectAdd}
+                      onCloseExpanded={() => {
+                        setExpandedId(null)
+                        setIsFocused(false)
+                      }}
+                    />
+                  ))
+                )}
+              </>
+            ) : isSearching ? (
               <div className="p-4 text-center text-sm text-muted-foreground">Buscando...</div>
             ) : results.length > 0 ? (
               results.map((producto) => (
-                <div key={producto.id} className="border-b last:border-b-0">
-                  <button
-                    onClick={() => handleDirectAdd(producto)}
-                    className="flex items-center w-full px-4 py-3 hover:bg-accent/50 transition-colors text-left gap-3"
-                  >
-                    <div className="h-9 w-9 bg-primary/5 rounded-md flex items-center justify-center shrink-0">
-                      {producto.es_magistral ? (
-                        <Beaker className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Package className="h-4 w-4 text-primary" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm truncate">{producto.nombre}</span>
-                        {producto.es_magistral && (
-                          <Badge variant="secondary" className="text-[10px] shrink-0">Magistral</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground font-mono">{producto.sku}</span>
-                        <span className="text-xs text-muted-foreground">
-                          · {producto.categorias_producto?.nombre}
-                        </span>
-                      </div>
-                    </div>
-                    {producto.tipo_precio === "fijo" && producto.producto_variantes[0] && (
-                      <span className="text-sm font-semibold text-primary shrink-0">
-                        ${producto.producto_variantes[0].precio_publico.toLocaleString("es-CO")}
-                      </span>
-                    )}
-                    {producto.tipo_precio === "por_variante" && (
-                      <Badge variant="outline" className="text-xs shrink-0">
-                        {producto.producto_variantes.filter((v) => v.is_active).length} variantes
-                      </Badge>
-                    )}
-                    {producto.tipo_precio === "escala" && (
-                      <Badge variant="outline" className="text-xs shrink-0">Escala</Badge>
-                    )}
-                    {(producto.tipo_precio === "por_gramo" || producto.es_magistral) && (
-                      <Badge variant="outline" className="text-xs shrink-0">Por gramo</Badge>
-                    )}
-                  </button>
-
-                  {/* Expanded: variants or scale picker */}
-                  {expandedId === producto.id && (
-                    <div className="bg-muted/30 border-t">
-                      {producto.tipo_precio === "escala" ? (
-                        <ScalePicker
-                          producto={producto}
-                          onClose={() => {
-                            setExpandedId(null)
-                            setQuery("")
-                            setResults([])
-                          }}
-                        />
-                      ) : (
-                        <VariantPicker
-                          producto={producto}
-                          onClose={() => {
-                            setExpandedId(null)
-                            setQuery("")
-                            setResults([])
-                          }}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
+                <ProductRow
+                  key={producto.id}
+                  producto={producto}
+                  expandedId={expandedId}
+                  onSelect={handleDirectAdd}
+                  onCloseExpanded={() => {
+                    setExpandedId(null)
+                    setQuery("")
+                    setResults([])
+                  }}
+                />
               ))
             ) : (
               <div className="p-4 text-center text-sm text-muted-foreground">No se encontraron productos</div>
@@ -465,7 +519,6 @@ export function ProductSearchBox() {
         </div>
       )}
 
-      {/* Magistral dialog */}
       {magistralProduct && (
         <MagistralDialog
           open={!!magistralProduct}
@@ -476,6 +529,7 @@ export function ProductSearchBox() {
             addItem(item)
             setQuery("")
             setResults([])
+            setIsFocused(false)
           }}
         />
       )}

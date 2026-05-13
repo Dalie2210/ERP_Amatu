@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { ArrowLeft, Plus, Trash2, Save } from "lucide-react"
 import type { TipoPrecio } from "@/types"
+import { TIPO_PRECIO_LABELS } from "@/lib/constants/labels"
 
 interface Categoria { id: string; nombre: string; slug: string }
 interface Variante {
@@ -176,7 +177,11 @@ export default function ProductoDetallePage() {
             <div className="space-y-2">
               <Label>Categoría</Label>
               <Select value={form.categoria_id} onValueChange={(v: string | null) => setForm({ ...form, categoria_id: v ?? "" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar...">
+                    {form.categoria_id ? (categorias.find((c) => c.id === form.categoria_id)?.nombre ?? null) : null}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {categorias.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
@@ -185,7 +190,11 @@ export default function ProductoDetallePage() {
             <div className="space-y-2">
               <Label>Tipo de Precio</Label>
               <Select value={form.tipo_precio} onValueChange={(v) => setForm({ ...form, tipo_precio: v as TipoPrecio })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar...">
+                    {form.tipo_precio ? (TIPO_PRECIO_LABELS[form.tipo_precio] ?? form.tipo_precio) : null}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fijo">Precio Fijo</SelectItem>
                   <SelectItem value="por_variante">Por Variante</SelectItem>
@@ -233,8 +242,8 @@ export default function ProductoDetallePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Variantes (Presentaciones)</CardTitle>
             <Dialog open={showVarianteDialog} onOpenChange={setShowVarianteDialog}>
-              <DialogTrigger>
-                <Button size="sm" variant="outline" className="gap-1"><Plus className="h-4 w-4" /> Agregar</Button>
+              <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
+                <Plus className="h-4 w-4" /> Agregar
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -301,8 +310,8 @@ export default function ProductoDetallePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Precios por Escala</CardTitle>
             <Dialog open={showEscalaDialog} onOpenChange={setShowEscalaDialog}>
-              <DialogTrigger>
-                <Button size="sm" variant="outline" className="gap-1"><Plus className="h-4 w-4" /> Agregar</Button>
+              <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
+                <Plus className="h-4 w-4" /> Agregar
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useState, type ReactNode, type ReactElement } from "react"
 import {
   Dialog,
   DialogContent,
@@ -42,7 +42,7 @@ export function CreateClienteDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {trigger ? <DialogTrigger render={<span />}>{trigger}</DialogTrigger> : null}
+      {trigger ? <DialogTrigger render={trigger as ReactElement} /> : null}
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Registrar Cliente</DialogTitle>

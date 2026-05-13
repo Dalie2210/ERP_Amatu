@@ -183,7 +183,11 @@ export default function ClientesPage() {
               onValueChange={(v: string | null) => setSelectedFuente(v ?? "all")}
             >
               <SelectTrigger className="w-full sm:w-[220px]">
-                <SelectValue placeholder="Todas las fuentes" />
+                <SelectValue placeholder="Todas las fuentes">
+                  {selectedFuente && selectedFuente !== "all"
+                    ? (fuenteLabels[selectedFuente as keyof typeof fuenteLabels] ?? selectedFuente)
+                    : "Todas las fuentes"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las fuentes</SelectItem>
