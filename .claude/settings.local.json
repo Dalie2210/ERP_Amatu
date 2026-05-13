@@ -1,6 +1,21 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__list_tables",
+      "Bash(npx tsc *)",
+      "Bash(xargs grep -l \"from\\(\\\\\"clientes\\\\\"\\)\")",
+      "Bash(xargs grep -l \"z.object\\\\|zod\\\\|react-hook-form\")",
+      "Bash(xargs grep -l \"Dialog\\\\|dialog\")",
+      "mcp__supabase__generate_typescript_types",
+      "Bash(python -c \"import json,sys; print\\(json.dumps\\(json.load\\(sys.stdin\\)['scripts'], indent=2\\)\\)\")",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

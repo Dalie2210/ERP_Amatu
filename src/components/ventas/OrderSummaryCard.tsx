@@ -4,8 +4,8 @@ import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useCartStore } from "@/stores/cartStore"
+import { createOrder } from "@/lib/pedidos/createOrder"
 import { calcularDescuentos } from "@/lib/calculators/discounts"
-import { calcularComision } from "@/lib/calculators/commissions"
 import type { ReglaDescuento, ConfigComision } from "@/types"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -20,13 +20,13 @@ export function OrderSummaryCard() {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
-  
+
   // Cart Subtotals
   const getSubtotalAlimento = useCartStore((s) => s.getSubtotalAlimento)
   const getSubtotalSnacks = useCartStore((s) => s.getSubtotalSnacks)
   const getSubtotalOtros = useCartStore((s) => s.getSubtotalOtros)
   const items = useCartStore((s) => s.items)
-  
+
   // Client Config
   const esDistribuidor = useCartStore((s) => s.esDistribuidor)
   const pctDescuentoDistribuidor = useCartStore((s) => s.pctDescuentoDistribuidor)
@@ -110,110 +110,33 @@ export function OrderSummaryCard() {
   const handleSave = async () => {
     if (!isValid) return
     setIsSaving(true)
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No hay sesión activa")
 
-      const ts = new Date()
-      const pnum = `PED-${ts.getFullYear()}${(ts.getMonth()+1).toString().padStart(2,'0')}${ts.getDate().toString().padStart(2,'0')}-${Math.floor(Math.random()*10000).toString().padStart(4,'0')}`
-
-      const { data: pedido, error: pedErr } = await supabase.from("pedidos").insert({
-        numero_pedido: pnum,
-        cliente_id: clienteId!,
-        mascota_id: mascotaId,
-        vendedor_id: user.id,
-        estado: "fecha_tentativa",
-        estado_pago: "pendiente",
-        fuente: fuente,
-        fuente_subtipo: fuenteSubtipo,
-        metodo_pago: metodoPago,
-        franja_horaria: franjaHoraria,
-        es_contraentrega: esContraentrega,
-        fecha_tentativa_entrega: fechaTentativa,
-        notas_ventas: notasVentas,
-        subtotal_alimento: calculo.subtotalAlimento,
-        subtotal_snacks: calculo.subtotalSnacks,
-        subtotal_otros: calculo.subtotalOtros,
-        monto_descuento_compra: calculo.montoDescuentoCompra,
-        pct_descuento_compra: calculo.pctDescuentoCompra,
-        tarifa_envio_cliente: calculo.tarifaEnvioBase,
-        descuento_envio: calculo.descuentoEnvio,
-        total_envio_cobrado: calculo.totalEnvioCobrado,
-        total: calculo.total,
-      }).select().single()
-
-      if (pedErr) throw pedErr
-
-      const detalles = items.map((i) => ({
-        pedido_id: pedido.id,
-        producto_id: i.productoId,
-        variante_id: i.varianteId || null,
-        cantidad: i.cantidad,
-        precio_unitario_snapshot: i.precioUnitario,
-        subtotal: i.subtotal,
-        es_magistral: i.esMagistral,
-        gramaje_magistral: i.gramajeMagistral || null,
-        notas_magistral: i.notasMagistral || null,
-        aplica_descuento: i.aplicaDescuento,
-        nombre_snapshot: i.presentacion ? `${i.nombre} - ${i.presentacion}` : i.nombre,
-      }))
-
-      const { error: detErr } = await supabase.from("detalle_pedido").insert(detalles)
-      if (detErr) throw detErr
-
-      // Calculate and record commission (if applicable)
-      const now = new Date()
-      const currentMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`
-
-      // Fetch this vendor's Meta Ads close rate for current month
-      const { data: metaLeads } = await supabase
-        .from("leads_meta_ads")
-        .select("cantidad_leads")
-        .eq("vendedor_id", user.id)
-        .eq("periodo_mes", currentMonth)
-        .single()
-
-      const { data: metaCierres } = await supabase
-        .from("pedidos")
-        .select("id")
-        .eq("vendedor_id", user.id)
-        .eq("fuente", "meta_ads")
-        .eq("numero_venta_cliente", 1)
-        .gte("created_at", `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-01`)
-
-      const totalLeads = metaLeads?.cantidad_leads || 1
-      const totalCierres = metaCierres?.length || 0
-      const pctCierreMeta = totalLeads > 0 ? (totalCierres / totalLeads) * 100 : 0
-
-      const baseCalculo = (calculo.total - calculo.totalEnvioCobrado) * 0.95
-      const calcComision = calcularComision(
-        pedido.numero_venta_cliente,
-        pedido.fuente,
-        baseCalculo,
-        pctCierreMeta,
+      const result = await createOrder(supabase, {
+        clienteId: clienteId!,
+        mascotaId: mascotaId!,
+        vendedorId: user.id,
+        items,
+        fuente,
+        fuenteSubtipo,
+        metodoPago: metodoPago!,
+        franjaHoraria,
+        esContraentrega,
+        fechaTentativaEntrega: fechaTentativa,
+        notasVentas,
+        esDistribuidor,
+        pctDescuentoDistribuidor,
+        tarifaEnvioBase,
+        reglas,
         configComisiones,
-        esDistribuidor
-      )
-
-      const { error: comErr } = await supabase.from("comisiones_detalle").insert({
-        pedido_id: pedido.id,
-        numero_venta_cliente: pedido.numero_venta_cliente,
-        base_calculo: baseCalculo,
-        pct_comision: calcComision.pctComision,
-        monto_comision: calcComision.montoComision,
-        aplica_comision: calcComision.aplicaComision,
-        razon_no_comision: calcComision.razonNoComision || null,
       })
-
-      if (comErr) {
-        console.error("Comisión no guardada:", comErr)
-        // Don't throw - the order is already created
-      }
 
       clearCart()
       toast.success("Pedido guardado exitosamente")
-      router.push(`/ventas/${pedido.id}`)
+      router.push(`/ventas/${result.pedidoId}`)
     } catch (err) {
       console.error(err)
       toast.error("Error al guardar el pedido")

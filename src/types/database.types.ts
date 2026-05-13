@@ -52,6 +52,7 @@ export type Database = {
           fecha_fin_comision: string | null
           fecha_inicio_comision: string | null
           id: string
+          pedido_primera_entrega_id: string | null
           periodo_activo: boolean
         }
         Insert: {
@@ -61,6 +62,7 @@ export type Database = {
           fecha_fin_comision?: string | null
           fecha_inicio_comision?: string | null
           id?: string
+          pedido_primera_entrega_id?: string | null
           periodo_activo?: boolean
         }
         Update: {
@@ -70,6 +72,7 @@ export type Database = {
           fecha_fin_comision?: string | null
           fecha_inicio_comision?: string | null
           id?: string
+          pedido_primera_entrega_id?: string | null
           periodo_activo?: boolean
         }
         Relationships: [
@@ -85,6 +88,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aliados_referidos_pedido_primera_entrega_id_fkey"
+            columns: ["pedido_primera_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
             referencedColumns: ["id"]
           },
         ]
@@ -526,6 +536,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pedido_numero_seq: {
+        Row: {
+          ultimo_numero: number
+          year: number
+        }
+        Insert: {
+          ultimo_numero?: number
+          year: number
+        }
+        Update: {
+          ultimo_numero?: number
+          year?: number
+        }
+        Relationships: []
       }
       pedido_ruta: {
         Row: {
@@ -988,10 +1013,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      fn_get_user_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["user_role"]
+      create_cliente_con_mascotas: {
+        Args: { p_cliente: Json; p_mascotas?: Json }
+        Returns: Json
       }
+      fn_calcular_pct_cierre_meta: {
+        Args: { p_periodo_mes: string; p_vendedor_id: string }
+        Returns: number
+      }
+      fn_get_user_role:
+        | { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
+        | { Args: { user_id: string }; Returns: string }
     }
     Enums: {
       estado_comision_aliado: "pendiente" | "liquidada"

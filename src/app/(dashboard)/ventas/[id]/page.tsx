@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { OrderEditDialog } from "@/components/ventas/OrderEditDialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Edit, Receipt, User, MapPin, PawPrint, Truck, CheckCircle, Clock } from "lucide-react"
+import { ArrowLeft, Receipt, User, MapPin, PawPrint, Truck, CheckCircle } from "lucide-react"
 
 const formatCOP = (n: number) => `$${n.toLocaleString("es-CO")}`
 
@@ -43,11 +44,14 @@ interface Pedido {
   total_envio_cobrado: number
   total: number
   fue_editado: boolean
+  editado_por_id: string | null
+  editado_en: string | null
   created_at: string
   clientes: { nombre_completo: string; celular: string; direccion: string } | null
   mascotas: { nombre: string } | null
   zonas_envio: { nombre: string } | null
   users: { full_name: string } | null
+  editor: { full_name: string } | null
 }
 
 export default function PedidoDetallePage() {
@@ -58,10 +62,14 @@ export default function PedidoDetallePage() {
   const [pedido, setPedido] = useState<Pedido | null>(null)
   const [detalles, setDetalles] = useState<DetalleItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState<any>(null)
 
   useEffect(() => {
     const fetchPedido = async () => {
       setIsLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUser(user)
+
       const { data: pData } = await supabase
         .from("pedidos")
         .select(`
@@ -69,7 +77,8 @@ export default function PedidoDetallePage() {
           clientes(nombre_completo, celular, direccion),
           mascotas(nombre),
           zonas_envio(nombre),
-          users!pedidos_vendedor_id_fkey(full_name)
+          users!pedidos_vendedor_id_fkey(full_name),
+          editor:users!pedidos_editado_por_id_fkey(full_name)
         `)
         .eq("id", id)
         .single()
@@ -81,7 +90,7 @@ export default function PedidoDetallePage() {
           .select("id, nombre_snapshot, cantidad, precio_unitario_snapshot, subtotal, es_magistral, aplica_descuento")
           .eq("pedido_id", id)
           .order("created_at")
-        
+
         setDetalles(dData || [])
       }
       setIsLoading(false)
@@ -89,6 +98,32 @@ export default function PedidoDetallePage() {
 
     if (id) fetchPedido()
   }, [id, supabase])
+
+  const canEditOrder = pedido &&
+    currentUser &&
+    pedido.estado !== "listo_despacho" &&
+    pedido.estado !== "despachado" &&
+    pedido.estado !== "devolucion" &&
+    pedido.estado !== "parcial"
+
+  const handleEditSuccess = async () => {
+    if (id) {
+      const { data: pData } = await supabase
+        .from("pedidos")
+        .select(`
+          *,
+          clientes(nombre_completo, celular, direccion),
+          mascotas(nombre),
+          zonas_envio(nombre),
+          users!pedidos_vendedor_id_fkey(full_name),
+          editor:users!pedidos_editado_por_id_fkey(full_name)
+        `)
+        .eq("id", id)
+        .single()
+
+      if (pData) setPedido(pData as Pedido)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -115,7 +150,7 @@ export default function PedidoDetallePage() {
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold font-heading tracking-tight">
               {pedido.numero_pedido}
@@ -127,12 +162,23 @@ export default function PedidoDetallePage() {
           <p className="text-muted-foreground mt-1">
             Creado el {new Date(pedido.created_at).toLocaleString("es-CO")} por {pedido.users?.full_name}
           </p>
+          {pedido.fue_editado && pedido.editado_en && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Editado el {new Date(pedido.editado_en).toLocaleString("es-CO")} por {pedido.editor?.full_name}
+            </p>
+          )}
         </div>
         <div className="ml-auto">
-          {/* Edit button could go here */}
-          <Button variant="outline" className="gap-2" disabled>
-            <Edit className="h-4 w-4" /> Editar (Próximamente)
-          </Button>
+          <OrderEditDialog
+            pedidoId={pedido.id}
+            currentFranja={pedido.franja_horaria}
+            currentFechaTentativa={pedido.fecha_tentativa_entrega}
+            currentNotas={pedido.notas_ventas}
+            currentEstadoPago={pedido.estado_pago}
+            currentMetodoPago={pedido.metodo_pago}
+            canEdit={canEditOrder || false}
+            onEditSuccess={handleEditSuccess}
+          />
         </div>
       </div>
 

@@ -169,3 +169,21 @@ export interface RutaDespachoPayload {
   mensajeroCelular: string;
   pedidos: PedidoDespachoPayload[];
 }
+
+// ============================================================
+// Dashboard KPIs
+// ============================================================
+
+export type DashboardCardStatus = "ok" | "error";
+
+export interface DashboardCardState<T> {
+  value: T | null;
+  status: DashboardCardStatus;
+}
+
+export interface DashboardStats {
+  ventasHoy: DashboardCardState<number>;
+  pedidosPendientes: DashboardCardState<number>;
+  enviosEnRuta: DashboardCardState<number>;
+  nuevosClientes: DashboardCardState<number>;
+}

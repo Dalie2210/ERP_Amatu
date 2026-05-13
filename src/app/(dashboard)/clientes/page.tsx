@@ -22,16 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Plus,
@@ -44,23 +34,18 @@ import {
   MapPin,
 } from "lucide-react"
 import Link from "next/link"
-import type { TipoDocumento, TipoCliente, FuenteCliente } from "@/types"
+import type { FuenteCliente, TipoCliente } from "@/types"
+import { CreateClienteDialog } from "@/components/clientes/CreateClienteDialog"
 
 // ---------- Constants ----------
 const PAGE_SIZE = 20
 
 // ---------- Types ----------
-interface ZonaEnvio {
-  id: string
-  nombre: string
-  localidades: string
-}
-
 interface Cliente {
   id: string
   codigo_cliente: string
   nombre_completo: string
-  tipo_documento: TipoDocumento
+  tipo_documento: string
   numero_documento: string
   celular: string
   correo: string | null
@@ -103,20 +88,13 @@ const fuenteLabels: Record<FuenteCliente, string> = {
   otro: "Otro",
 }
 
-const tipoClienteLabels: Record<TipoCliente, string> = {
-  publico: "Público",
-  distribuidor: "Distribuidor",
-}
-
 // ---------- Component ----------
 export default function ClientesPage() {
   const supabase = useMemo(() => createClient(), [])
   const [clientes, setClientes] = useState<Cliente[]>([])
-  const [zonas, setZonas] = useState<ZonaEnvio[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFuente, setSelectedFuente] = useState<string>("all")
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   // Pagination
   const [page, setPage] = useState(0)
@@ -124,22 +102,6 @@ export default function ClientesPage() {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   const debouncedSearch = useDebounce(searchQuery, 400)
-
-  // Create form
-  const [form, setForm] = useState({
-    nombre_completo: "",
-    tipo_documento: "CC" as TipoDocumento,
-    numero_documento: "",
-    celular: "",
-    correo: "",
-    direccion: "",
-    complemento_direccion: "",
-    zona_id: "",
-    fuente: "otro" as FuenteCliente,
-    tipo_cliente: "publico" as TipoCliente,
-  })
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
 
   // ---------- Data fetching ----------
   const fetchClientes = useCallback(async () => {
@@ -172,19 +134,6 @@ export default function ClientesPage() {
     setIsLoading(false)
   }, [supabase, selectedFuente, debouncedSearch, page])
 
-  const fetchZonas = useCallback(async () => {
-    const { data } = await supabase
-      .from("zonas_envio")
-      .select("id, nombre, localidades")
-      .eq("is_active", true)
-      .order("nombre")
-    if (data) setZonas(data)
-  }, [supabase])
-
-  useEffect(() => {
-    fetchZonas()
-  }, [fetchZonas])
-
   useEffect(() => {
     setPage(0)
   }, [debouncedSearch, selectedFuente])
@@ -192,57 +141,6 @@ export default function ClientesPage() {
   useEffect(() => {
     fetchClientes()
   }, [fetchClientes])
-
-  // ---------- Generate client code ----------
-  const generateCodigoCliente = () => {
-    const now = new Date()
-    const yy = String(now.getFullYear()).slice(-2)
-    const mm = String(now.getMonth() + 1).padStart(2, "0")
-    const rand = Math.floor(Math.random() * 9000) + 1000
-    return `AMT-${yy}${mm}-${rand}`
-  }
-
-  // ---------- Create handler ----------
-  const handleCreate = async () => {
-    setIsSaving(true)
-    setSaveError(null)
-
-    const { error } = await supabase.from("clientes").insert([
-      {
-        codigo_cliente: generateCodigoCliente(),
-        nombre_completo: form.nombre_completo,
-        tipo_documento: form.tipo_documento,
-        numero_documento: form.numero_documento,
-        celular: form.celular,
-        correo: form.correo || null,
-        direccion: form.direccion,
-        complemento_direccion: form.complemento_direccion || null,
-        zona_id: form.zona_id || null,
-        fuente: form.fuente,
-        tipo_cliente: form.tipo_cliente,
-      },
-    ])
-
-    if (error) {
-      setSaveError(error.message)
-    } else {
-      setShowCreateDialog(false)
-      setForm({
-        nombre_completo: "",
-        tipo_documento: "CC",
-        numero_documento: "",
-        celular: "",
-        correo: "",
-        direccion: "",
-        complemento_direccion: "",
-        zona_id: "",
-        fuente: "otro",
-        tipo_cliente: "publico",
-      })
-      fetchClientes()
-    }
-    setIsSaving(false)
-  }
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
@@ -256,211 +154,15 @@ export default function ClientesPage() {
             Gestiona la base de clientes y sus mascotas.
           </p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger render={<Button className="gap-2" />}>
-            <Plus className="h-4 w-4" />
-            Nuevo Cliente
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Cliente</DialogTitle>
-              <DialogDescription>
-                Ingresa los datos del nuevo cliente de Amatu.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-              {/* Row 1: Name + Document */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre Completo *</Label>
-                  <Input
-                    id="nombre"
-                    placeholder="Juan Pérez"
-                    value={form.nombre_completo}
-                    onChange={(e) =>
-                      setForm({ ...form, nombre_completo: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo Documento</Label>
-                  <Select
-                    value={form.tipo_documento}
-                    onValueChange={(v: string | null) =>
-                      setForm({ ...form, tipo_documento: (v ?? "CC") as TipoDocumento })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CC">C.C.</SelectItem>
-                      <SelectItem value="CE">C.E.</SelectItem>
-                      <SelectItem value="NIT">NIT</SelectItem>
-                      <SelectItem value="Pasaporte">Pasaporte</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Row 2: Document # + Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="doc">Número de Documento *</Label>
-                  <Input
-                    id="doc"
-                    placeholder="1234567890"
-                    value={form.numero_documento}
-                    onChange={(e) =>
-                      setForm({ ...form, numero_documento: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="celular">Celular *</Label>
-                  <Input
-                    id="celular"
-                    placeholder="3001234567"
-                    value={form.celular}
-                    onChange={(e) =>
-                      setForm({ ...form, celular: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Row 3: Email */}
-              <div className="space-y-2">
-                <Label htmlFor="correo">Correo Electrónico</Label>
-                <Input
-                  id="correo"
-                  type="email"
-                  placeholder="juan@email.com (opcional)"
-                  value={form.correo}
-                  onChange={(e) =>
-                    setForm({ ...form, correo: e.target.value })
-                  }
-                />
-              </div>
-
-              {/* Row 4: Address */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="direccion">Dirección *</Label>
-                  <Input
-                    id="direccion"
-                    placeholder="Cra 15 #100-20"
-                    value={form.direccion}
-                    onChange={(e) =>
-                      setForm({ ...form, direccion: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="complemento">Complemento</Label>
-                  <Input
-                    id="complemento"
-                    placeholder="Torre 3, Apto 501"
-                    value={form.complemento_direccion}
-                    onChange={(e) =>
-                      setForm({ ...form, complemento_direccion: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Row 5: Zone + Source */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Zona de Envío</Label>
-                  <Select
-                    value={form.zona_id}
-                    onValueChange={(v: string | null) =>
-                      setForm({ ...form, zona_id: v ?? "" })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar zona..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {zonas.map((z) => (
-                        <SelectItem key={z.id} value={z.id}>
-                          {z.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Fuente</Label>
-                  <Select
-                    value={form.fuente}
-                    onValueChange={(v: string | null) =>
-                      setForm({ ...form, fuente: (v ?? "otro") as FuenteCliente })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="meta_ads">Meta Ads</SelectItem>
-                      <SelectItem value="referido_cliente">Referido — Cliente</SelectItem>
-                      <SelectItem value="referido_veterinario">Referido — Veterinario</SelectItem>
-                      <SelectItem value="referido_entrenador">Referido — Entrenador</SelectItem>
-                      <SelectItem value="distribuidor">Distribuidor</SelectItem>
-                      <SelectItem value="otro">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Row 6: Client type */}
-              <div className="space-y-2">
-                <Label>Tipo de Cliente</Label>
-                <Select
-                  value={form.tipo_cliente}
-                  onValueChange={(v: string | null) =>
-                    setForm({ ...form, tipo_cliente: (v ?? "publico") as TipoCliente })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="publico">Público (consumidor final)</SelectItem>
-                    <SelectItem value="distribuidor">Distribuidor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {saveError && (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md border border-destructive/20">
-                  {saveError}
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowCreateDialog(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={
-                  isSaving ||
-                  !form.nombre_completo ||
-                  !form.numero_documento ||
-                  !form.celular ||
-                  !form.direccion
-                }
-              >
-                {isSaving ? "Guardando..." : "Registrar Cliente"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CreateClienteDialog
+          onCreated={() => fetchClientes()}
+          trigger={
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nuevo Cliente
+            </Button>
+          }
+        />
       </div>
 
       {/* Filters */}
