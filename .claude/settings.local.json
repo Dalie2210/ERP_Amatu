@@ -13,7 +13,12 @@
       "Bash(python -c \"import json,sys; print\\(json.dumps\\(json.load\\(sys.stdin\\)['scripts'], indent=2\\)\\)\")",
       "Bash(echo \"EXIT:$?\")",
       "Bash(Get-ChildItem -Recurse -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\app\\\\\\(dashboard\\)\\\\ventas\\\\\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)",
-      "Bash(xargs grep -l \"SelectValue\")"
+      "Bash(xargs grep -l \"SelectValue\")",
+      "mcp__supabase__list_migrations",
+      "Bash(Remove-Item -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\lib\\\\comisiones\\\\createLiquidacion.ts\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\components\\\\comisiones\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\app\\\\\\(dashboard\\)\\\\comisiones\\\\aliados\")",
+      "mcp__supabase__get_logs"
     ]
   },
   "enableAllProjectMcpServers": true,

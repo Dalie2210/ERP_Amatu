@@ -147,6 +147,7 @@ export default function ClienteDetailPage() {
     correo: "",
     direccion: "",
     complemento_direccion: "",
+    barrio: "",
     zona_id: "",
     fuente: "otro" as FuenteCliente,
     tipo_cliente: "publico" as TipoCliente,
@@ -186,6 +187,7 @@ export default function ClienteDetailPage() {
         correo: c.correo ?? "",
         direccion: c.direccion,
         complemento_direccion: c.complemento_direccion ?? "",
+        barrio: (c as ClienteDetail & { barrio?: string | null }).barrio ?? "",
         zona_id: c.zona_id ?? "",
         fuente: c.fuente,
         tipo_cliente: c.tipo_cliente,
@@ -235,6 +237,7 @@ export default function ClienteDetailPage() {
         correo: form.correo || null,
         direccion: form.direccion,
         complemento_direccion: form.complemento_direccion || null,
+        barrio: form.barrio || null,
         zona_id: form.zona_id || null,
         fuente: form.fuente,
         tipo_cliente: form.tipo_cliente,
@@ -428,6 +431,15 @@ export default function ClienteDetailPage() {
                     }
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Barrio</Label>
+                <Input
+                  placeholder="Chapinero, Usaquén, Suba..."
+                  value={form.barrio}
+                  onChange={(e) => setForm({ ...form, barrio: e.target.value })}
+                />
               </div>
 
               {/* Zone + Source */}

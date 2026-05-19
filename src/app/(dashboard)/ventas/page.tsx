@@ -1,32 +1,21 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useDebounce } from "@/hooks/useDebounce"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-  Plus, Search, ShoppingBag, ChevronRight, ChevronLeft,
+  TrendingUp, ShoppingBag, DollarSign, Target, Plus, ChevronRight, Package,
 } from "lucide-react"
 import Link from "next/link"
 
-const PAGE_SIZE = 20
-
 const estadoLabels: Record<string, string> = {
-  fecha_tentativa: "Tentativo",
+  fecha_tentativa: "Por Confirmar",
   confirmado: "Confirmado",
   en_preparacion: "Preparación",
   espera_produccion: "Esp. Producción",
@@ -47,29 +36,35 @@ const estadoColors: Record<string, string> = {
   parcial: "bg-amber-100 text-amber-800",
 }
 
+const estadoFunnelOrder = [
+  "fecha_tentativa", "confirmado", "en_preparacion",
+  "espera_produccion", "listo_despacho", "despachado",
+]
+
+const fuenteLabels: Record<string, string> = {
+  meta_ads: "Meta Ads",
+  referido_cliente: "Ref. Cliente",
+  referido_veterinario: "Ref. Veterinario",
+  referido_entrenador: "Ref. Entrenador",
+  distribuidor: "Distribuidor",
+  otro: "Otro",
+}
+
+const fuenteColors: Record<string, string> = {
+  meta_ads: "bg-blue-100 text-blue-800",
+  referido_cliente: "bg-purple-100 text-purple-800",
+  referido_veterinario: "bg-teal-100 text-teal-800",
+  referido_entrenador: "bg-cyan-100 text-cyan-800",
+  distribuidor: "bg-orange-100 text-orange-800",
+  otro: "bg-gray-100 text-gray-800",
+}
+
 const pagoLabels: Record<string, string> = {
   pendiente: "Pendiente",
   confirmado: "Pagado",
 }
 
-function TableSkeleton() {
-  return (
-    <div className="p-6 space-y-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4">
-          <Skeleton className="h-5 w-[100px]" />
-          <Skeleton className="h-5 w-[150px]" />
-          <Skeleton className="h-5 w-[80px]" />
-          <Skeleton className="h-5 w-[80px]" />
-          <Skeleton className="h-5 w-[100px]" />
-          <Skeleton className="h-5 w-[60px] ml-auto" />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-interface Pedido {
+interface RecentOrder {
   id: string
   numero_pedido: string
   estado: string
@@ -78,49 +73,144 @@ interface Pedido {
   created_at: string
   fue_editado: boolean
   clientes: { nombre_completo: string } | null
-  users: { full_name: string } | null
+}
+
+interface DashboardData {
+  revenueThisMonth: number
+  activeOrders: number
+  commissionThisMonth: number
+  leadsCount: number
+  closuresCount: number
+  estadoCounts: Record<string, number>
+  topProducts: { nombre: string; unidades: number; revenue: number }[]
+  fuenteCounts: Record<string, number>
+  recentOrders: RecentOrder[]
+}
+
+function CardSkeleton() {
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="pt-6 px-5 pb-5 space-y-2">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-8 w-36" />
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function VentasPage() {
   const supabase = useMemo(() => createClient(), [])
-  const [pedidos, setPedidos] = useState<Pedido[]>([])
+  const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [estadoFilter, setEstadoFilter] = useState("all")
-  const [page, setPage] = useState(0)
-  const [totalCount, setTotalCount] = useState(0)
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
-  const debouncedSearch = useDebounce(searchQuery, 400)
 
-  const fetchPedidos = useCallback(async () => {
-    setIsLoading(true)
-    const from = page * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true)
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-    let query = supabase
-      .from("pedidos")
-      .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo), users!pedidos_vendedor_id_fkey(full_name)", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(from, to)
+      const [
+        { data: pedidosMes },
+        { data: allPedidos },
+        { data: comisiones },
+        { count: leadsCount },
+        { count: closuresCount },
+        { data: detalles },
+        { data: recentOrders },
+      ] = await Promise.all([
+        supabase
+          .from("pedidos")
+          .select("total, estado")
+          .gte("created_at", monthStart),
+        supabase
+          .from("pedidos")
+          .select("estado, fuente"),
+        supabase
+          .from("comisiones_detalle")
+          .select("monto_comision")
+          .gte("created_at", monthStart),
+        supabase
+          .from("leads_meta_ads")
+          .select("*", { count: "exact", head: true }),
+        supabase
+          .from("pedidos")
+          .select("*", { count: "exact", head: true })
+          .eq("fuente", "meta_ads")
+          .eq("numero_venta_cliente", 1),
+        supabase
+          .from("detalle_pedido")
+          .select("cantidad, subtotal, productos(nombre)"),
+        supabase
+          .from("pedidos")
+          .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo)")
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ])
 
-    if (estadoFilter !== "all") query = query.eq("estado", estadoFilter)
-    if (debouncedSearch.trim()) query = query.or(`numero_pedido.ilike.%${debouncedSearch}%`)
+      const revenueThisMonth = (pedidosMes ?? [])
+        .filter((p: { estado: string; total: number | null }) => p.estado !== "devolucion")
+        .reduce((acc: number, p: { estado: string; total: number | null }) => acc + (p.total ?? 0), 0)
 
-    const { data, count } = await query
-    setPedidos((data as Pedido[]) ?? [])
-    setTotalCount(count ?? 0)
-    setIsLoading(false)
-  }, [supabase, estadoFilter, debouncedSearch, page])
+      const activeOrders = (allPedidos ?? [])
+        .filter((p: { estado: string }) => !["despachado", "devolucion"].includes(p.estado)).length
 
-  useEffect(() => { setPage(0) }, [debouncedSearch, estadoFilter])
-  useEffect(() => { fetchPedidos() }, [fetchPedidos])
+      const commissionThisMonth = (comisiones ?? [])
+        .reduce((acc: number, c: { monto_comision: number | null }) => acc + (c.monto_comision ?? 0), 0)
+
+      const estadoCounts: Record<string, number> = {}
+      for (const p of allPedidos ?? []) {
+        estadoCounts[p.estado] = (estadoCounts[p.estado] ?? 0) + 1
+      }
+
+      const fuenteCounts: Record<string, number> = {}
+      for (const p of allPedidos ?? []) {
+        if (p.fuente) fuenteCounts[p.fuente] = (fuenteCounts[p.fuente] ?? 0) + 1
+      }
+
+      type DetalleRow = { cantidad: number; subtotal: number; productos: { nombre: string } | null }
+      const productMap: Record<string, { unidades: number; revenue: number }> = {}
+      for (const d of (detalles as DetalleRow[] | null) ?? []) {
+        const nombre = d.productos?.nombre ?? "Desconocido"
+        if (!productMap[nombre]) productMap[nombre] = { unidades: 0, revenue: 0 }
+        productMap[nombre].unidades += d.cantidad ?? 0
+        productMap[nombre].revenue += d.subtotal ?? 0
+      }
+      const topProducts = Object.entries(productMap)
+        .map(([nombre, v]) => ({ nombre, ...v }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5)
+
+      setData({
+        revenueThisMonth,
+        activeOrders,
+        commissionThisMonth,
+        leadsCount: leadsCount ?? 0,
+        closuresCount: closuresCount ?? 0,
+        estadoCounts,
+        topProducts,
+        fuenteCounts,
+        recentOrders: (recentOrders as RecentOrder[]) ?? [],
+      })
+      setIsLoading(false)
+    }
+    load()
+  }, [supabase])
+
+  const closeRate =
+    data && data.leadsCount > 0
+      ? Math.round((data.closuresCount / data.leadsCount) * 100)
+      : null
+
+  const maxEstado = Math.max(...Object.values(data?.estadoCounts ?? {}), 1)
+  const totalFuente = Object.values(data?.fuenteCounts ?? {}).reduce((a, b) => a + b, 0)
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading tracking-tight">Ventas</h1>
-          <p className="text-muted-foreground mt-1">Historial de pedidos y nueva venta.</p>
+          <p className="text-muted-foreground mt-1">Resumen de rendimiento y métricas de ventas.</p>
         </div>
         <Link href="/ventas/nueva">
           <Button className="gap-2">
@@ -130,100 +220,265 @@ export default function VentasPage() {
         </Link>
       </div>
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+        ) : (
+          <>
+            <Card className="border-none shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ventas este mes</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="text-2xl font-bold">
+                  ${(data?.revenueThisMonth ?? 0).toLocaleString("es-CO")}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Pedidos activos</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="text-2xl font-bold">{data?.activeOrders ?? 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">Sin despachar ni devolver</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Comisión este mes</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="text-2xl font-bold">
+                  ${(data?.commissionThisMonth ?? 0).toLocaleString("es-CO")}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de cierre</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="text-2xl font-bold">
+                  {closeRate !== null ? `${closeRate}%` : "—"}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data?.closuresCount ?? 0} cierres / {data?.leadsCount ?? 0} leads
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+
+      {/* Status Funnel */}
       <Card className="border-none shadow-sm">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por # pedido..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </div>
-            <Select value={estadoFilter} onValueChange={(v: string | null) => setEstadoFilter(v ?? "all")}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Todos los estados">
-                  {estadoFilter === "all" ? "Todos los estados" : (estadoLabels[estadoFilter as keyof typeof estadoLabels] ?? estadoFilter)}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {Object.entries(estadoLabels).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-base">Estado de Pedidos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-2 flex-1 rounded-full" />
+                <Skeleton className="h-4 w-8" />
+              </div>
+            ))
+          ) : (
+            estadoFunnelOrder.map((estado) => {
+              const count = data?.estadoCounts[estado] ?? 0
+              const pct = maxEstado > 0 ? Math.round((count / maxEstado) * 100) : 0
+              return (
+                <div key={estado} className="flex items-center gap-3">
+                  <span className="text-sm w-32 shrink-0 text-right text-muted-foreground">
+                    {estadoLabels[estado]}
+                  </span>
+                  <div className="flex-1 bg-muted rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium w-8 text-right">{count}</span>
+                </div>
+              )
+            })
+          )}
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm">
-        <CardContent className="p-0">
-          {isLoading ? <TableSkeleton /> : pedidos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
-              <ShoppingBag className="h-12 w-12 opacity-30" />
-              <p className="text-lg font-medium">No hay pedidos</p>
-              <p className="text-sm">Crea tu primera venta para empezar.</p>
-            </div>
-          ) : (
-            <>
+      {/* Top Products + Fuente split */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Card className="border-none shadow-sm lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-base">Top Productos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex gap-3">
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            ) : (data?.topProducts ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Sin ventas registradas.</p>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[140px]"># Pedido</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Vendedor</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Pago</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>Producto</TableHead>
+                    <TableHead className="text-right">Unidades</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pedidos.map((p) => (
-                    <TableRow key={p.id} className="group">
-                      <TableCell className="font-mono text-sm">
-                        {p.numero_pedido}
-                        {p.fue_editado && <Badge variant="destructive" className="ml-2 text-[10px] h-4">EDITADO</Badge>}
-                      </TableCell>
-                      <TableCell className="font-medium">{p.clientes?.nombre_completo ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{p.users?.full_name ?? "—"}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"}`}>
-                          {estadoLabels[p.estado] ?? p.estado}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={p.estado_pago === "confirmado" ? "default" : "outline"} className="text-xs">
-                          {pagoLabels[p.estado_pago] ?? p.estado_pago}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">${p.total.toLocaleString("es-CO")}</TableCell>
-                      <TableCell className="text-right">
-                        <Link href={`/ventas/${p.id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            Ver <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                  {(data?.topProducts ?? []).map((p) => (
+                    <TableRow key={p.nombre}>
+                      <TableCell className="font-medium text-sm">{p.nombre}</TableCell>
+                      <TableCell className="text-right text-sm">{p.unidades}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold">
+                        ${p.revenue.toLocaleString("es-CO")}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} de {totalCount}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                      <ChevronLeft className="h-4 w-4 mr-1" />Anterior
-                    </Button>
-                    <span className="text-sm text-muted-foreground px-2">{page + 1} / {totalPages}</span>
-                    <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
-                      Siguiente<ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Pedidos por Fuente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex justify-between gap-2">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-5 w-12" />
                 </div>
-              )}
-            </>
+              ))
+            ) : Object.keys(data?.fuenteCounts ?? {}).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Sin datos.</p>
+            ) : (
+              Object.entries(data?.fuenteCounts ?? {})
+                .sort((a, b) => b[1] - a[1])
+                .map(([fuente, count]) => (
+                  <div key={fuente} className="flex items-center justify-between py-0.5">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${fuenteColors[fuente] ?? "bg-gray-100 text-gray-800"}`}
+                    >
+                      {fuenteLabels[fuente] ?? fuente}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">{count}</span>
+                      <span className="text-xs text-muted-foreground w-8 text-right">
+                        {totalFuente > 0 ? `${Math.round((count / totalFuente) * 100)}%` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Orders */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Pedidos Recientes</CardTitle>
+          <Link href="/pedidos">
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+              Ver todos <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex gap-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16 ml-auto" />
+                </div>
+              ))}
+            </div>
+          ) : (data?.recentOrders ?? []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground gap-2">
+              <ShoppingBag className="h-8 w-8 opacity-30" />
+              <p className="text-sm">No hay pedidos recientes.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[140px]"># Pedido</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Pago</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(data?.recentOrders ?? []).map((p) => (
+                  <TableRow key={p.id} className="group">
+                    <TableCell className="font-mono text-sm">
+                      {p.numero_pedido}
+                      {p.fue_editado && (
+                        <Badge variant="destructive" className="ml-2 text-[10px] h-4">EDITADO</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{p.clientes?.nombre_completo ?? "—"}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"}`}
+                      >
+                        {estadoLabels[p.estado] ?? p.estado}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={p.estado_pago === "confirmado" ? "default" : "outline"}
+                        className="text-xs"
+                      >
+                        {pagoLabels[p.estado_pago] ?? p.estado_pago}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      ${p.total.toLocaleString("es-CO")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/ventas/${p.id}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Ver <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

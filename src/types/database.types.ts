@@ -122,6 +122,7 @@ export type Database = {
       }
       clientes: {
         Row: {
+          barrio: string | null
           celular: string
           codigo_cliente: string
           complemento_direccion: string | null
@@ -142,6 +143,7 @@ export type Database = {
           zona_id: string | null
         }
         Insert: {
+          barrio?: string | null
           celular: string
           codigo_cliente: string
           complemento_direccion?: string | null
@@ -162,6 +164,7 @@ export type Database = {
           zona_id?: string | null
         }
         Update: {
+          barrio?: string | null
           celular?: string
           codigo_cliente?: string
           complemento_direccion?: string | null
@@ -248,36 +251,45 @@ export type Database = {
           base_calculo: number
           created_at: string
           id: string
+          is_provisional: boolean
           liquidacion_id: string | null
           monto_comision: number
           numero_venta_cliente: number
           pct_comision: number
           pedido_id: string
+          periodo_mes: string | null
           razon_no_comision: string | null
+          vendedor_id: string | null
         }
         Insert: {
           aplica_comision?: boolean
           base_calculo: number
           created_at?: string
           id?: string
+          is_provisional?: boolean
           liquidacion_id?: string | null
           monto_comision?: number
           numero_venta_cliente: number
           pct_comision?: number
           pedido_id: string
+          periodo_mes?: string | null
           razon_no_comision?: string | null
+          vendedor_id?: string | null
         }
         Update: {
           aplica_comision?: boolean
           base_calculo?: number
           created_at?: string
           id?: string
+          is_provisional?: boolean
           liquidacion_id?: string | null
           monto_comision?: number
           numero_venta_cliente?: number
           pct_comision?: number
           pedido_id?: string
+          periodo_mes?: string | null
           razon_no_comision?: string | null
+          vendedor_id?: string | null
         }
         Relationships: [
           {
@@ -292,6 +304,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: true
             referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comisiones_detalle_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1021,9 +1040,45 @@ export type Database = {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: number
       }
+      fn_expirar_periodos_aliado: { Args: never; Returns: number }
+      fn_get_cierre_meta_actual: {
+        Args: { p_periodo_mes: string; p_vendedor_id: string }
+        Returns: {
+          config_id: string
+          pct_cierre: number
+          rango_label: string
+          total_cierres: number
+          total_leads: number
+          venta_2_pct: number
+          venta_3_pct: number
+          venta_4_pct: number
+          venta_5_pct: number
+          venta_6_pct: number
+        }[]
+      }
       fn_get_user_role:
         | { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
         | { Args: { user_id: string }; Returns: string }
+      fn_recalcular_comisiones_periodo: {
+        Args: { p_periodo_mes: string; p_vendedor_id: string }
+        Returns: {
+          monto_bloqueado: number
+          monto_confirmado: number
+          monto_total: number
+          ordenes_count: number
+          pct_cierre: number
+          rango_label: string
+          total_cierres: number
+          total_leads: number
+        }[]
+      }
+      fn_top_selling_productos: {
+        Args: { p_limit?: number }
+        Returns: {
+          producto_id: string
+          total_vendido: number
+        }[]
+      }
     }
     Enums: {
       estado_comision_aliado: "pendiente" | "liquidada"

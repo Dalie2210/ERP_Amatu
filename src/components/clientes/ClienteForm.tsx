@@ -84,6 +84,7 @@ export function ClienteForm({
     correo: "",
     direccion: "",
     complemento_direccion: "",
+    barrio: "",
     zona_id: defaultZonaId,
     fuente: "otro" as FuenteCliente,
     fuente_subtipo: "",
@@ -133,6 +134,7 @@ export function ClienteForm({
       correo: form.correo.trim(),
       direccion: form.direccion.trim(),
       complemento_direccion: form.complemento_direccion.trim(),
+      barrio: form.barrio.trim(),
       zona_id: form.zona_id,
       fuente: form.fuente,
       fuente_subtipo: isReferido ? form.fuente_subtipo.trim() : "",
@@ -272,6 +274,16 @@ export function ClienteForm({
               }
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="cf-barrio">Barrio</Label>
+          <Input
+            id="cf-barrio"
+            placeholder="Chapinero, Usaquén, Suba..."
+            value={form.barrio}
+            onChange={(e) => setForm({ ...form, barrio: e.target.value })}
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

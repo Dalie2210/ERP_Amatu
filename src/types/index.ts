@@ -142,6 +142,85 @@ export interface CalculoComision {
   razonNoComision?: string;
 }
 
+// Result from fn_get_cierre_meta_actual RPC
+export interface CierreMetaResult {
+  totalLeads: number;
+  totalCierres: number;
+  pctCierre: number;
+  rangoLabel: string;
+  configId: string | null;
+  venta2Pct: number;
+  venta3Pct: number;
+  venta4Pct: number;
+  venta5Pct: number;
+  venta6Pct: number;
+}
+
+// Result from fn_recalcular_comisiones_periodo RPC
+export interface RecalcularComisionesResult {
+  totalLeads: number;
+  totalCierres: number;
+  pctCierre: number;
+  rangoLabel: string;
+  montoTotal: number;
+  montoConfirmado: number;
+  montoBloqueado: number;
+  ordenesCount: number;
+}
+
+// comisiones_detalle row (with new columns)
+export interface ComisionDetalleRow {
+  id: string;
+  pedidoId: string;
+  liquidacionId: string | null;
+  vendedorId: string | null;
+  periodoMes: string | null;
+  numeroVentaCliente: number;
+  baseCalculo: number;
+  pctComision: number;
+  montoComision: number;
+  aplicaComision: boolean;
+  razonNoComision: string | null;
+  isProvisional: boolean;
+  createdAt: string;
+}
+
+// comisiones_aliado row
+export interface ComisionAliado {
+  id: string;
+  aliadoReferidoId: string;
+  pedidoId: string;
+  tipo: TipoComisionAliado;
+  baseCalculo: number;
+  porcentaje: number;
+  monto: number;
+  estado: EstadoComisionAliado;
+  createdAt: string;
+}
+
+// aliados row
+export interface Aliado {
+  id: string;
+  nombre: string;
+  tipo: TipoAliado;
+  celular: string | null;
+  correo: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// aliados_referidos row
+export interface AliadorReferido {
+  id: string;
+  aliadoId: string;
+  clienteId: string;
+  fechaInicioComision: string | null;
+  fechaFinComision: string | null;
+  periodoActivo: boolean;
+  pedidoPrimeraEntregaId: string | null;
+  createdAt: string;
+}
+
 // ============================================================
 // Route/dispatch payload (for n8n webhook)
 // ============================================================

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useCartStore } from "@/stores/cartStore"
 import { createOrder } from "@/lib/pedidos/createOrder"
 import { calcularDescuentos } from "@/lib/calculators/discounts"
-import type { ReglaDescuento, ConfigComision } from "@/types"
+import type { ReglaDescuento } from "@/types"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -42,50 +42,25 @@ export function OrderSummaryCard() {
   const notasVentas = useCartStore((s) => s.notasVentas)
   const clearCart = useCartStore((s) => s.clearCart)
 
-  // Rules state
   const [reglas, setReglas] = useState<ReglaDescuento[]>([])
-  const [configComisiones, setConfigComisiones] = useState<ConfigComision[]>([])
 
-  // Fetch discount rules and commission config on mount
   useEffect(() => {
-    const fetchRules = async () => {
-      const { data: reglasData } = await supabase
-        .from("reglas_descuento")
-        .select("*")
-        .eq("is_active", true)
-
-      if (reglasData) {
-        setReglas(
-          reglasData.map((r: any) => ({
-            id: r.id,
-            montoMinimo: r.monto_minimo,
-            pctDescuentoCompra: r.pct_descuento_compra,
-            descuentoEnvioFijo: r.descuento_envio_fijo,
-          }))
-        )
-      }
-
-      const { data: configData } = await supabase
-        .from("config_comisiones")
-        .select("*")
-        .eq("is_active", true)
-
-      if (configData) {
-        setConfigComisiones(
-          configData.map((c: any) => ({
-            id: c.id,
-            cierreMin: c.cierre_min,
-            cierreMax: c.cierre_max,
-            venta2Pct: c.venta_2_pct,
-            venta3Pct: c.venta_3_pct,
-            venta4Pct: c.venta_4_pct,
-            venta5Pct: c.venta_5_pct,
-            venta6Pct: c.venta_6_pct,
-          }))
-        )
-      }
-    }
-    fetchRules()
+    supabase
+      .from("reglas_descuento")
+      .select("*")
+      .eq("is_active", true)
+      .then(({ data }: { data: any[] | null }) => {
+        if (data) {
+          setReglas(
+            data.map((r: any) => ({
+              id: r.id,
+              montoMinimo: r.monto_minimo,
+              pctDescuentoCompra: r.pct_descuento_compra,
+              descuentoEnvioFijo: r.descuento_envio_fijo,
+            }))
+          )
+        }
+      })
   }, [supabase])
 
   // Calculate dynamic totals
@@ -131,7 +106,6 @@ export function OrderSummaryCard() {
         pctDescuentoDistribuidor,
         tarifaEnvioBase,
         reglas,
-        configComisiones,
       })
 
       clearCart()

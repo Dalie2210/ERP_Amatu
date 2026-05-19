@@ -1,7 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js"
-import type { CartItem, ReglaDescuento, ConfigComision } from "@/types"
+import type { CartItem, ReglaDescuento } from "@/types"
 import { calcularDescuentos } from "@/lib/calculators/discounts"
-import { calcularComision } from "@/lib/calculators/commissions"
 
 export interface CreateOrderInput {
   clienteId: string
@@ -19,7 +18,6 @@ export interface CreateOrderInput {
   pctDescuentoDistribuidor: number
   tarifaEnvioBase: number
   reglas: ReglaDescuento[]
-  configComisiones: ConfigComision[]
 }
 
 export interface CreateOrderOutput {
@@ -105,54 +103,23 @@ export async function createOrder(
   const { error: detErr } = await supabase.from("detalle_pedido").insert(detalles)
   if (detErr) throw detErr
 
-  // Calculate and record commission
-  const now = new Date()
-  const currentMonth = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}`
-
-  const { data: metaLeads } = await supabase
-    .from("leads_meta_ads")
-    .select("cantidad_leads")
-    .eq("vendedor_id", input.vendedorId)
-    .eq("periodo_mes", currentMonth)
-    .single()
-
-  const { data: metaCierres } = await supabase
-    .from("pedidos")
-    .select("id")
-    .eq("vendedor_id", input.vendedorId)
-    .eq("fuente", "meta_ads")
-    .eq("numero_venta_cliente", 1)
-    .gte(
-      "created_at",
-      `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-01`
-    )
-
-  const totalLeads = metaLeads?.cantidad_leads || 1
-  const totalCierres = metaCierres?.length || 0
-  const pctCierreMeta = totalLeads > 0 ? (totalCierres / totalLeads) * 100 : 0
-
-  const baseCalculo = (calculo.total - calculo.totalEnvioCobrado) * 0.95
-  const calcComision = calcularComision(
-    pedido.numero_venta_cliente,
-    pedido.fuente,
-    baseCalculo,
-    pctCierreMeta,
-    input.configComisiones,
-    input.esDistribuidor
-  )
-
+  // Record provisional commission stub — pct/monto will be set at liquidation time
+  // by fn_recalcular_comisiones_periodo using the month-end close rate.
+  // vendedor_id and periodo_mes are auto-filled by the DB trigger.
+  const baseCalculo = Math.round((calculo.total - calculo.totalEnvioCobrado) * 0.95)
   const { error: comErr } = await supabase.from("comisiones_detalle").insert({
     pedido_id: pedido.id,
     numero_venta_cliente: pedido.numero_venta_cliente,
     base_calculo: baseCalculo,
-    pct_comision: calcComision.pctComision,
-    monto_comision: calcComision.montoComision,
-    aplica_comision: calcComision.aplicaComision,
-    razon_no_comision: calcComision.razonNoComision || null,
+    pct_comision: 0,
+    monto_comision: 0,
+    aplica_comision: false,
+    razon_no_comision: null,
+    is_provisional: true,
   })
 
   if (comErr) {
-    console.error("Comisión no guardada:", comErr)
+    console.error("Comisión provisional no guardada:", comErr)
     // Don't throw - the order is already created
   }
 
@@ -160,6 +127,6 @@ export async function createOrder(
     pedidoId: pedido.id,
     numeroPedido: pedido.numero_pedido,
     total: calculo.total,
-    aplicaComision: calcComision.aplicaComision,
+    aplicaComision: false,
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Package, Users, Truck, DollarSign, Settings, LogOut, Leaf, ShoppingBag } from "lucide-react"
+import { Home, Package, Users, Truck, DollarSign, Settings, LogOut, Leaf, ShoppingBag, Handshake } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
@@ -48,6 +48,11 @@ const items = [
     title: "Comisiones",
     url: "/comisiones",
     icon: DollarSign,
+  },
+  {
+    title: "Aliados",
+    url: "/comisiones/aliados",
+    icon: Handshake,
   },
   {
     title: "Clientes",

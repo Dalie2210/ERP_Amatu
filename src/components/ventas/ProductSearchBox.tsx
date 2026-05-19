@@ -259,6 +259,16 @@ function ScalePicker({ producto, onClose }: ScalePickerProps) {
     onClose()
   }
 
+  if (sorted.length === 0) {
+    return (
+      <div className="p-3">
+        <p className="text-sm text-destructive">
+          Este producto no tiene precios por escala configurados. Configúralos en el catálogo antes de venderlo.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="p-3 space-y-3">
       <div className="space-y-1.5">

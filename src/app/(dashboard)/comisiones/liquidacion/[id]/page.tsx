@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ArrowLeft, DollarSign, Lock, Check } from "lucide-react"
+import { ArrowLeft, DollarSign, Lock, Check, RefreshCw, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import type { EstadoLiquidacion } from "@/types"
 
@@ -43,6 +43,7 @@ const estadoLabels: Record<EstadoLiquidacion, string> = {
 
 interface Liquidacion {
   id: string
+  vendedor_id: string
   periodo_mes: string
   total_leads_meta: number
   total_cierres_meta: number
@@ -64,6 +65,7 @@ interface ComisionDetalleRow {
   monto_comision: number
   aplica_comision: boolean
   razon_no_comision: string | null
+  is_provisional: boolean
   pedidos: {
     numero_pedido: string
     estado_pago: string
@@ -121,7 +123,7 @@ export default function LiquidacionDetailPage() {
         .from("comisiones_detalle")
         .select(
           `id, pedido_id, numero_venta_cliente, base_calculo,
-           pct_comision, monto_comision, aplica_comision, razon_no_comision,
+           pct_comision, monto_comision, aplica_comision, razon_no_comision, is_provisional,
            pedidos(
              numero_pedido, estado_pago, total,
              clientes(nombre_completo)
@@ -162,6 +164,35 @@ export default function LiquidacionDetailPage() {
       toast.success(
         `Liquidación marcada como ${estadoLabels[nuevoEstado].toLowerCase()}`
       )
+      fetchData()
+    }
+    setIsUpdating(false)
+  }
+
+  const handleRecalcular = async () => {
+    if (!liquidacion) return
+    setIsUpdating(true)
+    const { data: rows, error } = await supabase.rpc("fn_recalcular_comisiones_periodo", {
+      p_vendedor_id: liquidacion.vendedor_id ?? "",
+      p_periodo_mes: liquidacion.periodo_mes,
+    })
+    if (error) {
+      toast.error(`Error al recalcular: ${error.message}`)
+    } else {
+      const r = rows?.[0]
+      if (r) {
+        // Sync lead stats on liquidacion header (monto_total_comisiones synced atomically by the DB function)
+        await supabase
+          .from("liquidaciones_comision")
+          .update({
+            total_leads_meta: r.total_leads,
+            total_cierres_meta: r.total_cierres,
+            pct_cierre_meta: r.pct_cierre,
+            rango_cierre: r.rango_label,
+          })
+          .eq("id", liquidacionId)
+      }
+      toast.success("Comisiones recalculadas con la tasa de cierre actual")
       fetchData()
     }
     setIsUpdating(false)
@@ -232,15 +263,27 @@ export default function LiquidacionDetailPage() {
         {isAdminOrContable && (
           <div className="flex items-center gap-2 shrink-0">
             {liquidacion.estado === "borrador" && (
-              <Button
-                variant="outline"
-                onClick={() => handleUpdateEstado("cerrado")}
-                disabled={isUpdating}
-                className="gap-2"
-              >
-                <Lock className="h-4 w-4" />
-                Cerrar liquidación
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRecalcular}
+                  disabled={isUpdating}
+                  className="gap-2 text-amber-700 border-amber-200 hover:bg-amber-50"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Recalcular
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleUpdateEstado("cerrado")}
+                  disabled={isUpdating}
+                  className="gap-2"
+                >
+                  <Lock className="h-4 w-4" />
+                  Cerrar liquidación
+                </Button>
+              </>
             )}
             {liquidacion.estado === "cerrado" && (
               <Button
@@ -413,18 +456,26 @@ export default function LiquidacionDetailPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {row.aplica_comision ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Comisiona
-                        </span>
-                      ) : (
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 max-w-[180px] truncate"
-                          title={row.razon_no_comision ?? ""}
-                        >
-                          {row.razon_no_comision ?? "No aplica"}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {row.aplica_comision ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Comisiona
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 max-w-[180px] truncate"
+                            title={row.razon_no_comision ?? ""}
+                          >
+                            {row.razon_no_comision ?? "No aplica"}
+                          </span>
+                        )}
+                        {row.is_provisional && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600">
+                            <AlertCircle className="h-3 w-3" />
+                            Provisional
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

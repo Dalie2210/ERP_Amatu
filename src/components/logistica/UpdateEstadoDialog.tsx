@@ -15,11 +15,15 @@ import { Label } from "@/components/ui/label"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 type EstadoLogistica =
+  | "confirmado"
   | "en_preparacion"
   | "espera_produccion"
   | "listo_despacho"
 
 const TRANSITIONS: Record<string, { estado: EstadoLogistica; label: string; description: string }[]> = {
+  fecha_tentativa: [
+    { estado: "confirmado", label: "Confirmar Pedido", description: "Confirmar pedido y registrar pago recibido" },
+  ],
   confirmado: [
     { estado: "en_preparacion", label: "En Preparación", description: "Iniciar preparación del pedido" },
     { estado: "espera_produccion", label: "En Espera Producción", description: "El alimento aún no está listo" },
@@ -55,6 +59,9 @@ export function UpdateEstadoDialog({ pedidoId, estadoActual, numeroPedido, supab
     setIsLoading(true)
     try {
       const updates: Record<string, unknown> = { estado: selectedEstado }
+      if (selectedEstado === "confirmado" && estadoActual === "fecha_tentativa") {
+        updates.estado_pago = "confirmado"
+      }
       if (notasDespacho.trim()) updates.notas_despacho = notasDespacho.trim()
 
       const { error } = await supabase
