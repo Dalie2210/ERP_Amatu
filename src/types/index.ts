@@ -72,6 +72,7 @@ export interface CartItem {
   esMagistral: boolean;
   gramajeMagistral?: number;
   notasMagistral?: string;
+  justificacionPrecio?: string;
   aplicaDescuento: boolean;
   categoria: string;
 }
@@ -91,6 +92,14 @@ export interface CartState {
   esDistribuidor: boolean;
   pctDescuentoDistribuidor: number;
   tarifaEnvioBase: number;
+  // B3: alternate delivery address (null = use client address)
+  usaDireccionAlterna: boolean;
+  direccionAlterna: string | null;
+  complementoAlterna: string | null;
+  barrioAlterna: string | null;
+  zonaAlternaId: string | null;
+  // B5: aliado referido for referido_veterinario / referido_entrenador
+  aliadoId: string | null;
 }
 
 // ============================================================

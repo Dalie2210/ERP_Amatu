@@ -26,7 +26,7 @@ import { TIPO_PRECIO_LABELS } from "@/lib/constants/labels"
 
 interface Categoria { id: string; nombre: string; slug: string }
 interface Variante {
-  id: string; producto_id: string; presentacion: string
+  id: string; producto_id: string; presentacion: string; sku: string | null
   precio_publico: number; precio_por_gramo: number | null; is_active: boolean
 }
 interface PrecioEscala {
@@ -55,7 +55,7 @@ export default function ProductoDetallePage() {
   // New variant dialog
   const [showVarianteDialog, setShowVarianteDialog] = useState(false)
   const [newVariante, setNewVariante] = useState({
-    presentacion: "", precio_publico: "", precio_por_gramo: "",
+    sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "",
   })
 
   // New scale price dialog
@@ -103,13 +103,14 @@ export default function ProductoDetallePage() {
   const handleAddVariante = async () => {
     const { error } = await supabase.from("producto_variantes").insert([{
       producto_id: productoId,
+      sku: newVariante.sku.trim() || null,
       presentacion: newVariante.presentacion,
       precio_publico: parseFloat(newVariante.precio_publico),
       precio_por_gramo: newVariante.precio_por_gramo ? parseFloat(newVariante.precio_por_gramo) : null,
     }])
     if (!error) {
       setShowVarianteDialog(false)
-      setNewVariante({ presentacion: "", precio_publico: "", precio_por_gramo: "" })
+      setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "" })
       fetchAll()
     }
   }
@@ -252,6 +253,10 @@ export default function ProductoDetallePage() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
+                    <Label>SKU de la Variante (opcional, único)</Label>
+                    <Input placeholder="PROD-300G" value={newVariante.sku} onChange={(e) => setNewVariante({ ...newVariante, sku: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Presentación</Label>
                     <Input placeholder="300g" value={newVariante.presentacion} onChange={(e) => setNewVariante({ ...newVariante, presentacion: e.target.value })} />
                   </div>
@@ -279,6 +284,7 @@ export default function ProductoDetallePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Presentación</TableHead>
+                    <TableHead>SKU</TableHead>
                     <TableHead className="text-right">Precio Público</TableHead>
                     <TableHead className="text-right">$/Gramo</TableHead>
                     <TableHead className="text-right w-[80px]"></TableHead>
@@ -288,6 +294,7 @@ export default function ProductoDetallePage() {
                   {variantes.map((v) => (
                     <TableRow key={v.id}>
                       <TableCell className="font-medium">{v.presentacion}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{v.sku ?? "—"}</TableCell>
                       <TableCell className="text-right">{fmt(v.precio_publico)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{v.precio_por_gramo ? `$${v.precio_por_gramo}` : "—"}</TableCell>
                       <TableCell className="text-right">

@@ -6,6 +6,7 @@ import type { TipoPrecio } from "@/types"
 
 interface ProductoVariante {
   id: string
+  sku: string | null
   presentacion: string
   precio_publico: number
   precio_por_gramo: number | null

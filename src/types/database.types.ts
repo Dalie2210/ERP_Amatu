@@ -362,6 +362,7 @@ export type Database = {
           es_magistral: boolean
           gramaje_magistral: number | null
           id: string
+          justificacion_precio: string | null
           nombre_snapshot: string
           notas_magistral: string | null
           pedido_id: string
@@ -377,6 +378,7 @@ export type Database = {
           es_magistral?: boolean
           gramaje_magistral?: number | null
           id?: string
+          justificacion_precio?: string | null
           nombre_snapshot: string
           notas_magistral?: string | null
           pedido_id: string
@@ -392,6 +394,7 @@ export type Database = {
           es_magistral?: boolean
           gramaje_magistral?: number | null
           id?: string
+          justificacion_precio?: string | null
           nombre_snapshot?: string
           notas_magistral?: string | null
           pedido_id?: string
@@ -616,9 +619,12 @@ export type Database = {
       pedidos: {
         Row: {
           aliado_id: string | null
+          barrio_entrega: string | null
           cliente_id: string
+          complemento_entrega: string | null
           created_at: string
           descuento_envio: number
+          direccion_entrega: string | null
           editado_en: string | null
           editado_por_id: string | null
           es_contraentrega: boolean
@@ -649,13 +655,17 @@ export type Database = {
           total_envio_cobrado: number
           updated_at: string
           vendedor_id: string
+          zona_entrega_id: string | null
           zona_id: string | null
         }
         Insert: {
           aliado_id?: string | null
+          barrio_entrega?: string | null
           cliente_id: string
+          complemento_entrega?: string | null
           created_at?: string
           descuento_envio?: number
+          direccion_entrega?: string | null
           editado_en?: string | null
           editado_por_id?: string | null
           es_contraentrega?: boolean
@@ -686,13 +696,17 @@ export type Database = {
           total_envio_cobrado?: number
           updated_at?: string
           vendedor_id: string
+          zona_entrega_id?: string | null
           zona_id?: string | null
         }
         Update: {
           aliado_id?: string | null
+          barrio_entrega?: string | null
           cliente_id?: string
+          complemento_entrega?: string | null
           created_at?: string
           descuento_envio?: number
+          direccion_entrega?: string | null
           editado_en?: string | null
           editado_por_id?: string | null
           es_contraentrega?: boolean
@@ -723,6 +737,7 @@ export type Database = {
           total_envio_cobrado?: number
           updated_at?: string
           vendedor_id?: string
+          zona_entrega_id?: string | null
           zona_id?: string | null
         }
         Relationships: [
@@ -759,6 +774,13 @@ export type Database = {
             columns: ["vendedor_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_zona_entrega_id_fkey"
+            columns: ["zona_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "zonas_envio"
             referencedColumns: ["id"]
           },
           {
@@ -811,6 +833,7 @@ export type Database = {
           precio_publico: number
           presentacion: string
           producto_id: string
+          sku: string | null
         }
         Insert: {
           created_at?: string
@@ -820,6 +843,7 @@ export type Database = {
           precio_publico: number
           presentacion: string
           producto_id: string
+          sku?: string | null
         }
         Update: {
           created_at?: string
@@ -829,6 +853,7 @@ export type Database = {
           precio_publico?: number
           presentacion?: string
           producto_id?: string
+          sku?: string | null
         }
         Relationships: [
           {

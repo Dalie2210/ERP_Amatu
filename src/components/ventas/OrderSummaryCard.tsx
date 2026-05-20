@@ -41,6 +41,12 @@ export function OrderSummaryCard() {
   const fechaTentativa = useCartStore((s) => s.fechaTentativaEntrega)
   const notasVentas = useCartStore((s) => s.notasVentas)
   const clearCart = useCartStore((s) => s.clearCart)
+  const aliadoId = useCartStore((s) => s.aliadoId)
+  const usaDireccionAlterna = useCartStore((s) => s.usaDireccionAlterna)
+  const direccionAlterna = useCartStore((s) => s.direccionAlterna)
+  const complementoAlterna = useCartStore((s) => s.complementoAlterna)
+  const barrioAlterna = useCartStore((s) => s.barrioAlterna)
+  const zonaAlternaId = useCartStore((s) => s.zonaAlternaId)
 
   const [reglas, setReglas] = useState<ReglaDescuento[]>([])
 
@@ -106,6 +112,12 @@ export function OrderSummaryCard() {
         pctDescuentoDistribuidor,
         tarifaEnvioBase,
         reglas,
+        aliadoId,
+        usaDireccionAlterna,
+        direccionAlterna,
+        complementoAlterna,
+        barrioAlterna,
+        zonaAlternaId,
       })
 
       clearCart()

@@ -18,7 +18,10 @@
       "Bash(Remove-Item -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\lib\\\\comisiones\\\\createLiquidacion.ts\" -Force)",
       "PowerShell(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\components\\\\comisiones\")",
       "PowerShell(New-Item -ItemType Directory -Force -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\app\\\\\\(dashboard\\)\\\\comisiones\\\\aliados\")",
-      "mcp__supabase__get_logs"
+      "mcp__supabase__get_logs",
+      "Bash(Get-ChildItem -Path \"src/app/api/despachar-ruta\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem -Path \"src/components\" -Filter \"app-sidebar*\" -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem -Path \"src/hooks\" -Filter \"*Auth*\" -ErrorAction SilentlyContinue)"
     ]
   },
   "enableAllProjectMcpServers": true,

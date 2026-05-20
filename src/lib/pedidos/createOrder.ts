@@ -18,6 +18,14 @@ export interface CreateOrderInput {
   pctDescuentoDistribuidor: number
   tarifaEnvioBase: number
   reglas: ReglaDescuento[]
+  // B3: alternate delivery address (null fields = use client address)
+  usaDireccionAlterna: boolean
+  direccionAlterna: string | null
+  complementoAlterna: string | null
+  barrioAlterna: string | null
+  zonaAlternaId: string | null
+  // B5: aliado referido
+  aliadoId: string | null
 }
 
 export interface CreateOrderOutput {
@@ -54,6 +62,9 @@ export async function createOrder(
     input.pctDescuentoDistribuidor
   )
 
+  // B4: contraentrega orders start as 'confirmado' (payment guaranteed on delivery)
+  const estadoInicial = input.esContraentrega ? "confirmado" : "fecha_tentativa"
+
   // Create order header
   const { data: pedido, error: pedErr } = await supabase
     .from("pedidos")
@@ -61,7 +72,7 @@ export async function createOrder(
       cliente_id: input.clienteId,
       mascota_id: input.mascotaId,
       vendedor_id: input.vendedorId,
-      estado: "fecha_tentativa",
+      estado: estadoInicial,
       estado_pago: "pendiente",
       fuente: input.fuente,
       fuente_subtipo: input.fuenteSubtipo,
@@ -79,6 +90,16 @@ export async function createOrder(
       descuento_envio: calculo.descuentoEnvio,
       total_envio_cobrado: calculo.totalEnvioCobrado,
       total: calculo.total,
+      aliado_id: input.aliadoId,
+      // B3: only persist alternate address when toggle is on; coerce "" to null
+      ...(input.usaDireccionAlterna
+        ? {
+            direccion_entrega: input.direccionAlterna || null,
+            complemento_entrega: input.complementoAlterna || null,
+            barrio_entrega: input.barrioAlterna || null,
+            zona_entrega_id: input.zonaAlternaId,
+          }
+        : {}),
     })
     .select()
     .single()
@@ -96,6 +117,7 @@ export async function createOrder(
     es_magistral: i.esMagistral,
     gramaje_magistral: i.gramajeMagistral || null,
     notas_magistral: i.notasMagistral || null,
+    justificacion_precio: i.justificacionPrecio ?? null,
     aplica_descuento: i.aplicaDescuento,
     nombre_snapshot: i.presentacion ? `${i.nombre} - ${i.presentacion}` : i.nombre,
   }))

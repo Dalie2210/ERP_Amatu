@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState, useMemo } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { useCartStore } from "@/stores/cartStore"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -13,8 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Settings2 } from "lucide-react"
-import type { FuenteCliente, FranjaHoraria, MetodoPago } from "@/types"
+import { Settings2, MapPin } from "lucide-react"
+import type { FuenteCliente, FranjaHoraria, MetodoPago, TipoAliado } from "@/types"
 import {
   FUENTE_LABELS,
   REFERIDO_SUBTIPO_LABELS,
@@ -22,7 +24,20 @@ import {
   FRANJA_LABELS,
 } from "@/lib/constants/labels"
 
+interface Aliado {
+  id: string
+  nombre: string
+  tipo: TipoAliado
+}
+
+interface ZonaEnvio {
+  id: string
+  nombre: string
+}
+
 export function OrderOptionsPanel() {
+  const supabase = useMemo(() => createClient(), [])
+
   const fuente = useCartStore((s) => s.fuente)
   const fuenteSubtipo = useCartStore((s) => s.fuenteSubtipo)
   const franjaHoraria = useCartStore((s) => s.franjaHoraria)
@@ -30,14 +45,59 @@ export function OrderOptionsPanel() {
   const esContraentrega = useCartStore((s) => s.esContraentrega)
   const notasVentas = useCartStore((s) => s.notasVentas)
   const fechaTentativa = useCartStore((s) => s.fechaTentativaEntrega)
+  const aliadoId = useCartStore((s) => s.aliadoId)
+  const usaDireccionAlterna = useCartStore((s) => s.usaDireccionAlterna)
+  const direccionAlterna = useCartStore((s) => s.direccionAlterna)
+  const complementoAlterna = useCartStore((s) => s.complementoAlterna)
+  const barrioAlterna = useCartStore((s) => s.barrioAlterna)
+  const zonaAlternaId = useCartStore((s) => s.zonaAlternaId)
+
   const setFuente = useCartStore((s) => s.setFuente)
   const setFranjaHoraria = useCartStore((s) => s.setFranjaHoraria)
   const setMetodoPago = useCartStore((s) => s.setMetodoPago)
   const setEsContraentrega = useCartStore((s) => s.setEsContraentrega)
   const setNotasVentas = useCartStore((s) => s.setNotasVentas)
   const setFechaTentativa = useCartStore((s) => s.setFechaTentativa)
+  const setAliadoId = useCartStore((s) => s.setAliadoId)
+  const setUsaDireccionAlterna = useCartStore((s) => s.setUsaDireccionAlterna)
+  const setDireccionAlterna = useCartStore((s) => s.setDireccionAlterna)
+  const setComplementoAlterna = useCartStore((s) => s.setComplementoAlterna)
+  const setBarrioAlterna = useCartStore((s) => s.setBarrioAlterna)
+  const setZonaAlternaId = useCartStore((s) => s.setZonaAlternaId)
 
   const isReferido = fuente?.startsWith("referido_")
+  const needsAliado = fuente === "referido_veterinario" || fuente === "referido_entrenador"
+
+  const [aliados, setAliados] = useState<Aliado[]>([])
+  const [zonas, setZonas] = useState<ZonaEnvio[]>([])
+
+  // Fetch aliados when fuente is referido_veterinario or referido_entrenador
+  useEffect(() => {
+    if (!needsAliado) {
+      setAliados([])
+      return
+    }
+    const tipoFiltro: TipoAliado =
+      fuente === "referido_veterinario" ? "veterinario" : "entrenador_canino"
+
+    supabase
+      .from("aliados")
+      .select("id, nombre, tipo")
+      .eq("tipo", tipoFiltro)
+      .eq("is_active", true)
+      .order("nombre")
+      .then(({ data }) => setAliados((data as Aliado[]) ?? []))
+  }, [supabase, fuente, needsAliado])
+
+  // Fetch zonas de envío for alternate address dropdown
+  useEffect(() => {
+    supabase
+      .from("zonas_envio")
+      .select("id, nombre")
+      .eq("is_active", true)
+      .order("nombre")
+      .then(({ data }) => setZonas((data as ZonaEnvio[]) ?? []))
+  }, [supabase])
 
   return (
     <Card className="border-none shadow-sm">
@@ -54,6 +114,7 @@ export function OrderOptionsPanel() {
             <Label>Fuente</Label>
             <Select value={fuente ?? ""} onValueChange={(v) => {
               setFuente((v || null) as FuenteCliente | null, null)
+              setAliadoId(null)
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar...">
@@ -88,6 +149,38 @@ export function OrderOptionsPanel() {
             </div>
           )}
         </div>
+
+        {/* Aliado referido (when fuente is vet or trainer) */}
+        {needsAliado && (
+          <div className="space-y-2">
+            <Label>
+              Aliado{" "}
+              <span className="text-xs text-muted-foreground">
+                ({fuente === "referido_veterinario" ? "Veterinario" : "Entrenador Canino"})
+              </span>
+            </Label>
+            <Select value={aliadoId ?? ""} onValueChange={(v) => setAliadoId(v || null)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar aliado...">
+                  {aliadoId ? (aliados.find((a) => a.id === aliadoId)?.nombre ?? aliadoId) : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {aliados.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    Sin aliados activos de este tipo
+                  </div>
+                ) : (
+                  aliados.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.nombre}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Método de Pago */}
         <div className="space-y-2">
@@ -138,6 +231,79 @@ export function OrderOptionsPanel() {
         <div className="flex items-center gap-3">
           <Switch id="contra" checked={esContraentrega} onCheckedChange={setEsContraentrega} />
           <Label htmlFor="contra" className="text-sm">Es contraentrega</Label>
+        </div>
+
+        {/* Alternate delivery address */}
+        <div className="space-y-3 border-t pt-3">
+          <div className="flex items-center gap-3">
+            <Switch
+              id="dir-alterna"
+              checked={usaDireccionAlterna}
+              onCheckedChange={(v) => {
+                setUsaDireccionAlterna(v)
+                if (!v) {
+                  setDireccionAlterna("")
+                  setComplementoAlterna("")
+                  setBarrioAlterna("")
+                  setZonaAlternaId(null)
+                }
+              }}
+            />
+            <Label htmlFor="dir-alterna" className="text-sm flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" />
+              Entregar en otra dirección
+            </Label>
+          </div>
+
+          {usaDireccionAlterna && (
+            <div className="space-y-3 pl-2 border-l-2 border-primary/20">
+              <div className="space-y-2">
+                <Label className="text-sm">Dirección de entrega</Label>
+                <Input
+                  placeholder="Calle 45 # 12-34"
+                  value={direccionAlterna ?? ""}
+                  onChange={(e) => setDireccionAlterna(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">Complemento</Label>
+                  <Input
+                    placeholder="Apto 301, Casa 2..."
+                    value={complementoAlterna ?? ""}
+                    onChange={(e) => setComplementoAlterna(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Barrio</Label>
+                  <Input
+                    placeholder="El Prado"
+                    value={barrioAlterna ?? ""}
+                    onChange={(e) => setBarrioAlterna(e.target.value)}
+                  />
+                </div>
+              </div>
+              {zonas.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Zona de envío (recalcula tarifa)</Label>
+                  <Select value={zonaAlternaId ?? ""} onValueChange={(v) => setZonaAlternaId(v || null)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Misma zona del cliente">
+                        {zonaAlternaId ? (zonas.find((z) => z.id === zonaAlternaId)?.nombre ?? null) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {zonas.map((z) => (
+                        <SelectItem key={z.id} value={z.id}>
+                          {z.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Notas */}

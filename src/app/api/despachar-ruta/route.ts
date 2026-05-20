@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { buildDespachoPayload, marcarRutaDespachada } from "@/lib/logistica/despacharRuta"
+import { moveLeadToStage } from "@/lib/integrations/kommo"
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -65,6 +66,26 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("Failed to reach n8n webhook:", err)
       // Not fatal — mark as dispatched even if webhook fails; ops can retry
+    }
+  }
+
+  // Move Kommo leads to "En Camino" stage (non-fatal)
+  const kommoStageId = process.env.KOMMO_STAGE_EN_CAMINO_ID
+  if (kommoStageId) {
+    const { data: kommoRows } = await supabase
+      .from("pedidos")
+      .select("kommo_lead_id")
+      .in("id", pedidoIds)
+      .not("kommo_lead_id", "is", null)
+
+    for (const row of kommoRows ?? []) {
+      if (row.kommo_lead_id) {
+        try {
+          await moveLeadToStage(String(row.kommo_lead_id), kommoStageId)
+        } catch (err) {
+          console.error("[Kommo] Failed to move lead:", err)
+        }
+      }
     }
   }
 

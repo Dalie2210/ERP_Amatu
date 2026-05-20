@@ -15,6 +15,14 @@ interface CartActions {
   setEsContraentrega: (es: boolean) => void;
   setFechaTentativa: (fecha: string | null) => void;
   setClienteConfig: (esDistribuidor: boolean, pctDescuento: number, tarifaEnvio: number) => void;
+  // B3: alternate delivery address
+  setUsaDireccionAlterna: (usar: boolean) => void;
+  setDireccionAlterna: (v: string) => void;
+  setComplementoAlterna: (v: string) => void;
+  setBarrioAlterna: (v: string) => void;
+  setZonaAlternaId: (id: string | null) => void;
+  // B5: aliado
+  setAliadoId: (id: string | null) => void;
   clearCart: () => void;
 
   // Computed
@@ -40,6 +48,12 @@ const initialState: CartState = {
   esDistribuidor: false,
   pctDescuentoDistribuidor: 0,
   tarifaEnvioBase: 0,
+  usaDireccionAlterna: false,
+  direccionAlterna: null,
+  complementoAlterna: null,
+  barrioAlterna: null,
+  zonaAlternaId: null,
+  aliadoId: null,
 };
 
 export const useCartStore = create<CartState & CartActions>((set, get) => ({
@@ -87,8 +101,14 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   setMetodoPago: (metodoPago) => set({ metodoPago }),
   setEsContraentrega: (esContraentrega) => set({ esContraentrega }),
   setFechaTentativa: (fechaTentativaEntrega) => set({ fechaTentativaEntrega }),
-  setClienteConfig: (esDistribuidor, pctDescuentoDistribuidor, tarifaEnvioBase) => 
+  setClienteConfig: (esDistribuidor, pctDescuentoDistribuidor, tarifaEnvioBase) =>
     set({ esDistribuidor, pctDescuentoDistribuidor, tarifaEnvioBase }),
+  setUsaDireccionAlterna: (usaDireccionAlterna) => set({ usaDireccionAlterna }),
+  setDireccionAlterna: (direccionAlterna) => set({ direccionAlterna }),
+  setComplementoAlterna: (complementoAlterna) => set({ complementoAlterna }),
+  setBarrioAlterna: (barrioAlterna) => set({ barrioAlterna }),
+  setZonaAlternaId: (zonaAlternaId) => set({ zonaAlternaId }),
+  setAliadoId: (aliadoId) => set({ aliadoId }),
   clearCart: () => set(initialState),
 
   getSubtotalAlimento: () =>

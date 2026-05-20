@@ -24,6 +24,10 @@ interface EtiquetaData {
     notas_despacho: string | null
     numero_bolsas: number
     orden_entrega: number | null
+    // B3: alternate address fields (null = use client address)
+    direccion_entrega: string | null
+    complemento_entrega: string | null
+    barrio_entrega: string | null
     clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
     mascotas: { nombre: string } | null
     zonas_envio: { nombre: string } | null
@@ -61,6 +65,7 @@ export default function EtiquetasPage({ params }: { params: Promise<{ id: string
           pedidos(
             id, numero_pedido, total, total_envio_cobrado, es_contraentrega, franja_horaria,
             notas_ventas, notas_despacho,
+            direccion_entrega, complemento_entrega, barrio_entrega,
             clientes(nombre_completo, celular, direccion, complemento_direccion),
             mascotas(nombre),
             zonas_envio(nombre)
@@ -134,13 +139,14 @@ export default function EtiquetasPage({ params }: { params: Promise<{ id: string
               {p.mascotas && <p className="label-pet">🐾 {p.mascotas.nombre}</p>}
             </div>
 
-            {/* Address */}
+            {/* Address — use alternate delivery address when set */}
             <div className="label-section">
-              <p className="label-address">{p.clientes?.direccion}</p>
-              {p.clientes?.complemento_direccion && (
-                <p className="label-complement">{p.clientes.complemento_direccion}</p>
+              <p className="label-address">{p.direccion_entrega ?? p.clientes?.direccion}</p>
+              {(p.complemento_entrega ?? p.clientes?.complemento_direccion) && (
+                <p className="label-complement">{p.complemento_entrega ?? p.clientes?.complemento_direccion}</p>
               )}
-              {p.zonas_envio && <p className="label-zone">{p.zonas_envio.nombre}</p>}
+              {p.barrio_entrega && <p className="label-zone">{p.barrio_entrega}</p>}
+              {!p.barrio_entrega && p.zonas_envio && <p className="label-zone">{p.zonas_envio.nombre}</p>}
             </div>
 
             {/* Contact */}

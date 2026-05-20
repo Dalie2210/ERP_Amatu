@@ -4,8 +4,10 @@ import { useState, useCallback, useMemo, useRef, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useDebounce } from "@/hooks/useDebounce"
 import { useCartStore } from "@/stores/cartStore"
+import { useAuth } from "@/hooks/useAuth"
 import { useTopSellers } from "@/hooks/useTopSellers"
 import type { TopSellerProducto } from "@/hooks/useTopSellers"
+import { calcularPrecioMagistral } from "@/lib/calculators/magistral"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,12 +21,14 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { Search, Plus, Package, Beaker, TrendingUp } from "lucide-react"
 import type { CartItem, TipoPrecio } from "@/types"
 
 // ---------- DB types ----------
 interface ProductoVariante {
   id: string
+  sku: string | null
   presentacion: string
   precio_publico: number
   precio_por_gramo: number | null
@@ -68,10 +72,14 @@ interface MagistralDialogProps {
 }
 
 function MagistralDialog({ open, onClose, producto, variantes, onAdd }: MagistralDialogProps) {
+  const { role } = useAuth()
   const [gramaje, setGramaje] = useState("")
   const [notas, setNotas] = useState("")
+  const [modoOverride, setModoOverride] = useState(false)
+  const [precioOverride, setPrecioOverride] = useState("")
+  const [justificacion, setJustificacion] = useState("")
 
-  const calcularPrecio = useCallback(() => {
+  const calcularPrecioBase = useCallback(() => {
     const g = parseFloat(gramaje)
     if (!g || g <= 0 || variantes.length === 0) return 0
 
@@ -93,14 +101,17 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
       }
     }
 
-    return Math.round(precioPorGramo * g * 1.03)
+    return calcularPrecioMagistral(g, precioPorGramo)
   }, [gramaje, variantes])
 
-  const precio = calcularPrecio()
+  const precioBase = calcularPrecioBase()
+  const precioFinal = modoOverride && precioOverride ? (parseInt(precioOverride) || precioBase) : precioBase
+
+  const canAdd = !!gramaje && precioFinal > 0 && (!modoOverride || justificacion.trim().length > 0)
 
   const handleAdd = () => {
     const g = parseFloat(gramaje)
-    if (!g || precio <= 0) return
+    if (!g || precioFinal <= 0) return
 
     onAdd({
       productoId: producto.id,
@@ -108,17 +119,21 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
       sku: producto.sku,
       nombre: `${producto.nombre} (${g}g magistral)`,
       presentacion: `${g}g`,
-      precioUnitario: precio,
+      precioUnitario: precioFinal,
       cantidad: 1,
-      subtotal: precio,
+      subtotal: precioFinal,
       esMagistral: true,
       gramajeMagistral: g,
       notasMagistral: notas || undefined,
+      justificacionPrecio: modoOverride && justificacion.trim() ? justificacion.trim() : undefined,
       aplicaDescuento: producto.aplica_descuento_compra,
       categoria: producto.categorias_producto?.slug ?? "magistral",
     })
     setGramaje("")
     setNotas("")
+    setModoOverride(false)
+    setPrecioOverride("")
+    setJustificacion("")
     onClose()
   }
 
@@ -154,18 +169,62 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
               rows={2}
             />
           </div>
-          {precio > 0 && (
+          {precioBase > 0 && (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
               <p className="text-sm text-muted-foreground">Precio calculado (+3%)</p>
               <p className="text-xl font-bold text-primary">
-                ${precio.toLocaleString("es-CO")}
+                ${precioBase.toLocaleString("es-CO")}
               </p>
+            </div>
+          )}
+
+          {/* Admin price override */}
+          {role === "admin" && precioBase > 0 && (
+            <div className="space-y-3 border-t pt-3">
+              <div className="flex items-center gap-3">
+                <Switch id="override" checked={modoOverride} onCheckedChange={setModoOverride} />
+                <Label htmlFor="override" className="text-sm font-medium text-amber-700">
+                  Sobrescribir precio (admin)
+                </Label>
+              </div>
+              {modoOverride && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="precio-override">Precio final ($)</Label>
+                    <Input
+                      id="precio-override"
+                      type="number"
+                      placeholder={precioBase.toString()}
+                      value={precioOverride}
+                      onChange={(e) => setPrecioOverride(e.target.value)}
+                      min={1}
+                    />
+                    {precioFinal !== precioBase && (
+                      <p className="text-xs text-amber-600">
+                        Precio base: ${precioBase.toLocaleString("es-CO")} → Nuevo: ${precioFinal.toLocaleString("es-CO")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="justificacion">
+                      Justificación <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="justificacion"
+                      placeholder="Motivo del ajuste de precio..."
+                      value={justificacion}
+                      onChange={(e) => setJustificacion(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleAdd} disabled={!gramaje || precio <= 0}>
+          <Button onClick={handleAdd} disabled={!canAdd}>
             <Plus className="h-4 w-4 mr-1" />
             Agregar
           </Button>
@@ -189,7 +248,7 @@ function VariantPicker({ producto, onClose }: VariantPickerProps) {
     addItem({
       productoId: producto.id,
       varianteId: variante.id,
-      sku: producto.sku,
+      sku: variante.sku ?? producto.sku,
       nombre: producto.nombre,
       presentacion: variante.presentacion,
       precioUnitario: variante.precio_publico,
@@ -210,7 +269,12 @@ function VariantPicker({ producto, onClose }: VariantPickerProps) {
           onClick={() => handleAdd(v)}
           className="flex items-center justify-between w-full px-3 py-2.5 rounded-md hover:bg-accent text-left transition-colors group"
         >
-          <span className="text-sm font-medium">{v.presentacion}</span>
+          <div>
+            <span className="text-sm font-medium">{v.presentacion}</span>
+            {v.sku && (
+              <span className="ml-2 text-xs font-mono text-muted-foreground">{v.sku}</span>
+            )}
+          </div>
           <span className="text-sm font-semibold text-primary group-hover:scale-105 transition-transform">
             ${v.precio_publico.toLocaleString("es-CO")}
           </span>
@@ -409,15 +473,40 @@ export function ProductSearchBox() {
       return
     }
     setIsSearching(true)
-    const { data } = await supabase
-      .from("productos")
-      .select("*, categorias_producto(id, nombre, slug), producto_variantes(*), precios_escala(*)")
-      .eq("is_active", true)
-      .or(`nombre.ilike.%${debouncedQuery}%,sku.ilike.%${debouncedQuery}%`)
-      .order("nombre")
-      .limit(10)
 
-    setResults((data as ProductoResult[]) ?? [])
+    // Run both searches in parallel: by product name/SKU and by variant SKU
+    const [{ data: byProduct }, { data: byVariantSku }] = await Promise.all([
+      supabase
+        .from("productos")
+        .select("*, categorias_producto(id, nombre, slug), producto_variantes(*), precios_escala(*)")
+        .eq("is_active", true)
+        .or(`nombre.ilike.%${debouncedQuery}%,sku.ilike.%${debouncedQuery}%`)
+        .order("nombre")
+        .limit(8),
+      supabase
+        .from("producto_variantes")
+        .select("producto_id")
+        .ilike("sku", `%${debouncedQuery}%`)
+        .limit(5),
+    ])
+
+    const productResults = (byProduct as ProductoResult[]) ?? []
+    const existingIds = new Set(productResults.map((p) => p.id))
+    const extraIds = [...new Set((byVariantSku ?? []).map((v: { producto_id: string }) => v.producto_id))].filter(
+      (id) => !existingIds.has(id)
+    )
+
+    let extra: ProductoResult[] = []
+    if (extraIds.length > 0) {
+      const { data } = await supabase
+        .from("productos")
+        .select("*, categorias_producto(id, nombre, slug), producto_variantes(*), precios_escala(*)")
+        .in("id", extraIds)
+        .eq("is_active", true)
+      extra = (data as ProductoResult[]) ?? []
+    }
+
+    setResults([...productResults, ...extra].slice(0, 10))
     setIsSearching(false)
   }, [supabase, debouncedQuery])
 
@@ -431,7 +520,7 @@ export function ProductSearchBox() {
       addItem({
         productoId: producto.id,
         varianteId: variant?.id,
-        sku: producto.sku,
+        sku: variant?.sku ?? producto.sku,
         nombre: producto.nombre,
         presentacion: variant?.presentacion,
         precioUnitario: variant?.precio_publico ?? 0,

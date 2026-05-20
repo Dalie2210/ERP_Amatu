@@ -1,6 +1,9 @@
 "use client"
 
-import { Home, Package, Users, Truck, DollarSign, Settings, LogOut, Leaf, ShoppingBag, Handshake } from "lucide-react"
+import {
+  Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
+  Handshake, UserCog, Settings2, Percent, Shield,
+} from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
@@ -17,60 +20,51 @@ import {
 } from "@/components/ui/sidebar"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
+import type { UserRole } from "@/types"
 
-const items = [
-  {
-    title: "Inicio",
-    url: "/dashboard",
-    icon: Home,
-  },
-  {
-    title: "Ventas",
-    url: "/ventas",
-    icon: ShoppingBag,
-  },
-  {
-    title: "Pedidos",
-    url: "/pedidos",
-    icon: Package,
-  },
-  {
-    title: "Catálogo",
-    url: "/catalogo",
-    icon: Leaf,
-  },
-  {
-    title: "Logística",
-    url: "/logistica",
-    icon: Truck,
-  },
-  {
-    title: "Comisiones",
-    url: "/comisiones",
-    icon: DollarSign,
-  },
-  {
-    title: "Aliados",
-    url: "/comisiones/aliados",
-    icon: Handshake,
-  },
-  {
-    title: "Clientes",
-    url: "/clientes",
-    icon: Users,
-  },
+interface NavItem {
+  title: string
+  url: string
+  icon: React.ElementType
+  roles: UserRole[]
+}
+
+const mainItems: NavItem[] = [
+  { title: "Inicio",     url: "/dashboard",        icon: Home,       roles: ["admin", "vendedor", "logistica", "contable"] },
+  { title: "Ventas",     url: "/ventas",            icon: ShoppingBag, roles: ["admin", "vendedor"] },
+  { title: "Pedidos",    url: "/pedidos",           icon: Package,    roles: ["admin", "vendedor", "logistica"] },
+  { title: "Catálogo",   url: "/catalogo",          icon: Leaf,       roles: ["admin", "vendedor"] },
+  { title: "Logística",  url: "/logistica",         icon: Truck,      roles: ["admin", "logistica"] },
+  { title: "Comisiones", url: "/comisiones",        icon: DollarSign, roles: ["admin", "contable", "vendedor"] },
+  { title: "Aliados",    url: "/comisiones/aliados", icon: Handshake, roles: ["admin", "contable"] },
+  { title: "Clientes",   url: "/clientes",          icon: Users,      roles: ["admin", "vendedor"] },
+]
+
+const adminItems: NavItem[] = [
+  { title: "Usuarios",         url: "/admin/usuarios",         icon: UserCog,  roles: ["admin"] },
+  { title: "Config Comisiones", url: "/admin/comisiones-config", icon: Settings2, roles: ["admin"] },
+  { title: "Descuentos",       url: "/admin/descuentos",       icon: Percent,  roles: ["admin"] },
+  { title: "Aliados",          url: "/admin/aliados",          icon: Handshake, roles: ["admin"] },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { role, isLoading } = useAuth()
 
   const handleLogout = async () => {
-    const supabase = createClient();
+    const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/login")
     router.refresh()
   }
+
+  const visibleMain = isLoading
+    ? mainItems
+    : mainItems.filter((item) => role && item.roles.includes(role))
+
+  const showAdmin = !isLoading && role === "admin"
 
   return (
     <Sidebar className="border-r-0 bg-white">
@@ -89,6 +83,7 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-6 py-4">
@@ -96,9 +91,9 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="px-4 gap-1">
-              {items.map((item) => (
+              {visibleMain.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     render={<Link href={item.url} />}
                     isActive={
                       item.url === "/dashboard"
@@ -115,18 +110,47 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {showAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-6 py-4">
+              Administración
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="px-4 gap-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link href="/admin" />}
+                    isActive={pathname === "/admin"}
+                    className="rounded-md px-4 py-3"
+                  >
+                    <Shield className="w-5 h-5" />
+                    <span className="font-medium">Panel Admin</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      render={<Link href={item.url} />}
+                      isActive={pathname.startsWith(item.url)}
+                      className="rounded-md px-4 py-3"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium">{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
+
       <SidebarFooter className="p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="px-4 py-3 text-muted-foreground hover:text-foreground">
-              <Settings className="w-5 h-5 mr-3" />
-              <span>Configuración</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton 
-              onClick={handleLogout} 
+            <SidebarMenuButton
+              onClick={handleLogout}
               className="px-4 py-3 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <LogOut className="w-5 h-5 mr-3" />

@@ -25,6 +25,7 @@ export async function buildDespachoPayload(
       numero_bolsas, orden_entrega,
       pedidos(
         id, total, notas_ventas, notas_despacho, franja_horaria, es_contraentrega,
+        direccion_entrega, complemento_entrega, barrio_entrega,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
         mascotas(nombre)
       )
@@ -38,18 +39,23 @@ export async function buildDespachoPayload(
     type PedidoRow = {
       id: string; total: number; notas_ventas: string | null; notas_despacho: string | null;
       franja_horaria: string; es_contraentrega: boolean;
+      direccion_entrega: string | null; complemento_entrega: string | null; barrio_entrega: string | null;
       clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null;
       mascotas: { nombre: string } | null
     }
     const p = (a.pedidos as unknown) as PedidoRow | null
+
+    // B3: use alternate address when set, fall back to client address
+    const direccion = p?.direccion_entrega ?? p?.clientes?.direccion ?? ""
+    const complemento = p?.complemento_entrega ?? p?.clientes?.complemento_direccion ?? ""
 
     return {
       nombreMascota: p?.mascotas?.nombre ?? "—",
       nombreCliente: p?.clientes?.nombre_completo ?? "—",
       franjaHoraria: p?.franja_horaria ?? "sin_franja",
       notasVentas: p?.notas_ventas ?? "",
-      direccion: p?.clientes?.direccion ?? "",
-      complementoDireccion: p?.clientes?.complemento_direccion ?? "",
+      direccion,
+      complementoDireccion: complemento,
       notasDespacho: p?.notas_despacho ?? "",
       celular: p?.clientes?.celular ?? "",
       numeroBolsas: a.numero_bolsas,
