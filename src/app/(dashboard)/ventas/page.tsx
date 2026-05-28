@@ -10,7 +10,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
+import {
   TrendingUp, ShoppingBag, DollarSign, Target, Plus, ChevronRight, Package,
+  RotateCcw, ArrowLeftRight,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -23,6 +27,7 @@ const estadoLabels: Record<string, string> = {
   despachado: "Despachado",
   devolucion: "Devolución",
   parcial: "Parcial",
+  cambio: "Cambio",
 }
 
 const estadoColors: Record<string, string> = {
@@ -34,6 +39,7 @@ const estadoColors: Record<string, string> = {
   despachado: "bg-emerald-100 text-emerald-800",
   devolucion: "bg-red-100 text-red-800",
   parcial: "bg-amber-100 text-amber-800",
+  cambio: "bg-pink-100 text-pink-800",
 }
 
 const estadoFunnelOrder = [
@@ -75,15 +81,24 @@ interface RecentOrder {
   clientes: { nombre_completo: string } | null
 }
 
+interface AliadoBreakdown {
+  nombre: string
+  count: number
+  total: number
+}
+
 interface DashboardData {
   revenueThisMonth: number
   activeOrders: number
   commissionThisMonth: number
   leadsCount: number
   closuresCount: number
+  devolucionCount: number
+  cambioCount: number
   estadoCounts: Record<string, number>
   topProducts: { nombre: string; unidades: number; revenue: number }[]
   fuenteCounts: Record<string, number>
+  aliadoBreakdowns: Record<string, AliadoBreakdown[]>
   recentOrders: RecentOrder[]
 }
 
@@ -102,6 +117,7 @@ export default function VentasPage() {
   const supabase = useMemo(() => createClient(), [])
   const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [aliadoDialogFuente, setAliadoDialogFuente] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -117,6 +133,7 @@ export default function VentasPage() {
         { count: closuresCount },
         { data: detalles },
         { data: recentOrders },
+        { data: aliadoPedidos },
       ] = await Promise.all([
         supabase
           .from("pedidos")
@@ -145,6 +162,11 @@ export default function VentasPage() {
           .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo)")
           .order("created_at", { ascending: false })
           .limit(5),
+        supabase
+          .from("pedidos")
+          .select("fuente, total, aliado_id, aliados(nombre)")
+          .in("fuente", ["referido_veterinario", "referido_entrenador"])
+          .not("aliado_id", "is", null),
       ])
 
       const revenueThisMonth = (pedidosMes ?? [])
@@ -152,7 +174,7 @@ export default function VentasPage() {
         .reduce((acc: number, p: { estado: string; total: number | null }) => acc + (p.total ?? 0), 0)
 
       const activeOrders = (allPedidos ?? [])
-        .filter((p: { estado: string }) => !["despachado", "devolucion"].includes(p.estado)).length
+        .filter((p: { estado: string }) => !["despachado", "devolucion", "cambio"].includes(p.estado)).length
 
       const commissionThisMonth = (comisiones ?? [])
         .reduce((acc: number, c: { monto_comision: number | null }) => acc + (c.monto_comision ?? 0), 0)
@@ -180,15 +202,38 @@ export default function VentasPage() {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5)
 
+      // Build aliado breakdown per fuente
+      type AliadoPedidoRow = {
+        fuente: string
+        total: number
+        aliado_id: string | null
+        aliados: { nombre: string } | null
+      }
+      const aliadoBreakdowns: Record<string, AliadoBreakdown[]> = {}
+      for (const p of (aliadoPedidos as AliadoPedidoRow[] | null) ?? []) {
+        if (!p.aliado_id || !p.aliados) continue
+        if (!aliadoBreakdowns[p.fuente]) aliadoBreakdowns[p.fuente] = []
+        const existing = aliadoBreakdowns[p.fuente].find((a) => a.nombre === p.aliados!.nombre)
+        if (existing) {
+          existing.count++
+          existing.total += p.total ?? 0
+        } else {
+          aliadoBreakdowns[p.fuente].push({ nombre: p.aliados.nombre, count: 1, total: p.total ?? 0 })
+        }
+      }
+
       setData({
         revenueThisMonth,
         activeOrders,
         commissionThisMonth,
         leadsCount: leadsCount ?? 0,
         closuresCount: closuresCount ?? 0,
+        devolucionCount: estadoCounts["devolucion"] ?? 0,
+        cambioCount: estadoCounts["cambio"] ?? 0,
         estadoCounts,
         topProducts,
         fuenteCounts,
+        aliadoBreakdowns,
         recentOrders: (recentOrders as RecentOrder[]) ?? [],
       })
       setIsLoading(false)
@@ -221,12 +266,12 @@ export default function VentasPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+          Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)
         ) : (
           <>
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm xl:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Ventas este mes</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -238,7 +283,7 @@ export default function VentasPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm xl:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Pedidos activos</CardTitle>
                 <Package className="h-4 w-4 text-muted-foreground" />
@@ -249,7 +294,7 @@ export default function VentasPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm xl:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Comisión este mes</CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -261,7 +306,7 @@ export default function VentasPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm xl:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de cierre</CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
@@ -273,6 +318,26 @@ export default function VentasPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {data?.closuresCount ?? 0} cierres / {data?.leadsCount ?? 0} leads
                 </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm xl:col-span-1 border-l-2 border-l-red-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Devoluciones</CardTitle>
+                <RotateCcw className="h-4 w-4 text-red-400" />
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="text-2xl font-bold text-red-600">{data?.devolucionCount ?? 0}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm xl:col-span-1 border-l-2 border-l-pink-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Cambios</CardTitle>
+                <ArrowLeftRight className="h-4 w-4 text-pink-400" />
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="text-2xl font-bold text-pink-600">{data?.cambioCount ?? 0}</div>
               </CardContent>
             </Card>
           </>
@@ -377,21 +442,29 @@ export default function VentasPage() {
             ) : (
               Object.entries(data?.fuenteCounts ?? {})
                 .sort((a, b) => b[1] - a[1])
-                .map(([fuente, count]) => (
-                  <div key={fuente} className="flex items-center justify-between py-0.5">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${fuenteColors[fuente] ?? "bg-gray-100 text-gray-800"}`}
+                .map(([fuente, count]) => {
+                  const hasBreakdown = (data?.aliadoBreakdowns[fuente]?.length ?? 0) > 0
+                  return (
+                    <div
+                      key={fuente}
+                      className={`flex items-center justify-between py-0.5 ${hasBreakdown ? "cursor-pointer rounded hover:bg-muted/50 px-1 -mx-1 transition-colors" : ""}`}
+                      onClick={() => hasBreakdown && setAliadoDialogFuente(fuente)}
                     >
-                      {fuenteLabels[fuente] ?? fuente}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">{count}</span>
-                      <span className="text-xs text-muted-foreground w-8 text-right">
-                        {totalFuente > 0 ? `${Math.round((count / totalFuente) * 100)}%` : "—"}
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${fuenteColors[fuente] ?? "bg-gray-100 text-gray-800"}`}
+                      >
+                        {fuenteLabels[fuente] ?? fuente}
+                        {hasBreakdown && <ChevronRight className="h-3 w-3 ml-1" />}
                       </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{count}</span>
+                        <span className="text-xs text-muted-foreground w-8 text-right">
+                          {totalFuente > 0 ? `${Math.round((count / totalFuente) * 100)}%` : "—"}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
             )}
           </CardContent>
         </Card>
@@ -482,6 +555,29 @@ export default function VentasPage() {
           )}
         </CardContent>
       </Card>
+      {/* Aliado breakdown dialog (D4) */}
+      <Dialog open={!!aliadoDialogFuente} onOpenChange={() => setAliadoDialogFuente(null)}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>
+              Desglose por Aliado — {fuenteLabels[aliadoDialogFuente ?? ""] ?? aliadoDialogFuente}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-2">
+            {(data?.aliadoBreakdowns[aliadoDialogFuente ?? ""] ?? [])
+              .sort((a, b) => b.count - a.count)
+              .map((aliado) => (
+                <div key={aliado.nombre} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <span className="font-medium text-sm">{aliado.nombre}</span>
+                  <div className="flex items-center gap-4 text-sm text-right">
+                    <span className="text-muted-foreground">{aliado.count} pedido{aliado.count !== 1 ? "s" : ""}</span>
+                    <span className="font-semibold">${aliado.total.toLocaleString("es-CO")}</span>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

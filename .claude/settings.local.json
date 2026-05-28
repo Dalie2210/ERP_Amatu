@@ -21,7 +21,16 @@
       "mcp__supabase__get_logs",
       "Bash(Get-ChildItem -Path \"src/app/api/despachar-ruta\" -ErrorAction SilentlyContinue)",
       "Bash(Get-ChildItem -Path \"src/components\" -Filter \"app-sidebar*\" -ErrorAction SilentlyContinue)",
-      "Bash(Get-ChildItem -Path \"src/hooks\" -Filter \"*Auth*\" -ErrorAction SilentlyContinue)"
+      "Bash(Get-ChildItem -Path \"src/hooks\" -Filter \"*Auth*\" -ErrorAction SilentlyContinue)",
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\\\\src\\\\app\\\\api\\\\comisiones\\\\liquidacion\\\\[id]\\\\pdf\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -l \"Link.*ventas\")",
+      "Bash(xargs grep -l \"producto_variantes\\\\|precios_escala\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\danie\\OneDrive\\Desktop\\Amatu\\ERP\\src\\app\\api\\comisiones\\liquidacion\\[id]"
     ]
   },
   "enableAllProjectMcpServers": true,

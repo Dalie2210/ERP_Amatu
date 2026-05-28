@@ -22,7 +22,8 @@ export function calcularDescuentos(
   tarifaEnvioBase: number,
   reglas: ReglaDescuento[],
   esDistribuidor: boolean = false,
-  pctDescuentoDistribuidor: number = 0
+  pctDescuentoDistribuidor: number = 0,
+  pctDescuentoReferidoVet: number = 0
 ): CalculoDescuento {
   // Sort rules by monto_minimo descending to find the highest applicable tier
   const reglasOrdenadas = [...reglas]
@@ -41,6 +42,11 @@ export function calcularDescuentos(
 
   const montoDescuentoCompra = Math.round(subtotalAlimento * (pctDescuentoCompra / 100));
 
+  // Referido vet discount — applied on food subtotal after main discount, cumulative
+  const montoDescuentoReferidoVet = pctDescuentoReferidoVet > 0
+    ? Math.round((subtotalAlimento - montoDescuentoCompra) * (pctDescuentoReferidoVet / 100))
+    : 0;
+
   // Calculate shipping discount
   const descuentoEnvio = reglaAplicada?.descuentoEnvioFijo ?? 0;
   const totalEnvioCobrado = Math.max(0, tarifaEnvioBase - descuentoEnvio);
@@ -48,7 +54,8 @@ export function calcularDescuentos(
   // Calculate total
   const total =
     subtotalAlimento -
-    montoDescuentoCompra +
+    montoDescuentoCompra -
+    montoDescuentoReferidoVet +
     subtotalSnacks +
     subtotalOtros +
     totalEnvioCobrado;
@@ -60,6 +67,8 @@ export function calcularDescuentos(
     reglaAplicada,
     montoDescuentoCompra,
     pctDescuentoCompra,
+    montoDescuentoReferidoVet,
+    pctDescuentoReferidoVet,
     tarifaEnvioBase,
     descuentoEnvio,
     totalEnvioCobrado,

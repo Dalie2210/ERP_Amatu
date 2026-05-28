@@ -1,18 +1,38 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { getDashboardStats } from "@/lib/dashboard/getDashboardStats";
+import {
+  AdminDashboard,
+  VendedorDashboard,
+  LogisticaDashboard,
+  ContableDashboard,
+} from "@/components/dashboard/RoleDashboard";
+import {
+  getDashboardStats,
+  getVendedorDashboardStats,
+  getLogisticaDashboardStats,
+  getContableDashboardStats,
+} from "@/lib/dashboard/getDashboardStats";
 import { createClient } from "@/lib/supabase/server";
-import { formatCOP } from "@/lib/format";
-import { Package, TrendingUp, Users, Truck } from "lucide-react";
+import type { UserRole } from "@/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [{ data: { user } }, stats] = await Promise.all([
-    supabase.auth.getUser(),
-    getDashboardStats(),
-  ]);
 
-  const greetingName = user?.email?.split("@")[0] || "Equipo";
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role, full_name")
+    .eq("id", user!.id)
+    .single();
+
+  const role = (profile?.role as UserRole) ?? "vendedor";
+  const greetingName = profile?.full_name ?? user?.email?.split("@")[0] ?? "Equipo";
+
+  const stats = await (
+    role === "vendedor"  ? getVendedorDashboardStats() :
+    role === "logistica" ? getLogisticaDashboardStats() :
+    role === "contable"  ? getContableDashboardStats() :
+    getDashboardStats()
+  );
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
@@ -25,59 +45,10 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Ventas del Día"
-          icon={TrendingUp}
-          state={stats.ventasHoy}
-          format={formatCOP}
-          description="Total facturado hoy"
-          emptyHint="Sin ventas registradas hoy"
-        />
-        <StatCard
-          title="Pedidos Pendientes"
-          icon={Package}
-          state={stats.pedidosPendientes}
-          format={(n) => n.toString()}
-          description="Por preparar o despachar"
-          emptyHint="Sin pendientes"
-        />
-        <StatCard
-          title="Envíos en Ruta"
-          icon={Truck}
-          state={stats.enviosEnRuta}
-          format={(n) => n.toString()}
-          description="Despachos en curso"
-          emptyHint="Ninguno en ruta"
-        />
-        <StatCard
-          title="Nuevos Clientes"
-          icon={Users}
-          state={stats.nuevosClientes}
-          format={(n) => `+${n}`}
-          description="En los últimos 7 días"
-          emptyHint="Sin altas recientes"
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2 mt-8">
-        <Card className="border-none shadow-sm min-h-[300px]">
-          <CardHeader>
-            <CardTitle className="text-lg font-heading">Últimos Pedidos</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center text-muted-foreground h-[200px]">
-            El módulo de pedidos se conectará en el próximo sprint.
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-sm min-h-[300px]">
-          <CardHeader>
-            <CardTitle className="text-lg font-heading">Rutas Activas</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center text-muted-foreground h-[200px]">
-            El módulo de logística se conectará próximamente.
-          </CardContent>
-        </Card>
-      </div>
+      {role === "admin"     && <AdminDashboard stats={stats} />}
+      {role === "vendedor"  && <VendedorDashboard stats={stats} />}
+      {role === "logistica" && <LogisticaDashboard stats={stats} />}
+      {role === "contable"  && <ContableDashboard stats={stats} />}
     </div>
   );
 }

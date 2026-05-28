@@ -26,6 +26,8 @@ export interface CreateOrderInput {
   zonaAlternaId: string | null
   // B5: aliado referido
   aliadoId: string | null
+  // B6: referido vet discount
+  descuentoReferidoVet: number
 }
 
 export interface CreateOrderOutput {
@@ -59,7 +61,8 @@ export async function createOrder(
     input.tarifaEnvioBase,
     input.reglas,
     input.esDistribuidor,
-    input.pctDescuentoDistribuidor
+    input.pctDescuentoDistribuidor,
+    input.descuentoReferidoVet
   )
 
   // B4: contraentrega orders start as 'confirmado' (payment guaranteed on delivery)

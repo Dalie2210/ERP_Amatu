@@ -36,6 +36,7 @@ const mainItems: NavItem[] = [
   { title: "Pedidos",    url: "/pedidos",           icon: Package,    roles: ["admin", "vendedor", "logistica"] },
   { title: "Catálogo",   url: "/catalogo",          icon: Leaf,       roles: ["admin", "vendedor"] },
   { title: "Logística",  url: "/logistica",         icon: Truck,      roles: ["admin", "logistica"] },
+  { title: "Liq. Mensajero", url: "/logistica/liquidacion-mensajero", icon: DollarSign, roles: ["admin", "logistica"] },
   { title: "Comisiones", url: "/comisiones",        icon: DollarSign, roles: ["admin", "contable", "vendedor"] },
   { title: "Aliados",    url: "/comisiones/aliados", icon: Handshake, roles: ["admin", "contable"] },
   { title: "Clientes",   url: "/clientes",          icon: Users,      roles: ["admin", "vendedor"] },

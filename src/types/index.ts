@@ -29,7 +29,8 @@ export type EstadoPedido =
   | "listo_despacho"
   | "despachado"
   | "devolucion"
-  | "parcial";
+  | "parcial"
+  | "cambio";
 
 export type EstadoPago = "pendiente" | "confirmado";
 
@@ -100,6 +101,8 @@ export interface CartState {
   zonaAlternaId: string | null;
   // B5: aliado referido for referido_veterinario / referido_entrenador
   aliadoId: string | null;
+  // B6: 5% discount for clients referred by vet/trainer (active period, venta ≤ 2)
+  descuentoReferidoVet: number;
 }
 
 // ============================================================
@@ -120,6 +123,8 @@ export interface CalculoDescuento {
   reglaAplicada: ReglaDescuento | null;
   montoDescuentoCompra: number;
   pctDescuentoCompra: number;
+  montoDescuentoReferidoVet: number;
+  pctDescuentoReferidoVet: number;
   tarifaEnvioBase: number;
   descuentoEnvio: number;
   totalEnvioCobrado: number;
@@ -269,9 +274,54 @@ export interface DashboardCardState<T> {
   status: DashboardCardStatus;
 }
 
+export interface RecentPedidoRow {
+  id: string;
+  numero_pedido: string;
+  estado: string;
+  estado_pago: string;
+  total: number;
+  created_at: string;
+  clientes: { nombre_completo: string } | null;
+}
+
+export interface ActiveRouteRow {
+  id: string;
+  nombre: string;
+  mensajero_nombre: string;
+  fecha: string;
+  pedidos_count: number;
+}
+
+export interface PedidoPagoPendienteRow {
+  id: string;
+  numero_pedido: string;
+  estado: string;
+  estado_pago: string;
+  total: number;
+  created_at: string;
+  clientes: { nombre_completo: string } | null;
+}
+
 export interface DashboardStats {
+  // Base (admin)
   ventasHoy: DashboardCardState<number>;
   pedidosPendientes: DashboardCardState<number>;
   enviosEnRuta: DashboardCardState<number>;
   nuevosClientes: DashboardCardState<number>;
+  recentPedidos: RecentPedidoRow[];
+  activeRoutes: ActiveRouteRow[];
+  // Vendedor
+  misVentasHoy?: DashboardCardState<number>;
+  misPedidosPendientes?: DashboardCardState<number>;
+  comisionEstimada?: DashboardCardState<number>;
+  misClientes?: DashboardCardState<number>;
+  misPedidosRecientes?: RecentPedidoRow[];
+  // Logística
+  pedidosListosDespacho?: DashboardCardState<number>;
+  pedidosEnPreparacion?: DashboardCardState<number>;
+  rutasActivasCount?: DashboardCardState<number>;
+  // Contable
+  pagosPendientesCount?: DashboardCardState<number>;
+  comisionesPorLiquidar?: DashboardCardState<number>;
+  pedidosPagoPendienteList?: PedidoPagoPendienteRow[];
 }

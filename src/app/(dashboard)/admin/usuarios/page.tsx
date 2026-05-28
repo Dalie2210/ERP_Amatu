@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { ArrowLeft, Plus, UserCheck, UserX } from "lucide-react"
+import { ArrowLeft, Plus, UserCheck, UserX, KeyRound } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -55,6 +55,12 @@ export default function AdminUsuariosPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
+  // Reset password dialog state
+  const [resetUserId, setResetUserId] = useState<string | null>(null)
+  const [resetPassword, setResetPassword] = useState("")
+  const [isResetting, setIsResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
     const res = await fetch("/api/admin/usuarios")
@@ -104,6 +110,29 @@ export default function AdminUsuariosPage() {
     } else {
       toast.error("Error actualizando rol.")
     }
+  }
+
+  const handleResetPassword = async () => {
+    if (!resetUserId || resetPassword.length < 8) {
+      setResetError("La contraseña debe tener mínimo 8 caracteres.")
+      return
+    }
+    setIsResetting(true)
+    setResetError(null)
+    const res = await fetch("/api/admin/usuarios", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: resetUserId, newPassword: resetPassword }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setResetError(data.error ?? "Error al resetear contraseña.")
+    } else {
+      toast.success("Contraseña actualizada.")
+      setResetUserId(null)
+      setResetPassword("")
+    }
+    setIsResetting(false)
   }
 
   const handleToggleActive = async (user: UserRow) => {
@@ -265,17 +294,27 @@ export default function AdminUsuariosPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={u.is_active ? "text-destructive hover:text-destructive gap-1" : "gap-1"}
-                        onClick={() => handleToggleActive(u)}
-                      >
-                        {u.is_active
-                          ? <><UserX className="h-3.5 w-3.5" />Desactivar</>
-                          : <><UserCheck className="h-3.5 w-3.5" />Activar</>
-                        }
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 text-muted-foreground"
+                          onClick={() => { setResetUserId(u.id); setResetPassword(""); setResetError(null) }}
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />Reset
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={u.is_active ? "text-destructive hover:text-destructive gap-1" : "gap-1"}
+                          onClick={() => handleToggleActive(u)}
+                        >
+                          {u.is_active
+                            ? <><UserX className="h-3.5 w-3.5" />Desactivar</>
+                            : <><UserCheck className="h-3.5 w-3.5" />Activar</>
+                          }
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -284,6 +323,33 @@ export default function AdminUsuariosPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetUserId} onOpenChange={(open) => { if (!open) { setResetUserId(null); setResetPassword("") } }}>
+        <DialogContent className="sm:max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Resetear Contraseña</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Nueva contraseña *</Label>
+              <Input
+                type="password"
+                placeholder="Mínimo 8 caracteres"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+              />
+            </div>
+            {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetUserId(null)}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={isResetting}>
+              {isResetting ? "Guardando..." : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

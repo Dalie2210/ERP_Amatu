@@ -76,7 +76,7 @@ export default function PedidoDetallePage() {
           *,
           clientes(nombre_completo, celular, direccion),
           mascotas(nombre),
-          zonas_envio(nombre),
+          zonas_envio!zona_id(nombre),
           users!pedidos_vendedor_id_fkey(full_name),
           editor:users!pedidos_editado_por_id_fkey(full_name)
         `)
@@ -114,7 +114,7 @@ export default function PedidoDetallePage() {
           *,
           clientes(nombre_completo, celular, direccion),
           mascotas(nombre),
-          zonas_envio(nombre),
+          zonas_envio!zona_id(nombre),
           users!pedidos_vendedor_id_fkey(full_name),
           editor:users!pedidos_editado_por_id_fkey(full_name)
         `)

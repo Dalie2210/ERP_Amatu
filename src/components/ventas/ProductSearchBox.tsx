@@ -28,7 +28,7 @@ import type { CartItem, TipoPrecio } from "@/types"
 // ---------- DB types ----------
 interface ProductoVariante {
   id: string
-  sku: string | null
+  sku: string
   presentacion: string
   precio_publico: number
   precio_por_gramo: number | null
@@ -49,7 +49,7 @@ interface CategoriaProducto {
 
 interface ProductoResult {
   id: string
-  sku: string
+  sku: string | null
   nombre: string
   categoria_id: string
   tipo_precio: TipoPrecio
@@ -116,7 +116,7 @@ function MagistralDialog({ open, onClose, producto, variantes, onAdd }: Magistra
     onAdd({
       productoId: producto.id,
       varianteId: undefined,
-      sku: producto.sku,
+      sku: variantes[0]?.sku ?? "",
       nombre: `${producto.nombre} (${g}g magistral)`,
       presentacion: `${g}g`,
       precioUnitario: precioFinal,
@@ -248,7 +248,7 @@ function VariantPicker({ producto, onClose }: VariantPickerProps) {
     addItem({
       productoId: producto.id,
       varianteId: variante.id,
-      sku: variante.sku ?? producto.sku,
+      sku: variante.sku,
       nombre: producto.nombre,
       presentacion: variante.presentacion,
       precioUnitario: variante.precio_publico,
@@ -311,7 +311,7 @@ function ScalePicker({ producto, onClose }: ScalePickerProps) {
   const handleAdd = () => {
     addItem({
       productoId: producto.id,
-      sku: producto.sku,
+      sku: producto.producto_variantes.find((v) => v.is_active)?.sku ?? "",
       nombre: producto.nombre,
       precioUnitario: Math.round(precioUnitario),
       cantidad: qty,
@@ -414,7 +414,9 @@ function ProductRow({ producto, expandedId, onSelect, onCloseExpanded, rank }: P
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-muted-foreground font-mono">{producto.sku}</span>
+            <span className="text-xs text-muted-foreground font-mono">
+              {producto.producto_variantes[0]?.sku ?? "—"}
+            </span>
             <span className="text-xs text-muted-foreground">
               · {producto.categorias_producto?.nombre}
             </span>
@@ -480,7 +482,7 @@ export function ProductSearchBox() {
         .from("productos")
         .select("*, categorias_producto(id, nombre, slug), producto_variantes(*), precios_escala(*)")
         .eq("is_active", true)
-        .or(`nombre.ilike.%${debouncedQuery}%,sku.ilike.%${debouncedQuery}%`)
+        .ilike("nombre", `%${debouncedQuery}%`)
         .order("nombre")
         .limit(8),
       supabase
@@ -492,9 +494,9 @@ export function ProductSearchBox() {
 
     const productResults = (byProduct as ProductoResult[]) ?? []
     const existingIds = new Set(productResults.map((p) => p.id))
-    const extraIds = [...new Set((byVariantSku ?? []).map((v: { producto_id: string }) => v.producto_id))].filter(
-      (id) => !existingIds.has(id)
-    )
+    const extraIds = (
+      [...new Set((byVariantSku ?? []).map((v: { producto_id: string }) => v.producto_id))] as string[]
+    ).filter((id) => !existingIds.has(id))
 
     let extra: ProductoResult[] = []
     if (extraIds.length > 0) {
@@ -520,7 +522,7 @@ export function ProductSearchBox() {
       addItem({
         productoId: producto.id,
         varianteId: variant?.id,
-        sku: variant?.sku ?? producto.sku,
+        sku: variant?.sku ?? "",
         nombre: producto.nombre,
         presentacion: variant?.presentacion,
         precioUnitario: variant?.precio_publico ?? 0,

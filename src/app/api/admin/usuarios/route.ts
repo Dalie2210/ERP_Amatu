@@ -84,13 +84,27 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ user: { id: newUser.user.id, email } }, { status: 201 })
 }
 
-// PATCH — update role / is_active / full_name
+// PATCH — update role / is_active / full_name / password reset
 export async function PATCH(req: NextRequest) {
   const { supabase, adminOk, status, msg } = await requireAdmin()
   if (!adminOk) return NextResponse.json({ error: msg }, { status })
 
-  const { id, full_name, role, is_active } = await req.json()
+  const { id, full_name, role, is_active, newPassword } = await req.json()
   if (!id) return NextResponse.json({ error: "id requerido" }, { status: 400 })
+
+  // Password reset path — requires service role key
+  if (newPassword !== undefined) {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY no configurado" }, { status: 503 })
+    }
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return NextResponse.json({ error: "La contraseña debe tener mínimo 8 caracteres" }, { status: 400 })
+    }
+    const admin = createAdminClient()
+    const { error: pwErr } = await admin.auth.admin.updateUserById(id, { password: newPassword })
+    if (pwErr) return NextResponse.json({ error: pwErr.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  }
 
   const update: Record<string, unknown> = {}
   if (full_name !== undefined) update.full_name = full_name

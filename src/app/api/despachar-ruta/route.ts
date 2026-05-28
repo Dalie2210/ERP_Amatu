@@ -33,16 +33,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "La ruta ya fue despachada" }, { status: 409 })
   }
 
-  // Get order IDs in this route
+  // Get order IDs in this route and validate dispatch readiness
   const { data: asignaciones } = await supabase
     .from("pedido_ruta")
-    .select("pedido_id, pedidos(id)")
+    .select(`
+      pedido_id,
+      numero_bolsas,
+      pedidos(id, numero_pedido, clientes(celular, direccion))
+    `)
     .eq("ruta_id", rutaId)
 
   const pedidoIds = (asignaciones ?? []).map((a) => a.pedido_id as string)
 
   if (pedidoIds.length === 0) {
     return NextResponse.json({ error: "La ruta no tiene pedidos asignados" }, { status: 400 })
+  }
+
+  // Validate each order has bolsas and client contact info
+  type AsignacionRow = {
+    pedido_id: string
+    numero_bolsas: number
+    pedidos: { id: string; numero_pedido: string; clientes: { celular: string | null; direccion: string | null } | null } | null
+  }
+  const erroresValidacion: { numeroPedido: string; error: string }[] = []
+  for (const a of (asignaciones as unknown as AsignacionRow[]) ?? []) {
+    const numeroPedido = a.pedidos?.numero_pedido ?? "?"
+    if (!a.numero_bolsas || a.numero_bolsas <= 0) {
+      erroresValidacion.push({ numeroPedido, error: "Sin número de bolsas" })
+    }
+    if (!a.pedidos?.clientes?.celular) {
+      erroresValidacion.push({ numeroPedido, error: "Sin celular del cliente" })
+    }
+  }
+  if (erroresValidacion.length > 0) {
+    return NextResponse.json(
+      { error: "Faltan datos antes de despachar", errores: erroresValidacion },
+      { status: 400 }
+    )
   }
 
   // Build payload

@@ -56,6 +56,7 @@ export function ClientSelector() {
   const setMascota = useCartStore((s) => s.setMascota)
   const setZona = useCartStore((s) => s.setZona)
   const setClienteConfig = useCartStore((s) => s.setClienteConfig)
+  const setDescuentoReferidoVet = useCartStore((s) => s.setDescuentoReferidoVet)
 
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<ClienteBasic[]>([])
@@ -67,7 +68,7 @@ export function ClientSelector() {
   const debouncedQuery = useDebounce(query, 300)
 
   const applyCliente = useCallback(
-    (c: ClienteBasic) => {
+    async (c: ClienteBasic) => {
       setSelectedCliente(c)
       setCliente(c.id)
       setZona(c.zona_id)
@@ -76,8 +77,27 @@ export function ClientSelector() {
         c.pct_descuento_distribuidor ?? 0,
         c.zonas_envio?.tarifa_cliente ?? 0
       )
+
+      // Check if client has active vet/trainer referral and is on venta ≤ 2
+      const [{ count: orderCount }, { data: referido }] = await Promise.all([
+        supabase
+          .from("pedidos")
+          .select("id", { count: "exact", head: true })
+          .eq("cliente_id", c.id)
+          .in("estado", ["confirmado", "en_preparacion", "espera_produccion", "listo_despacho", "despachado"]),
+        supabase
+          .from("aliados_referidos")
+          .select("id")
+          .eq("cliente_id", c.id)
+          .eq("periodo_activo", true)
+          .limit(1)
+          .maybeSingle(),
+      ])
+      // If client has fewer than 2 confirmed orders and has an active referral, apply 5%
+      const tieneDescuento = (orderCount ?? 0) < 2 && !!referido
+      setDescuentoReferidoVet(tieneDescuento ? 5 : 0)
     },
-    [setCliente, setZona, setClienteConfig]
+    [supabase, setCliente, setZona, setClienteConfig, setDescuentoReferidoVet]
   )
 
   const searchClients = useCallback(async () => {
@@ -158,6 +178,7 @@ export function ClientSelector() {
     setClienteConfig(false, 0, 0)
     setMascota(null)
     setMascotas([])
+    setDescuentoReferidoVet(0)
   }
 
   const handleClienteCreated = async (result: ClienteFormResult) => {

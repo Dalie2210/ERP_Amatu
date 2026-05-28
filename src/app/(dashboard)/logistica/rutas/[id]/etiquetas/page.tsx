@@ -68,7 +68,7 @@ export default function EtiquetasPage({ params }: { params: Promise<{ id: string
             direccion_entrega, complemento_entrega, barrio_entrega,
             clientes(nombre_completo, celular, direccion, complemento_direccion),
             mascotas(nombre),
-            zonas_envio(nombre)
+            zonas_envio!zona_id(nombre)
           )
         `)
         .eq("ruta_id", rutaId)

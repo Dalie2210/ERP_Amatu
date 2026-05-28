@@ -833,7 +833,7 @@ export type Database = {
           precio_publico: number
           presentacion: string
           producto_id: string
-          sku: string | null
+          sku: string
         }
         Insert: {
           created_at?: string
@@ -843,7 +843,7 @@ export type Database = {
           precio_publico: number
           presentacion: string
           producto_id: string
-          sku?: string | null
+          sku: string
         }
         Update: {
           created_at?: string
@@ -853,7 +853,7 @@ export type Database = {
           precio_publico?: number
           presentacion?: string
           producto_id?: string
-          sku?: string | null
+          sku?: string
         }
         Relationships: [
           {
@@ -875,7 +875,7 @@ export type Database = {
           is_active: boolean
           nombre: string
           notas: string | null
-          sku: string
+          sku: string | null
           tipo_precio: Database["public"]["Enums"]["tipo_precio"]
           updated_at: string
         }
@@ -888,7 +888,7 @@ export type Database = {
           is_active?: boolean
           nombre: string
           notas?: string | null
-          sku: string
+          sku?: string | null
           tipo_precio?: Database["public"]["Enums"]["tipo_precio"]
           updated_at?: string
         }
@@ -901,7 +901,7 @@ export type Database = {
           is_active?: boolean
           nombre?: string
           notas?: string | null
-          sku?: string
+          sku?: string | null
           tipo_precio?: Database["public"]["Enums"]["tipo_precio"]
           updated_at?: string
         }
@@ -1084,6 +1084,14 @@ export type Database = {
       fn_get_user_role:
         | { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
         | { Args: { user_id: string }; Returns: string }
+      fn_liquidar_periodo_mensual: {
+        Args: { p_periodo_mes: string; p_vendedor_id: string }
+        Returns: {
+          comisiones_trasladadas: number
+          liquidacion_id: string
+          monto_confirmado: number
+        }[]
+      }
       fn_recalcular_comisiones_periodo: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: {
@@ -1118,6 +1126,7 @@ export type Database = {
         | "despachado"
         | "devolucion"
         | "parcial"
+        | "cambio"
       estado_ruta: "en_preparacion" | "despachada"
       franja_horaria: "AM" | "PM" | "intermedia" | "sin_franja"
       fuente_cliente:
@@ -1280,6 +1289,7 @@ export const Constants = {
         "despachado",
         "devolucion",
         "parcial",
+        "cambio",
       ],
       estado_ruta: ["en_preparacion", "despachada"],
       franja_horaria: ["AM", "PM", "intermedia", "sin_franja"],

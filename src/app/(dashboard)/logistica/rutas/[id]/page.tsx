@@ -94,7 +94,6 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
   const [disponibles, setDisponibles] = useState<PedidoDisponible[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDispatching, setIsDispatching] = useState(false)
-  const [bolsasInput, setBolsasInput] = useState<Record<string, string>>({})
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -110,7 +109,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
             notas_ventas, notas_despacho, es_contraentrega,
             clientes(nombre_completo, celular, direccion, complemento_direccion),
             mascotas(nombre),
-            zonas_envio(nombre)
+            zonas_envio!zona_id(nombre)
           )
         `)
         .eq("ruta_id", rutaId)
@@ -121,22 +120,27 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
     const asignadosList = (asignadosRes.data as PedidoAsignado[]) ?? []
     setAsignados(asignadosList)
 
-    // Fetch available listo_despacho orders NOT in any active route
+    // Fetch available orders (en_preparacion + listo_despacho) NOT in any active route
     const asignadosPedidoIds = asignadosList.map((a) => a.pedido_id)
 
-    const { data: dispData } = await supabase
+    let dispQuery = supabase
       .from("pedidos")
       .select(`
         id, numero_pedido, total, total_envio_cobrado, franja_horaria,
         notas_ventas, notas_despacho, es_contraentrega,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
         mascotas(nombre),
-        zonas_envio(nombre)
+        zonas_envio!zona_id(nombre)
       `)
-      .eq("estado", "listo_despacho")
+      .in("estado", ["en_preparacion", "listo_despacho"])
       .eq("estado_pago", "confirmado")
-      .not("id", "in", `(${asignadosPedidoIds.join(",")})`)
       .order("created_at", { ascending: true })
+
+    if (asignadosPedidoIds.length > 0) {
+      dispQuery = dispQuery.not("id", "in", `(${asignadosPedidoIds.join(",")})`)
+    }
+
+    const { data: dispData } = await dispQuery
 
     setDisponibles((dispData as PedidoDisponible[]) ?? [])
     setIsLoading(false)
@@ -202,7 +206,17 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
         body: JSON.stringify({ rutaId }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? "Error desconocido")
+      if (!res.ok) {
+        if (json.errores && Array.isArray(json.errores)) {
+          const detalle = (json.errores as { numeroPedido: string; error: string }[])
+            .map((e) => `• ${e.numeroPedido}: ${e.error}`)
+            .join("\n")
+          toast.error(`${json.error}\n${detalle}`, { duration: 8000 })
+        } else {
+          throw new Error(json.error ?? "Error desconocido")
+        }
+        return
+      }
       toast.success(`Ruta despachada — ${json.pedidosCount} pedidos notificados`)
       fetchData()
     } catch (err) {
@@ -413,7 +427,6 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
                           min="0"
                           className="w-16 h-7 text-xs text-center"
                           defaultValue={a.numero_bolsas}
-                          onChange={(e) => setBolsasInput((prev) => ({ ...prev, [a.id]: e.target.value }))}
                           onBlur={(e) => handleUpdateBolsas(a.id, parseInt(e.target.value, 10))}
                         />
                       </div>
@@ -446,13 +459,13 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
               Disponibles para Agregar ({disponibles.length})
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Pedidos en estado &quot;Listo para Despacho&quot; sin ruta asignada.
+              Pedidos en preparación o listos para despacho, con pago confirmado y sin ruta asignada.
             </p>
           </CardHeader>
           <CardContent className="space-y-2">
             {disponibles.length === 0 ? (
               <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-                No hay pedidos listos disponibles. Mueve pedidos a &quot;Listo para Despacho&quot; desde el Kanban.
+                No hay pedidos disponibles. Confirma el pago y mueve pedidos a preparación desde el Kanban.
               </div>
             ) : (
               disponibles.map((p) => (

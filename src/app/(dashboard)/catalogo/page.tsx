@@ -42,6 +42,7 @@ import {
   Edit,
   ChevronRight,
   ChevronLeft,
+  Trash2,
 } from "lucide-react"
 import Link from "next/link"
 import type { TipoPrecio } from "@/types"
@@ -65,7 +66,7 @@ interface CategoriaProducto {
 
 interface Producto {
   id: string
-  sku: string
+  sku: string | null
   nombre: string
   categoria_id: string
   tipo_precio: TipoPrecio
@@ -75,8 +76,22 @@ interface Producto {
   notas: string | null
   created_at: string
   categorias_producto?: CategoriaProducto
-  variantes_count?: number
+  producto_variantes?: { sku: string }[]
 }
+
+interface NuevaVariante {
+  sku: string
+  presentacion: string
+  precio_publico: string
+  precio_por_gramo: string
+}
+
+const emptyVariante = (): NuevaVariante => ({
+  sku: "",
+  presentacion: "",
+  precio_publico: "",
+  precio_por_gramo: "",
+})
 
 // ---------- Skeleton Loader ----------
 function TableSkeleton() {
@@ -111,12 +126,10 @@ export default function CatalogoPage() {
   const [totalCount, setTotalCount] = useState(0)
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
-  // Debounce the search query (400ms)
   const debouncedSearch = useDebounce(searchQuery, 400)
 
-  // Create form state
+  // Create form state (no SKU on parent)
   const [newProduct, setNewProduct] = useState({
-    sku: "",
     nombre: "",
     categoria_id: "",
     tipo_precio: "por_variante" as TipoPrecio,
@@ -127,6 +140,15 @@ export default function CatalogoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Inline variant rows for the create dialog
+  const [newVariantes, setNewVariantes] = useState<NuevaVariante[]>([emptyVariante()])
+
+  const addVarianteRow = () => setNewVariantes((p) => [...p, emptyVariante()])
+  const removeVarianteRow = (i: number) =>
+    setNewVariantes((p) => p.filter((_, idx) => idx !== i))
+  const updateVarianteRow = (i: number, patch: Partial<NuevaVariante>) =>
+    setNewVariantes((p) => p.map((v, idx) => (idx === i ? { ...v, ...patch } : v)))
+
   const fetchProductos = useCallback(async () => {
     setIsLoading(true)
     const from = page * PAGE_SIZE
@@ -134,7 +156,9 @@ export default function CatalogoPage() {
 
     let query = supabase
       .from("productos")
-      .select("*, categorias_producto(id, nombre, slug)", { count: "exact" })
+      .select("*, categorias_producto(id, nombre, slug), producto_variantes(sku)", {
+        count: "exact",
+      })
       .order("nombre", { ascending: true })
       .range(from, to)
 
@@ -143,9 +167,7 @@ export default function CatalogoPage() {
     }
 
     if (debouncedSearch.trim()) {
-      query = query.or(
-        `nombre.ilike.%${debouncedSearch}%,sku.ilike.%${debouncedSearch}%`
-      )
+      query = query.ilike("nombre", `%${debouncedSearch}%`)
     }
 
     const { data, error, count } = await query
@@ -169,7 +191,6 @@ export default function CatalogoPage() {
     fetchCategorias()
   }, [fetchCategorias])
 
-  // Reset to first page when filters change
   useEffect(() => {
     setPage(0)
   }, [debouncedSearch, selectedCategoria])
@@ -182,57 +203,85 @@ export default function CatalogoPage() {
     setIsSaving(true)
     setSaveError(null)
 
-    const { error } = await supabase.from("productos").insert([
-      {
-        sku: newProduct.sku,
-        nombre: newProduct.nombre,
-        categoria_id: newProduct.categoria_id,
-        tipo_precio: newProduct.tipo_precio,
-        es_magistral: newProduct.es_magistral,
-        aplica_descuento_compra: newProduct.aplica_descuento_compra,
-        notas: newProduct.notas || null,
-      },
-    ])
+    const validVariantes = newVariantes.filter(
+      (v) => v.sku.trim() && v.presentacion.trim() && v.precio_publico.trim()
+    )
 
-    if (error) {
-      setSaveError(error.message)
-    } else {
-      setShowCreateDialog(false)
-      setNewProduct({
-        sku: "",
-        nombre: "",
-        categoria_id: "",
-        tipo_precio: "por_variante",
-        es_magistral: false,
-        aplica_descuento_compra: true,
-        notas: "",
-      })
-      fetchProductos()
+    if (validVariantes.length === 0) {
+      setSaveError(
+        "Debes agregar al menos una variante con SKU, presentación y precio."
+      )
+      setIsSaving(false)
+      return
     }
+
+    const { data: productData, error: productError } = await supabase
+      .from("productos")
+      .insert([
+        {
+          nombre: newProduct.nombre,
+          categoria_id: newProduct.categoria_id,
+          tipo_precio: newProduct.tipo_precio,
+          es_magistral: newProduct.es_magistral,
+          aplica_descuento_compra: newProduct.aplica_descuento_compra,
+          notas: newProduct.notas || null,
+        },
+      ])
+      .select("id")
+      .single()
+
+    if (productError || !productData) {
+      setSaveError(productError?.message ?? "Error al crear el producto.")
+      setIsSaving(false)
+      return
+    }
+
+    const productoId = productData.id
+
+    const varianteRows = validVariantes.map((v) => ({
+      producto_id: productoId,
+      sku: v.sku.trim(),
+      presentacion: v.presentacion.trim(),
+      precio_publico: parseFloat(v.precio_publico),
+      precio_por_gramo: v.precio_por_gramo ? parseFloat(v.precio_por_gramo) : null,
+    }))
+
+    const { error: varianteError } = await supabase
+      .from("producto_variantes")
+      .insert(varianteRows)
+
+    if (varianteError) {
+      await supabase.from("productos").delete().eq("id", productoId)
+      setSaveError(`Error en variantes: ${varianteError.message}`)
+      setIsSaving(false)
+      return
+    }
+
+    setShowCreateDialog(false)
+    setNewProduct({
+      nombre: "",
+      categoria_id: "",
+      tipo_precio: "por_variante",
+      es_magistral: false,
+      aplica_descuento_compra: true,
+      notas: "",
+    })
+    setNewVariantes([emptyVariante()])
+    fetchProductos()
     setIsSaving(false)
   }
 
-  // Optimistic UI: update state locally, then confirm with server
   const handleToggleActive = async (id: string, currentState: boolean) => {
-    // 1. Optimistic local update
     setProductos((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, is_active: !currentState } : p
-      )
+      prev.map((p) => (p.id === id ? { ...p, is_active: !currentState } : p))
     )
-
-    // 2. Persist to server
     const { error } = await supabase
       .from("productos")
       .update({ is_active: !currentState })
       .eq("id", id)
-
-    // 3. Rollback on failure
     if (error) {
       setProductos((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, is_active: currentState } : p
-        )
+        prev.map((p) => (p.id === id ? { ...p, is_active: currentState } : p))
       )
     }
   }
@@ -243,6 +292,10 @@ export default function CatalogoPage() {
     por_gramo: "Por Gramo",
     escala: "Por Escala",
   }
+
+  const showPrecioPorGramo =
+    newProduct.tipo_precio === "por_gramo" ||
+    newProduct.tipo_precio === "por_variante"
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
@@ -256,12 +309,21 @@ export default function CatalogoPage() {
             Gestiona los productos, variantes y precios de Amatu.
           </p>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <Dialog
+          open={showCreateDialog}
+          onOpenChange={(open) => {
+            setShowCreateDialog(open)
+            if (!open) {
+              setSaveError(null)
+              setNewVariantes([emptyVariante()])
+            }
+          }}
+        >
           <DialogTrigger render={<Button className="gap-2" />}>
-              <Plus className="h-4 w-4" />
-              Nuevo Producto
+            <Plus className="h-4 w-4" />
+            Nuevo Producto
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[520px]">
+          <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Crear Producto</DialogTitle>
               <DialogDescription>
@@ -269,29 +331,17 @@ export default function CatalogoPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU</Label>
-                  <Input
-                    id="sku"
-                    placeholder="AMT-D001"
-                    value={newProduct.sku}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, sku: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre</Label>
-                  <Input
-                    id="nombre"
-                    placeholder="Dieta Res Premium"
-                    value={newProduct.nombre}
-                    onChange={(e) =>
-                      setNewProduct({ ...newProduct, nombre: e.target.value })
-                    }
-                  />
-                </div>
+              {/* Nombre */}
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre del Producto</Label>
+                <Input
+                  id="nombre"
+                  placeholder="Dieta Res Premium"
+                  value={newProduct.nombre}
+                  onChange={(e) =>
+                    setNewProduct({ ...newProduct, nombre: e.target.value })
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -306,7 +356,9 @@ export default function CatalogoPage() {
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar...">
                         {newProduct.categoria_id
-                          ? (categorias.find((cat) => cat.id === newProduct.categoria_id)?.nombre ?? null)
+                          ? (categorias.find(
+                              (cat) => cat.id === newProduct.categoria_id
+                            )?.nombre ?? null)
                           : null}
                       </SelectValue>
                     </SelectTrigger>
@@ -332,14 +384,21 @@ export default function CatalogoPage() {
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar...">
-                        {newProduct.tipo_precio ? (TIPO_PRECIO_LABELS[newProduct.tipo_precio] ?? newProduct.tipo_precio) : null}
+                        {newProduct.tipo_precio
+                          ? (TIPO_PRECIO_LABELS[newProduct.tipo_precio] ??
+                            newProduct.tipo_precio)
+                          : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="fijo">Precio Fijo</SelectItem>
-                      <SelectItem value="por_variante">Por Variante (peso)</SelectItem>
+                      <SelectItem value="por_variante">
+                        Por Variante (peso)
+                      </SelectItem>
                       <SelectItem value="por_gramo">Por Gramo</SelectItem>
-                      <SelectItem value="escala">Por Escala (volumen)</SelectItem>
+                      <SelectItem value="escala">
+                        Por Escala (volumen)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -383,6 +442,98 @@ export default function CatalogoPage() {
                 />
               </div>
 
+              {/* Inline variant rows */}
+              <div className="space-y-3 pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <Label>
+                    Variantes{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 h-7 text-xs"
+                    onClick={addVarianteRow}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agregar variante
+                  </Button>
+                </div>
+
+                {/* Column headers */}
+                <div
+                  className={`grid gap-2 text-xs text-muted-foreground px-1 ${showPrecioPorGramo ? "grid-cols-[1fr_1fr_1fr_1fr_auto]" : "grid-cols-[1fr_1fr_1fr_auto]"}`}
+                >
+                  <span>SKU *</span>
+                  <span>Presentación *</span>
+                  <span>Precio público *</span>
+                  {showPrecioPorGramo && <span>Precio/Gramo</span>}
+                  <span className="w-8" />
+                </div>
+
+                {newVariantes.map((v, i) => (
+                  <div
+                    key={i}
+                    className={`grid gap-2 items-center ${showPrecioPorGramo ? "grid-cols-[1fr_1fr_1fr_1fr_auto]" : "grid-cols-[1fr_1fr_1fr_auto]"}`}
+                  >
+                    <Input
+                      placeholder="AMT-RES-300G"
+                      value={v.sku}
+                      onChange={(e) =>
+                        updateVarianteRow(i, { sku: e.target.value })
+                      }
+                    />
+                    <Input
+                      placeholder={
+                        newProduct.tipo_precio === "fijo" ? "Única" : "300g"
+                      }
+                      value={v.presentacion}
+                      onChange={(e) =>
+                        updateVarianteRow(i, { presentacion: e.target.value })
+                      }
+                    />
+                    <Input
+                      type="number"
+                      placeholder="45000"
+                      value={v.precio_publico}
+                      onChange={(e) =>
+                        updateVarianteRow(i, { precio_publico: e.target.value })
+                      }
+                    />
+                    {showPrecioPorGramo && (
+                      <Input
+                        type="number"
+                        placeholder="150"
+                        value={v.precio_por_gramo}
+                        onChange={(e) =>
+                          updateVarianteRow(i, {
+                            precio_por_gramo: e.target.value,
+                          })
+                        }
+                      />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      disabled={newVariantes.length === 1}
+                      onClick={() => removeVarianteRow(i)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+
+                {newProduct.tipo_precio === "escala" && (
+                  <p className="text-xs text-muted-foreground">
+                    Los precios por escala (volumen) se configuran en el detalle
+                    del producto después de crearlo.
+                  </p>
+                )}
+              </div>
+
               {saveError && (
                 <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md border border-destructive/20">
                   {saveError}
@@ -400,9 +551,14 @@ export default function CatalogoPage() {
                 onClick={handleCreate}
                 disabled={
                   isSaving ||
-                  !newProduct.sku ||
                   !newProduct.nombre ||
-                  !newProduct.categoria_id
+                  !newProduct.categoria_id ||
+                  !newVariantes.some(
+                    (v) =>
+                      v.sku.trim() &&
+                      v.presentacion.trim() &&
+                      v.precio_publico.trim()
+                  )
                 }
               >
                 {isSaving ? "Guardando..." : "Crear Producto"}
@@ -419,7 +575,7 @@ export default function CatalogoPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o SKU..."
+                placeholder="Buscar por nombre..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -427,12 +583,15 @@ export default function CatalogoPage() {
             </div>
             <Select
               value={selectedCategoria}
-              onValueChange={(v: string | null) => setSelectedCategoria(v ?? "all")}
+              onValueChange={(v: string | null) =>
+                setSelectedCategoria(v ?? "all")
+              }
             >
               <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Todas las categorías">
                   {selectedCategoria && selectedCategoria !== "all"
-                    ? (categorias.find((cat) => cat.id === selectedCategoria)?.nombre ?? selectedCategoria)
+                    ? (categorias.find((cat) => cat.id === selectedCategoria)
+                        ?.nombre ?? selectedCategoria)
                     : "Todas las categorías"}
                 </SelectValue>
               </SelectTrigger>
@@ -467,7 +626,7 @@ export default function CatalogoPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">SKU</TableHead>
+                    <TableHead className="w-[140px]">SKU</TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Tipo Precio</TableHead>
@@ -479,16 +638,13 @@ export default function CatalogoPage() {
                   {productos.map((producto) => (
                     <TableRow key={producto.id} className="group">
                       <TableCell className="font-mono text-sm text-muted-foreground">
-                        {producto.sku}
+                        {producto.producto_variantes?.[0]?.sku ?? "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{producto.nombre}</span>
                           {producto.es_magistral && (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs"
-                            >
+                            <Badge variant="secondary" className="text-xs">
                               Magistral
                             </Badge>
                           )}
@@ -504,7 +660,9 @@ export default function CatalogoPage() {
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
-                          variant={producto.is_active ? "default" : "secondary"}
+                          variant={
+                            producto.is_active ? "default" : "secondary"
+                          }
                           className="cursor-pointer"
                           onClick={() =>
                             handleToggleActive(producto.id, producto.is_active)
@@ -531,7 +689,6 @@ export default function CatalogoPage() {
                 </TableBody>
               </Table>
 
-              {/* Pagination controls */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-6 py-4 border-t">
                   <p className="text-sm text-muted-foreground">

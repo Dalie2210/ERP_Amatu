@@ -8,9 +8,27 @@
  * - Distributor sales = 0% commission
  * - Base = (order total - shipping) × 0.95 (minus 5% IVA)
  * - Commission is blocked until payment is confirmed
+ * - Period: 25th of prev month → 24th of current month; cutoff on 25th
+ *   periodo_mes = month of the cutoff (YYYY-MM)
  *
  * Full implementation in Sprint 6.
  */
+
+/**
+ * Maps a JS Date to its commission periodo_mes (YYYY-MM) using the 25-to-25 rule.
+ * Dates on or after the 25th belong to NEXT month's period.
+ */
+export function getPeriodoMes(date: Date = new Date()): string {
+  const bogota = new Date(
+    date.toLocaleString("en-US", { timeZone: "America/Bogota" })
+  )
+  const day = bogota.getDate()
+  if (day >= 25) {
+    const next = new Date(bogota.getFullYear(), bogota.getMonth() + 1, 1)
+    return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`
+  }
+  return `${bogota.getFullYear()}-${String(bogota.getMonth() + 1).padStart(2, "0")}`
+}
 
 import type { CalculoComision, ConfigComision, FuenteCliente } from "@/types";
 

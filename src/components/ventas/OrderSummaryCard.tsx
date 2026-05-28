@@ -35,6 +35,7 @@ export function OrderSummaryCard() {
   const mascotaId = useCartStore((s) => s.mascotaId)
   const metodoPago = useCartStore((s) => s.metodoPago)
   const esContraentrega = useCartStore((s) => s.esContraentrega)
+  const descuentoReferidoVet = useCartStore((s) => s.descuentoReferidoVet)
   const fuente = useCartStore((s) => s.fuente)
   const fuenteSubtipo = useCartStore((s) => s.fuenteSubtipo)
   const franjaHoraria = useCartStore((s) => s.franjaHoraria)
@@ -82,9 +83,10 @@ export function OrderSummaryCard() {
       tarifaEnvioBase,
       reglas,
       esDistribuidor,
-      pctDescuentoDistribuidor
+      pctDescuentoDistribuidor,
+      descuentoReferidoVet
     )
-  }, [subAlim, subSnk, subOtr, tarifaEnvioBase, reglas, esDistribuidor, pctDescuentoDistribuidor])
+  }, [subAlim, subSnk, subOtr, tarifaEnvioBase, reglas, esDistribuidor, pctDescuentoDistribuidor, descuentoReferidoVet])
 
   const isValid = items.length > 0 && clienteId && mascotaId && metodoPago
 
@@ -118,6 +120,7 @@ export function OrderSummaryCard() {
         complementoAlterna,
         barrioAlterna,
         zonaAlternaId,
+        descuentoReferidoVet,
       })
 
       clearCart()
@@ -172,6 +175,22 @@ export function OrderSummaryCard() {
                 </Badge>
               </span>
               <span>-{formatCOP(calculo.montoDescuentoCompra)}</span>
+            </div>
+          )}
+          {calculo.montoDescuentoReferidoVet > 0 && (
+            <div className="flex justify-between text-teal-600 font-medium">
+              <span className="flex items-center gap-2">
+                Dcto. Referido Vet.
+                <Badge variant="outline" className="text-[10px] h-5 border-teal-200 bg-teal-50 text-teal-700">
+                  {calculo.pctDescuentoReferidoVet}%
+                </Badge>
+              </span>
+              <span>-{formatCOP(calculo.montoDescuentoReferidoVet)}</span>
+            </div>
+          )}
+          {calculo.montoDescuentoReferidoVet > 0 && (
+            <div className="text-xs text-teal-700 bg-teal-50 rounded px-2 py-1">
+              🎁 Incluir snack obsequio: 100g galletas muestra
             </div>
           )}
           

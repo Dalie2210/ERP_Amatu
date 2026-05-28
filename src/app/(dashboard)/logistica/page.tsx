@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { UpdateEstadoDialog } from "@/components/logistica/UpdateEstadoDialog"
+import { useAuth } from "@/hooks/useAuth"
 import {
   DndContext,
   DragEndEvent,
@@ -131,23 +132,34 @@ function PedidoCard({
   pedido,
   supabase,
   onRefresh,
+  userRole,
 }: {
   pedido: PedidoKanban
   supabase: ReturnType<typeof createClient>
   onRefresh: () => void
+  userRole?: string | null
 }) {
   const rutaActiva = pedido.pedido_ruta?.[0]
   const isEsperaProduccion = pedido.estado === "espera_produccion"
   const isDespachado = pedido.estado === "despachado"
   const isPorConfirmar = pedido.estado === "fecha_tentativa"
+  const hasNotasVentas = !!pedido.notas_ventas?.trim()
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm p-3 space-y-2 hover:shadow-md transition-shadow">
+    <div className="relative bg-white rounded-lg border shadow-sm p-3 space-y-2 hover:shadow-md transition-shadow">
+      {/* D8: Red dot for seller notes */}
+      {hasNotasVentas && (
+        <span
+          className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"
+          title={`Nota del vendedor: ${pedido.notas_ventas}`}
+        />
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-xs font-semibold text-muted-foreground">
           {pedido.numero_pedido}
         </span>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0 pr-4">
           {isEsperaProduccion && (
             <Badge className="bg-amber-100 text-amber-800 text-[10px] h-4 px-1.5">
               <AlertCircle className="h-2.5 w-2.5 mr-0.5" />Prod.
@@ -186,6 +198,12 @@ function PedidoCard({
         </p>
       )}
 
+      {hasNotasVentas && (
+        <p className="text-xs text-red-700 bg-red-50 rounded px-2 py-1 leading-tight">
+          ⚠ {pedido.notas_ventas}
+        </p>
+      )}
+
       {rutaActiva && (
         <div className="text-xs text-indigo-700 bg-indigo-50 rounded px-2 py-1">
           Ruta: {rutaActiva.rutas?.nombre ?? "—"}
@@ -210,6 +228,7 @@ function PedidoCard({
             numeroPedido={pedido.numero_pedido}
             supabase={supabase}
             onSuccess={onRefresh}
+            userRole={userRole as import("@/types").UserRole | null | undefined}
             trigger={
               <Button variant="ghost" size="sm" className="h-6 text-xs px-2 gap-1 text-amber-700 hover:text-amber-900">
                 Confirmar <ChevronRight className="h-3 w-3" />
@@ -223,6 +242,7 @@ function PedidoCard({
             numeroPedido={pedido.numero_pedido}
             supabase={supabase}
             onSuccess={onRefresh}
+            userRole={userRole as import("@/types").UserRole | null | undefined}
             trigger={
               <Button variant="ghost" size="sm" className="h-6 text-xs px-2 gap-1">
                 Avanzar <ChevronRight className="h-3 w-3" />
@@ -241,10 +261,12 @@ function DraggableCard({
   pedido,
   supabase,
   onRefresh,
+  userRole,
 }: {
   pedido: PedidoKanban
   supabase: ReturnType<typeof createClient>
   onRefresh: () => void
+  userRole?: string | null
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: pedido.id,
@@ -262,7 +284,7 @@ function DraggableCard({
       {...listeners}
       className={isDragging ? "opacity-40 cursor-grabbing" : "cursor-grab active:cursor-grabbing"}
     >
-      <PedidoCard pedido={pedido} supabase={supabase} onRefresh={onRefresh} />
+      <PedidoCard pedido={pedido} supabase={supabase} onRefresh={onRefresh} userRole={userRole} />
     </div>
   )
 }
@@ -330,6 +352,7 @@ function ColumnSkeleton() {
 
 export default function LogisticaPage() {
   const supabase = useMemo(() => createClient(), [])
+  const { role: userRole } = useAuth()
   const [pedidos, setPedidos] = useState<PedidoKanban[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -349,7 +372,7 @@ export default function LogisticaPage() {
         notas_ventas, notas_despacho, total, es_contraentrega,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
         mascotas(nombre),
-        zonas_envio(nombre),
+        zonas_envio!zona_id(nombre),
         pedido_ruta(ruta_id, numero_bolsas, rutas(nombre, estado))
       `)
       .in("estado", ["fecha_tentativa", "confirmado", "en_preparacion", "espera_produccion", "listo_despacho", "despachado"])
@@ -481,6 +504,7 @@ export default function LogisticaPage() {
                     pedido={p}
                     supabase={supabase}
                     onRefresh={fetchPedidos}
+                    userRole={userRole}
                   />
                 ))}
               </DroppableColumn>
@@ -495,6 +519,7 @@ export default function LogisticaPage() {
                 pedido={activePedido}
                 supabase={supabase}
                 onRefresh={fetchPedidos}
+                userRole={userRole}
               />
             </div>
           ) : null}

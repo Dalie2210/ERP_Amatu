@@ -23,6 +23,8 @@ interface CartActions {
   setZonaAlternaId: (id: string | null) => void;
   // B5: aliado
   setAliadoId: (id: string | null) => void;
+  // B6: referido vet discount
+  setDescuentoReferidoVet: (pct: number) => void;
   clearCart: () => void;
 
   // Computed
@@ -54,6 +56,7 @@ const initialState: CartState = {
   barrioAlterna: null,
   zonaAlternaId: null,
   aliadoId: null,
+  descuentoReferidoVet: 0,
 };
 
 export const useCartStore = create<CartState & CartActions>((set, get) => ({
@@ -109,6 +112,7 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   setBarrioAlterna: (barrioAlterna) => set({ barrioAlterna }),
   setZonaAlternaId: (zonaAlternaId) => set({ zonaAlternaId }),
   setAliadoId: (aliadoId) => set({ aliadoId }),
+  setDescuentoReferidoVet: (descuentoReferidoVet) => set({ descuentoReferidoVet }),
   clearCart: () => set(initialState),
 
   getSubtotalAlimento: () =>
