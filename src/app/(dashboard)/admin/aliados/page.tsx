@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { ArrowLeft, Plus } from "lucide-react"
+import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Card, CardContent } from "@/components/ui/card"
 import { AliadoFormDialog } from "@/components/admin/AliadoFormDialog"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { toast } from "sonner"
 import type { TipoAliado } from "@/types"
 
@@ -82,6 +83,17 @@ export default function AdminAliadosPage() {
       toast.success(aliado.is_active ? "Aliado desactivado." : "Aliado activado.")
       await fetchAliados()
     }
+  }
+
+  const handleDelete = async (aliadoId: string, nombre: string) => {
+    const res = await fetch(`/api/admin/aliados/${aliadoId}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al eliminar aliado.")
+      throw new Error(data.error)
+    }
+    setAliados((prev) => prev.filter((a) => a.id !== aliadoId))
+    toast.success(`${nombre} eliminado.`)
   }
 
   return (
@@ -180,6 +192,17 @@ export default function AdminAliadosPage() {
                         >
                           {aliado.is_active ? "Desactivar" : "Activar"}
                         </Button>
+                        <DeleteConfirmDialog
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                          entityLabel={aliado.nombre}
+                          confirmToken={aliado.nombre}
+                          description="Se eliminará el aliado y sus referidos. Si tiene pedidos asociados, la eliminación será bloqueada."
+                          onConfirm={() => handleDelete(aliado.id, aliado.nombre)}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>

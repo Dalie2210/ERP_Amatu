@@ -46,6 +46,9 @@ import {
   FileText,
 } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
+import { useAuth } from "@/hooks/useAuth"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import type { TipoDocumento, TipoCliente, FuenteCliente } from "@/types"
 import { FUENTE_LABELS, TIPO_DOC_LABELS, TIPO_CLIENTE_LABELS } from "@/lib/constants/labels"
 
@@ -130,6 +133,7 @@ export default function ClienteDetailPage() {
   const router = useRouter()
   const clienteId = params.id as string
   const supabase = useMemo(() => createClient(), [])
+  const { role } = useAuth()
 
   const [cliente, setCliente] = useState<ClienteDetail | null>(null)
   const [mascotas, setMascotas] = useState<Mascota[]>([])
@@ -287,6 +291,17 @@ export default function ClienteDetailPage() {
     setPetSaving(false)
   }
 
+  const handleDeleteCliente = async () => {
+    const res = await fetch(`/api/admin/clientes/${clienteId}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al eliminar cliente.")
+      throw new Error(data.error)
+    }
+    toast.success(`${cliente?.nombre_completo} eliminado.`)
+    window.location.href = "/clientes"
+  }
+
   const handleDeletePet = async (petId: string) => {
     const { error } = await supabase
       .from("mascotas")
@@ -330,6 +345,19 @@ export default function ClienteDetailPage() {
         <Badge variant={cliente.is_active ? "default" : "secondary"}>
           {cliente.is_active ? "Activo" : "Inactivo"}
         </Badge>
+        {role === "admin" && (
+          <DeleteConfirmDialog
+            trigger={
+              <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4" /> Eliminar cliente
+              </Button>
+            }
+            entityLabel={cliente.nombre_completo}
+            confirmToken={cliente.codigo_cliente}
+            description="Se eliminará el cliente y sus mascotas. Si tiene pedidos asociados, la eliminación será bloqueada."
+            onConfirm={handleDeleteCliente}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

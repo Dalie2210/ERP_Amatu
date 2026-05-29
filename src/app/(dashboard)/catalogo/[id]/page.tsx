@@ -20,6 +20,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog"
 import { ArrowLeft, Plus, Trash2, Save } from "lucide-react"
+import { toast } from "sonner"
+import { useAuth } from "@/hooks/useAuth"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import type { TipoPrecio } from "@/types"
 import { TIPO_PRECIO_LABELS } from "@/lib/constants/labels"
 
@@ -37,6 +40,7 @@ export default function ProductoDetallePage() {
   const router = useRouter()
   const supabase = createClient()
   const productoId = params.id as string
+  const { role } = useAuth()
 
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [variantes, setVariantes] = useState<Variante[]>([])
@@ -115,9 +119,26 @@ export default function ProductoDetallePage() {
     }
   }
 
-  const handleDeleteVariante = async (id: string) => {
-    await supabase.from("producto_variantes").delete().eq("id", id)
+  const handleDeleteVariante = async (varianteId: string) => {
+    const res = await fetch(`/api/admin/variantes/${varianteId}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al eliminar variante.")
+      throw new Error(data.error)
+    }
+    toast.success("Variante eliminada.")
     fetchAll()
+  }
+
+  const handleDeleteProducto = async () => {
+    const res = await fetch(`/api/admin/productos/${productoId}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al eliminar producto.")
+      throw new Error(data.error)
+    }
+    toast.success(`${form.nombre} eliminado.`)
+    window.location.href = "/catalogo"
   }
 
   const handleAddEscala = async () => {
@@ -176,6 +197,19 @@ export default function ProductoDetallePage() {
         <Badge variant={form.is_active ? "default" : "secondary"}>
           {form.is_active ? "Activo" : "Inactivo"}
         </Badge>
+        {role === "admin" && (
+          <DeleteConfirmDialog
+            trigger={
+              <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4" /> Eliminar producto
+              </Button>
+            }
+            entityLabel={form.nombre}
+            confirmToken={form.nombre}
+            description="Se eliminarán el producto y todas sus variantes. Si alguna variante tiene pedidos asociados, la eliminación será bloqueada."
+            onConfirm={handleDeleteProducto}
+          />
+        )}
       </div>
 
       {/* Product Details Card */}
@@ -392,14 +426,21 @@ export default function ProductoDetallePage() {
                       {v.precio_por_gramo ? `$${v.precio_por_gramo}` : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteVariante(v.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <DeleteConfirmDialog
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        }
+                        entityLabel={`variante ${v.presentacion}`}
+                        confirmToken={v.presentacion}
+                        description="Esta variante se eliminará permanentemente. Si tiene pedidos asociados, la eliminación será bloqueada."
+                        onConfirm={() => handleDeleteVariante(v.id)}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

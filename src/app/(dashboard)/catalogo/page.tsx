@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useDebounce } from "@/hooks/useDebounce"
+import { useAuth } from "@/hooks/useAuth"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -114,6 +117,7 @@ function TableSkeleton() {
 // ---------- Component ----------
 export default function CatalogoPage() {
   const supabase = useMemo(() => createClient(), [])
+  const { role } = useAuth()
   const [productos, setProductos] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -269,6 +273,18 @@ export default function CatalogoPage() {
     setNewVariantes([emptyVariante()])
     fetchProductos()
     setIsSaving(false)
+  }
+
+  const handleDeleteProducto = async (productoId: string, nombre: string) => {
+    const res = await fetch(`/api/admin/productos/${productoId}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al eliminar producto.")
+      throw new Error(data.error)
+    }
+    setProductos((prev) => prev.filter((p) => p.id !== productoId))
+    setTotalCount((c) => c - 1)
+    toast.success(`${nombre} eliminado.`)
   }
 
   const handleToggleActive = async (id: string, currentState: boolean) => {
@@ -672,17 +688,36 @@ export default function CatalogoPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/catalogo/${producto.id}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Edit className="h-4 w-4" />
-                            Editar
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        <div className="flex items-center justify-end gap-1">
+                          {role === "admin" && (
+                            <DeleteConfirmDialog
+                              trigger={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              }
+                              entityLabel={producto.nombre}
+                              confirmToken={producto.nombre}
+                              description="Se eliminarán el producto y todas sus variantes. Si alguna variante tiene pedidos asociados, la eliminación será bloqueada."
+                              onConfirm={() => handleDeleteProducto(producto.id, producto.nombre)}
+                            />
+                          )}
+                          <Link href={`/catalogo/${producto.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Edit className="h-4 w-4" />
+                              Editar
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

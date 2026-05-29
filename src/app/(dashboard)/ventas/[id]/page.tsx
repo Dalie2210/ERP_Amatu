@@ -9,7 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Receipt, User, MapPin, PawPrint, Truck, CheckCircle } from "lucide-react"
+import { ArrowLeft, Receipt, User, MapPin, PawPrint, Truck, CheckCircle, Trash2 } from "lucide-react"
+import { useAuth } from "@/hooks/useAuth"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { toast } from "sonner"
 
 const formatCOP = (n: number) => `$${n.toLocaleString("es-CO")}`
 
@@ -59,6 +62,7 @@ export default function PedidoDetallePage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
+  const { role } = useAuth()
   const [pedido, setPedido] = useState<Pedido | null>(null)
   const [detalles, setDetalles] = useState<DetalleItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -105,6 +109,17 @@ export default function PedidoDetallePage() {
     pedido.estado !== "despachado" &&
     pedido.estado !== "devolucion" &&
     pedido.estado !== "parcial"
+
+  const handleDeletePedido = async () => {
+    const res = await fetch(`/api/admin/pedidos/${pedido?.id}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al eliminar pedido.")
+      throw new Error(data.error)
+    }
+    toast.success(`Pedido ${pedido?.numero_pedido} eliminado.`)
+    window.location.href = "/ventas"
+  }
 
   const handleEditSuccess = async () => {
     if (id) {
@@ -168,7 +183,20 @@ export default function PedidoDetallePage() {
             </p>
           )}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {role === "admin" && (
+            <DeleteConfirmDialog
+              trigger={
+                <Button variant="outline" size="sm" className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" /> Eliminar pedido
+                </Button>
+              }
+              entityLabel={pedido.numero_pedido}
+              confirmToken={pedido.numero_pedido}
+              description="Se eliminarán el pedido y todos sus datos asociados (ítems, comisiones, asignación de ruta). Esta acción es irreversible."
+              onConfirm={handleDeletePedido}
+            />
+          )}
           <OrderEditDialog
             pedidoId={pedido.id}
             currentFranja={pedido.franja_horaria}

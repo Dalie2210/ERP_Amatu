@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { ArrowLeft, Plus, UserCheck, UserX, KeyRound } from "lucide-react"
+import { ArrowLeft, Plus, UserCheck, UserX, KeyRound, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
+import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import type { UserRole } from "@/types"
 
 interface UserRow {
@@ -147,6 +148,17 @@ export default function AdminUsuariosPage() {
     } else {
       toast.error("Error al actualizar usuario.")
     }
+  }
+
+  const handleDelete = async (userId: string, fullName: string) => {
+    const res = await fetch(`/api/admin/usuarios/${userId}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      toast.error(data.error ?? "Error al desactivar usuario.")
+      throw new Error(data.error)
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== userId))
+    toast.success(`${fullName} eliminado definitivamente.`)
   }
 
   return (
@@ -314,6 +326,17 @@ export default function AdminUsuariosPage() {
                             : <><UserCheck className="h-3.5 w-3.5" />Activar</>
                           }
                         </Button>
+                        <DeleteConfirmDialog
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                          entityLabel={u.full_name || u.email}
+                          confirmToken={u.full_name || u.email}
+                          description="Se eliminará la cuenta definitivamente (login y perfil). Solo es posible si el usuario no tiene pedidos ni comisiones. Si tiene historial, usa 'Desactivar' en su lugar."
+                          onConfirm={() => handleDelete(u.id, u.full_name)}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>

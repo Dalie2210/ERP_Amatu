@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActiveRouteRow, DashboardCardState, DashboardStats, PedidoPagoPendienteRow, RecentPedidoRow } from "@/types";
 
 const ESTADOS_VENTA_HOY = [
@@ -104,7 +105,8 @@ function toSumCard(
 ): DashboardCardState<number> {
   if (result.status !== "fulfilled" || result.value.error) {
     if (result.status === "fulfilled" && result.value.error) {
-      console.error("[dashboard] sum query failed", result.value.error);
+      const err = result.value.error as { message?: string; code?: string } | null;
+      console.error("[dashboard] sum query failed", err?.message ?? err);
     } else if (result.status === "rejected") {
       console.error("[dashboard] sum query threw", result.reason);
     }
@@ -120,7 +122,8 @@ function toCountCard(
 ): DashboardCardState<number> {
   if (result.status !== "fulfilled" || result.value.error) {
     if (result.status === "fulfilled" && result.value.error) {
-      console.error("[dashboard] count query failed", result.value.error);
+      const err = result.value.error as { message?: string; code?: string } | null;
+      console.error("[dashboard] count query failed", err?.message ?? err);
     } else if (result.status === "rejected") {
       console.error("[dashboard] count query threw", result.reason);
     }
@@ -190,7 +193,7 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
 }
 
 export async function getLogisticaDashboardStats(): Promise<DashboardStats> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [listosResult, enRutaResult, rutasResult, preparacionResult, activeRoutesResult] =
     await Promise.allSettled([
@@ -247,7 +250,7 @@ export async function getLogisticaDashboardStats(): Promise<DashboardStats> {
 }
 
 export async function getContableDashboardStats(): Promise<DashboardStats> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
