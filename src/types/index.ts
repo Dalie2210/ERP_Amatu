@@ -88,7 +88,6 @@ export interface CartState {
   notasVentas: string;
   franjaHoraria: FranjaHoraria;
   metodoPago: MetodoPago | null;
-  esContraentrega: boolean;
   fechaTentativaEntrega: string | null;
   esDistribuidor: boolean;
   pctDescuentoDistribuidor: number;

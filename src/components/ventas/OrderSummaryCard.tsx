@@ -34,7 +34,6 @@ export function OrderSummaryCard() {
   const clienteId = useCartStore((s) => s.clienteId)
   const mascotaId = useCartStore((s) => s.mascotaId)
   const metodoPago = useCartStore((s) => s.metodoPago)
-  const esContraentrega = useCartStore((s) => s.esContraentrega)
   const descuentoReferidoVet = useCartStore((s) => s.descuentoReferidoVet)
   const fuente = useCartStore((s) => s.fuente)
   const fuenteSubtipo = useCartStore((s) => s.fuenteSubtipo)
@@ -107,7 +106,6 @@ export function OrderSummaryCard() {
         fuenteSubtipo,
         metodoPago: metodoPago!,
         franjaHoraria,
-        esContraentrega,
         fechaTentativaEntrega: fechaTentativa,
         notasVentas,
         esDistribuidor,

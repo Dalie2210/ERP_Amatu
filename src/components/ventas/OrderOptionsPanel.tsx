@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -19,7 +20,6 @@ import { Settings2, MapPin } from "lucide-react"
 import type { FuenteCliente, FranjaHoraria, MetodoPago, TipoAliado } from "@/types"
 import {
   FUENTE_LABELS,
-  REFERIDO_SUBTIPO_LABELS,
   METODO_PAGO_LABELS,
   FRANJA_LABELS,
 } from "@/lib/constants/labels"
@@ -39,10 +39,8 @@ export function OrderOptionsPanel() {
   const supabase = useMemo(() => createClient(), [])
 
   const fuente = useCartStore((s) => s.fuente)
-  const fuenteSubtipo = useCartStore((s) => s.fuenteSubtipo)
   const franjaHoraria = useCartStore((s) => s.franjaHoraria)
   const metodoPago = useCartStore((s) => s.metodoPago)
-  const esContraentrega = useCartStore((s) => s.esContraentrega)
   const notasVentas = useCartStore((s) => s.notasVentas)
   const fechaTentativa = useCartStore((s) => s.fechaTentativaEntrega)
   const aliadoId = useCartStore((s) => s.aliadoId)
@@ -55,7 +53,6 @@ export function OrderOptionsPanel() {
   const setFuente = useCartStore((s) => s.setFuente)
   const setFranjaHoraria = useCartStore((s) => s.setFranjaHoraria)
   const setMetodoPago = useCartStore((s) => s.setMetodoPago)
-  const setEsContraentrega = useCartStore((s) => s.setEsContraentrega)
   const setNotasVentas = useCartStore((s) => s.setNotasVentas)
   const setFechaTentativa = useCartStore((s) => s.setFechaTentativa)
   const setAliadoId = useCartStore((s) => s.setAliadoId)
@@ -65,7 +62,8 @@ export function OrderOptionsPanel() {
   const setBarrioAlterna = useCartStore((s) => s.setBarrioAlterna)
   const setZonaAlternaId = useCartStore((s) => s.setZonaAlternaId)
 
-  const isReferido = fuente?.startsWith("referido_")
+  const [pendingReferido, setPendingReferido] = useState(false)
+  const showReferidoType = pendingReferido || fuente?.startsWith("referido_")
   const needsAliado = fuente === "referido_veterinario" || fuente === "referido_entrenador"
 
   const [aliados, setAliados] = useState<Aliado[]>([])
@@ -86,7 +84,7 @@ export function OrderOptionsPanel() {
       .eq("tipo", tipoFiltro)
       .eq("is_active", true)
       .order("nombre")
-      .then(({ data }) => setAliados((data as Aliado[]) ?? []))
+      .then(({ data }: { data: Aliado[] | null }) => setAliados(data ?? []))
   }, [supabase, fuente, needsAliado])
 
   // Fetch zonas de envío for alternate address dropdown
@@ -96,7 +94,7 @@ export function OrderOptionsPanel() {
       .select("id, nombre")
       .eq("is_active", true)
       .order("nombre")
-      .then(({ data }) => setZonas((data as ZonaEnvio[]) ?? []))
+      .then(({ data }: { data: ZonaEnvio[] | null }) => setZonas(data ?? []))
   }, [supabase])
 
   return (
@@ -108,36 +106,56 @@ export function OrderOptionsPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Fuente + Subtipo */}
+        {/* Fuente + Tipo de Referido */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Fuente</Label>
-            <Select value={fuente ?? ""} onValueChange={(v) => {
-              setFuente((v || null) as FuenteCliente | null, null)
-              setAliadoId(null)
-            }}>
+            <Select
+              value={showReferidoType ? "referido" : (fuente ?? "")}
+              onValueChange={(v) => {
+                if (v === "referido") {
+                  setPendingReferido(true)
+                  if (!fuente?.startsWith("referido_")) setFuente(null, null)
+                  setAliadoId(null)
+                } else {
+                  setPendingReferido(false)
+                  setFuente((v || null) as FuenteCliente | null, null)
+                  setAliadoId(null)
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar...">
-                  {fuente ? (FUENTE_LABELS[fuente] ?? fuente) : null}
+                  {showReferidoType ? "Referido" : fuente ? (FUENTE_LABELS[fuente] ?? fuente) : null}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="meta_ads">Meta Ads</SelectItem>
-                <SelectItem value="referido_cliente">Referido — Cliente</SelectItem>
-                <SelectItem value="referido_veterinario">Referido — Veterinario</SelectItem>
-                <SelectItem value="referido_entrenador">Referido — Entrenador</SelectItem>
+                <SelectItem value="referido">Referido</SelectItem>
                 <SelectItem value="distribuidor">Distribuidor</SelectItem>
                 <SelectItem value="otro">Otro</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {isReferido && (
+          {showReferidoType && (
             <div className="space-y-2">
-              <Label>Tipo de Referido</Label>
-              <Select value={fuenteSubtipo ?? ""} onValueChange={(v) => setFuente(fuente, v || null)}>
+              <Label>¿Quién refirió?</Label>
+              <Select
+                value={fuente?.startsWith("referido_") ? fuente : ""}
+                onValueChange={(v) => {
+                  setPendingReferido(false)
+                  setFuente((v || null) as FuenteCliente | null, null)
+                  if (v !== "referido_veterinario" && v !== "referido_entrenador") {
+                    setAliadoId(null)
+                  }
+                }}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Especificar...">
-                    {fuenteSubtipo ? (REFERIDO_SUBTIPO_LABELS[fuenteSubtipo] ?? fuenteSubtipo) : null}
+                  <SelectValue placeholder="Seleccionar tipo...">
+                    {fuente === "referido_cliente" ? "Cliente"
+                      : fuente === "referido_veterinario" ? "Veterinario"
+                      : fuente === "referido_entrenador" ? "Entrenador Canino"
+                      : null}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -201,6 +219,12 @@ export function OrderOptionsPanel() {
               <SelectItem value="contraentrega">Contraentrega</SelectItem>
             </SelectContent>
           </Select>
+          {metodoPago === "contraentrega" && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-amber-300 bg-amber-50 text-amber-700">COD</Badge>
+              El pedido se confirmará automáticamente al guardar.
+            </p>
+          )}
         </div>
 
         {/* Franja + Fecha */}
@@ -225,12 +249,6 @@ export function OrderOptionsPanel() {
             <Label>Fecha Tentativa</Label>
             <Input type="date" value={fechaTentativa ?? ""} onChange={(e) => setFechaTentativa(e.target.value || null)} />
           </div>
-        </div>
-
-        {/* Contraentrega */}
-        <div className="flex items-center gap-3">
-          <Switch id="contra" checked={esContraentrega} onCheckedChange={setEsContraentrega} />
-          <Label htmlFor="contra" className="text-sm">Es contraentrega</Label>
         </div>
 
         {/* Alternate delivery address */}

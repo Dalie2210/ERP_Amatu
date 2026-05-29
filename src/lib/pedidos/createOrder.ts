@@ -11,7 +11,6 @@ export interface CreateOrderInput {
   fuenteSubtipo: string | null
   metodoPago: string
   franjaHoraria: string
-  esContraentrega: boolean
   fechaTentativaEntrega: string | null
   notasVentas: string
   esDistribuidor: boolean
@@ -65,8 +64,8 @@ export async function createOrder(
     input.descuentoReferidoVet
   )
 
-  // B4: contraentrega orders start as 'confirmado' (payment guaranteed on delivery)
-  const estadoInicial = input.esContraentrega ? "confirmado" : "fecha_tentativa"
+  const esContraentrega = input.metodoPago === "contraentrega"
+  const estadoInicial = esContraentrega ? "confirmado" : "fecha_tentativa"
 
   // Create order header
   const { data: pedido, error: pedErr } = await supabase
@@ -81,7 +80,7 @@ export async function createOrder(
       fuente_subtipo: input.fuenteSubtipo,
       metodo_pago: input.metodoPago,
       franja_horaria: input.franjaHoraria,
-      es_contraentrega: input.esContraentrega,
+      es_contraentrega: esContraentrega,
       fecha_tentativa_entrega: input.fechaTentativaEntrega,
       notas_ventas: input.notasVentas,
       subtotal_alimento: calculo.subtotalAlimento,

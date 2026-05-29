@@ -27,7 +27,8 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(xargs grep -l \"Link.*ventas\")",
-      "Bash(xargs grep -l \"producto_variantes\\\\|precios_escala\")"
+      "Bash(xargs grep -l \"producto_variantes\\\\|precios_escala\")",
+      "Bash(npm run *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\danie\\OneDrive\\Desktop\\Amatu\\ERP\\src\\app\\api\\comisiones\\liquidacion\\[id]"

@@ -12,7 +12,6 @@ interface CartActions {
   setNotasVentas: (notas: string) => void;
   setFranjaHoraria: (franja: FranjaHoraria) => void;
   setMetodoPago: (metodo: MetodoPago | null) => void;
-  setEsContraentrega: (es: boolean) => void;
   setFechaTentativa: (fecha: string | null) => void;
   setClienteConfig: (esDistribuidor: boolean, pctDescuento: number, tarifaEnvio: number) => void;
   // B3: alternate delivery address
@@ -45,7 +44,6 @@ const initialState: CartState = {
   notasVentas: "",
   franjaHoraria: "sin_franja",
   metodoPago: null,
-  esContraentrega: false,
   fechaTentativaEntrega: null,
   esDistribuidor: false,
   pctDescuentoDistribuidor: 0,
@@ -102,7 +100,6 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   setNotasVentas: (notasVentas) => set({ notasVentas }),
   setFranjaHoraria: (franjaHoraria) => set({ franjaHoraria }),
   setMetodoPago: (metodoPago) => set({ metodoPago }),
-  setEsContraentrega: (esContraentrega) => set({ esContraentrega }),
   setFechaTentativa: (fechaTentativaEntrega) => set({ fechaTentativaEntrega }),
   setClienteConfig: (esDistribuidor, pctDescuentoDistribuidor, tarifaEnvioBase) =>
     set({ esDistribuidor, pctDescuentoDistribuidor, tarifaEnvioBase }),
