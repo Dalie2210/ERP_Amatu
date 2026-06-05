@@ -289,13 +289,13 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {!isDespachada && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Link href={`/logistica/rutas/${rutaId}/etiquetas`} target="_blank">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Printer className="h-4 w-4" /> Etiquetas
-              </Button>
-            </Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link href={`/logistica/rutas/${rutaId}/etiquetas`} target="_blank">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" /> Etiquetas
+            </Button>
+          </Link>
+          {!isDespachada && (
             <Button
               onClick={handleDespachar}
               disabled={isDispatching || asignados.length === 0}
@@ -304,8 +304,8 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
               <Send className="h-4 w-4" />
               {isDispatching ? "Despachando..." : "Despachar Ruta"}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Summary cards */}
