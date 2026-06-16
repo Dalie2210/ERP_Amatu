@@ -146,12 +146,26 @@ export default function CatalogoPage() {
 
   // Inline variant rows for the create dialog
   const [newVariantes, setNewVariantes] = useState<NuevaVariante[]>([emptyVariante()])
+  const [pesosmagistralescargados, setPesosmagistralescargados] = useState<string[]>([])
 
   const addVarianteRow = () => setNewVariantes((p) => [...p, emptyVariante()])
   const removeVarianteRow = (i: number) =>
     setNewVariantes((p) => p.filter((_, idx) => idx !== i))
   const updateVarianteRow = (i: number, patch: Partial<NuevaVariante>) =>
-    setNewVariantes((p) => p.map((v, idx) => (idx === i ? { ...v, ...patch } : v)))
+    setNewVariantes((p) =>
+      p.map((v, idx) => {
+        if (idx !== i) return v
+        const updated = { ...v, ...patch }
+        if ("presentacion" in patch || "precio_publico" in patch) {
+          const peso = parseFloat(updated.presentacion)
+          const precio = parseFloat(updated.precio_publico)
+          if (!isNaN(peso) && peso > 0 && !isNaN(precio) && precio > 0) {
+            updated.precio_por_gramo = (precio / peso).toFixed(2)
+          }
+        }
+        return updated
+      })
+    )
 
   const fetchProductos = useCallback(async () => {
     setIsLoading(true)
@@ -182,6 +196,13 @@ export default function CatalogoPage() {
     }
     setIsLoading(false)
   }, [supabase, selectedCategoria, debouncedSearch, page])
+
+  useEffect(() => {
+    if (!showCreateDialog) return
+    supabase.from("pesos_magistrales").select("peso_g").order("peso_g").then(({ data }: { data: any }) => {
+      if (data) setPesosmagistralescargados(data.map((d: any) => `${d.peso_g}g`))
+    })
+  }, [showCreateDialog])
 
   const fetchCategorias = useCallback(async () => {
     const { data } = await supabase
@@ -313,6 +334,12 @@ export default function CatalogoPage() {
     newProduct.tipo_precio === "por_gramo" ||
     newProduct.tipo_precio === "por_variante"
 
+  const getPresentacionOptions = (esMagistral: boolean, tipoPrecio: TipoPrecio, magistrales: string[]): string[] => {
+    if (tipoPrecio === "fijo") return ["Única"]
+    if (esMagistral) return magistrales
+    return ["300g", "500g", "1200g"]
+  }
+
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
       {/* Header */}
@@ -391,12 +418,10 @@ export default function CatalogoPage() {
                   <Label>Tipo de Precio</Label>
                   <Select
                     value={newProduct.tipo_precio}
-                    onValueChange={(v) =>
-                      setNewProduct({
-                        ...newProduct,
-                        tipo_precio: v as TipoPrecio,
-                      })
-                    }
+                    onValueChange={(v) => {
+                      setNewProduct({ ...newProduct, tipo_precio: v as TipoPrecio })
+                      setNewVariantes((prev) => prev.map((vr) => ({ ...vr, presentacion: "", precio_por_gramo: "" })))
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar...">
@@ -425,9 +450,10 @@ export default function CatalogoPage() {
                   <Switch
                     id="magistral"
                     checked={newProduct.es_magistral}
-                    onCheckedChange={(v) =>
+                    onCheckedChange={(v) => {
                       setNewProduct({ ...newProduct, es_magistral: v })
-                    }
+                      setNewVariantes((prev) => prev.map((vr) => ({ ...vr, presentacion: "", precio_por_gramo: "" })))
+                    }}
                   />
                   <Label htmlFor="magistral">Es dieta magistral</Label>
                 </div>
@@ -500,15 +526,19 @@ export default function CatalogoPage() {
                         updateVarianteRow(i, { sku: e.target.value })
                       }
                     />
-                    <Input
-                      placeholder={
-                        newProduct.tipo_precio === "fijo" ? "Única" : "300g"
-                      }
-                      value={v.presentacion}
-                      onChange={(e) =>
-                        updateVarianteRow(i, { presentacion: e.target.value })
-                      }
-                    />
+                    <Select
+                      value={v.presentacion ?? ""}
+                      onValueChange={(val: string | null) => val && updateVarianteRow(i, { presentacion: val })}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Tamaño..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getPresentacionOptions(newProduct.es_magistral, newProduct.tipo_precio, pesosmagistralescargados).map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       type="number"
                       placeholder="45000"
@@ -642,7 +672,6 @@ export default function CatalogoPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[140px]">SKU</TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Tipo Precio</TableHead>
@@ -653,9 +682,6 @@ export default function CatalogoPage() {
                 <TableBody>
                   {productos.map((producto) => (
                     <TableRow key={producto.id} className="group">
-                      <TableCell className="font-mono text-sm text-muted-foreground">
-                        {producto.producto_variantes?.[0]?.sku ?? "—"}
-                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{producto.nombre}</span>
@@ -695,7 +721,7 @@ export default function CatalogoPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -710,7 +736,7 @@ export default function CatalogoPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="gap-1"
                             >
                               <Edit className="h-4 w-4" />
                               Editar

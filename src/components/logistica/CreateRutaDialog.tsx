@@ -92,7 +92,7 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
 
         <div className="space-y-4">
           <div className="grid gap-2">
-            <Label>Nombre de la Ruta</Label>
+            <Label>Nombre de la Ruta *</Label>
             <Input
               placeholder="Ej: Ruta Norte AM"
               value={nombre}
@@ -127,7 +127,7 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label>Nombre del Mensajero</Label>
+            <Label>Nombre del Mensajero *</Label>
             <Input
               placeholder="Nombre completo"
               value={mensajeroNombre}
@@ -136,7 +136,7 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label>Celular del Mensajero</Label>
+            <Label>Celular del Mensajero *</Label>
             <Input
               placeholder="300 000 0000"
               value={mensajeroCelular}

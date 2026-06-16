@@ -56,7 +56,7 @@ export function InlineLeadsForm({ vendedorId, periodoMes, onSaved }: InlineLeads
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="flex gap-3 items-end">
         <div className="space-y-1">
-          <Label htmlFor="leads-fecha" className="text-xs">Fecha</Label>
+          <Label htmlFor="leads-fecha" className="text-xs">Fecha *</Label>
           <Input
             id="leads-fecha"
             type="date"
@@ -67,7 +67,7 @@ export function InlineLeadsForm({ vendedorId, periodoMes, onSaved }: InlineLeads
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="leads-cantidad" className="text-xs">Leads del día</Label>
+          <Label htmlFor="leads-cantidad" className="text-xs">Leads del día *</Label>
           <Input
             id="leads-cantidad"
             type="number"

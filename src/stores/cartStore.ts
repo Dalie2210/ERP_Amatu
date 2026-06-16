@@ -24,6 +24,7 @@ interface CartActions {
   setAliadoId: (id: string | null) => void;
   // B6: referido vet discount
   setDescuentoReferidoVet: (pct: number) => void;
+  setItems: (items: CartItem[]) => void;
   clearCart: () => void;
 
   // Computed
@@ -62,14 +63,25 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
 
   addItem: (item) =>
     set((state) => {
+      // Only match against real items (promo items are managed separately by syncPromos)
       const existing = state.items.find(
-        (i) => i.productoId === item.productoId && i.varianteId === item.varianteId
+        (i) =>
+          !i.esPromo &&
+          i.productoId === item.productoId &&
+          i.varianteId === item.varianteId
       );
       if (existing) {
         return {
           items: state.items.map((i) =>
-            i.productoId === item.productoId && i.varianteId === item.varianteId
-              ? { ...i, cantidad: i.cantidad + item.cantidad, subtotal: (i.cantidad + item.cantidad) * i.precioUnitario }
+            !i.esPromo &&
+            i.productoId === item.productoId &&
+            i.varianteId === item.varianteId
+              ? {
+                  ...i,
+                  cantidad: i.cantidad + item.cantidad,
+                  subtotal:
+                    (i.cantidad + item.cantidad) * i.precioUnitario,
+                }
               : i
           ),
         };
@@ -80,14 +92,18 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   removeItem: (productoId, varianteId) =>
     set((state) => ({
       items: state.items.filter(
-        (i) => !(i.productoId === productoId && i.varianteId === varianteId)
+        (i) =>
+          i.esPromo ||
+          !(i.productoId === productoId && i.varianteId === varianteId)
       ),
     })),
 
   updateQuantity: (productoId, cantidad, varianteId) =>
     set((state) => ({
       items: state.items.map((i) =>
-        i.productoId === productoId && i.varianteId === varianteId
+        !i.esPromo &&
+        i.productoId === productoId &&
+        i.varianteId === varianteId
           ? { ...i, cantidad, subtotal: cantidad * i.precioUnitario }
           : i
       ),
@@ -110,6 +126,7 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   setZonaAlternaId: (zonaAlternaId) => set({ zonaAlternaId }),
   setAliadoId: (aliadoId) => set({ aliadoId }),
   setDescuentoReferidoVet: (descuentoReferidoVet) => set({ descuentoReferidoVet }),
+  setItems: (items) => set({ items }),
   clearCart: () => set(initialState),
 
   getSubtotalAlimento: () =>

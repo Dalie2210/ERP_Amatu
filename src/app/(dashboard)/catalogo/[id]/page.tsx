@@ -19,7 +19,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog"
-import { ArrowLeft, Plus, Trash2, Save } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Save, Edit2 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/useAuth"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
@@ -33,6 +33,9 @@ interface Variante {
 }
 interface PrecioEscala {
   id: string; producto_id: string; cantidad_minima: number; precio_total: number
+}
+interface NewVariante {
+  sku: string; presentacion: string; precio_publico: string; precio_por_gramo: string
 }
 
 export default function ProductoDetallePage() {
@@ -57,9 +60,11 @@ export default function ProductoDetallePage() {
 
   // New variant dialog
   const [showVarianteDialog, setShowVarianteDialog] = useState(false)
-  const [newVariante, setNewVariante] = useState({
+  const [editingVarianteId, setEditingVarianteId] = useState<string | null>(null)
+  const [newVariante, setNewVariante] = useState<NewVariante>({
     sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "",
   })
+  const [pesosmagistralescargados, setPesosmagistralescargados] = useState<string[]>([])
 
   // New scale price dialog
   const [showEscalaDialog, setShowEscalaDialog] = useState(false)
@@ -90,6 +95,33 @@ export default function ProductoDetallePage() {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  useEffect(() => {
+    if (!showVarianteDialog) return
+    supabase.from("pesos_magistrales").select("peso_g").order("peso_g").then(({ data }: { data: any }) => {
+      if (data) setPesosmagistralescargados(data.map((d: any) => `${d.peso_g}g`))
+    })
+  }, [showVarianteDialog])
+
+  const getPresentacionOptions = (esMagistral: boolean, tipoPrecio: TipoPrecio, magistrales: string[]): string[] => {
+    if (tipoPrecio === "fijo") return ["Única"]
+    if (esMagistral) return magistrales
+    return ["300g", "500g", "1200g"]
+  }
+
+  const updateNewVarianteAndCalc = (patch: Partial<NewVariante>) => {
+    setNewVariante((prev) => {
+      const updated = { ...prev, ...patch }
+      if ("presentacion" in patch || "precio_publico" in patch) {
+        const peso = parseFloat(updated.presentacion)
+        const precio = parseFloat(updated.precio_publico)
+        if (!isNaN(peso) && peso > 0 && !isNaN(precio) && precio > 0) {
+          updated.precio_por_gramo = (precio / peso).toFixed(2)
+        }
+      }
+      return updated
+    })
+  }
+
   const handleSave = async () => {
     setIsSaving(true); setSaveMsg(null)
     const { error } = await supabase.from("productos").update({
@@ -105,18 +137,43 @@ export default function ProductoDetallePage() {
   }
 
   const handleAddVariante = async () => {
-    const { error } = await supabase.from("producto_variantes").insert([{
-      producto_id: productoId,
-      sku: newVariante.sku.trim(),
-      presentacion: newVariante.presentacion,
-      precio_publico: parseFloat(newVariante.precio_publico),
-      precio_por_gramo: newVariante.precio_por_gramo ? parseFloat(newVariante.precio_por_gramo) : null,
-    }])
-    if (!error) {
-      setShowVarianteDialog(false)
-      setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "" })
-      fetchAll()
+    if (editingVarianteId) {
+      const { error } = await supabase.from("producto_variantes").update({
+        sku: newVariante.sku.trim(),
+        presentacion: newVariante.presentacion,
+        precio_publico: parseFloat(newVariante.precio_publico),
+        precio_por_gramo: newVariante.precio_por_gramo ? parseFloat(newVariante.precio_por_gramo) : null,
+      }).eq("id", editingVarianteId)
+      if (!error) {
+        toast.success("Variante actualizada ✓")
+      }
+    } else {
+      const { error } = await supabase.from("producto_variantes").insert([{
+        producto_id: productoId,
+        sku: newVariante.sku.trim(),
+        presentacion: newVariante.presentacion,
+        precio_publico: parseFloat(newVariante.precio_publico),
+        precio_por_gramo: newVariante.precio_por_gramo ? parseFloat(newVariante.precio_por_gramo) : null,
+      }])
+      if (!error) {
+        toast.success("Variante agregada ✓")
+      }
     }
+    setShowVarianteDialog(false)
+    setEditingVarianteId(null)
+    setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "" })
+    fetchAll()
+  }
+
+  const handleEditVariante = (variante: Variante) => {
+    setEditingVarianteId(variante.id)
+    setNewVariante({
+      sku: variante.sku,
+      presentacion: variante.presentacion,
+      precio_publico: variante.precio_publico.toString(),
+      precio_por_gramo: variante.precio_por_gramo ? variante.precio_por_gramo.toString() : "",
+    })
+    setShowVarianteDialog(true)
   }
 
   const handleDeleteVariante = async (varianteId: string) => {
@@ -190,9 +247,6 @@ export default function ProductoDetallePage() {
           <h1 className="text-2xl font-bold font-heading tracking-tight">
             {form.nombre || "Producto"}
           </h1>
-          <p className="text-sm text-muted-foreground font-mono">
-            {variantes[0]?.sku ?? "Sin variantes"}
-          </p>
         </div>
         <Badge variant={form.is_active ? "default" : "secondary"}>
           {form.is_active ? "Activo" : "Inactivo"}
@@ -323,13 +377,19 @@ export default function ProductoDetallePage() {
       <Card className="border-none shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{varianteCardTitle}</CardTitle>
-          <Dialog open={showVarianteDialog} onOpenChange={setShowVarianteDialog}>
+          <Dialog open={showVarianteDialog} onOpenChange={(open) => {
+            setShowVarianteDialog(open)
+            if (!open) {
+              setEditingVarianteId(null)
+              setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "" })
+            }
+          }}>
             <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
               <Plus className="h-4 w-4" /> Agregar
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nueva Variante</DialogTitle>
+                <DialogTitle>{editingVarianteId ? "Editar Variante" : "Nueva Variante"}</DialogTitle>
                 <DialogDescription>
                   Agrega una presentación (ej: 300g, 500g, 1200g).
                 </DialogDescription>
@@ -349,13 +409,19 @@ export default function ProductoDetallePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Presentación</Label>
-                  <Input
-                    placeholder="300g"
-                    value={newVariante.presentacion}
-                    onChange={(e) =>
-                      setNewVariante({ ...newVariante, presentacion: e.target.value })
-                    }
-                  />
+                  <Select
+                    value={newVariante.presentacion ?? ""}
+                    onValueChange={(val: string | null) => val && updateNewVarianteAndCalc({ presentacion: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tamaño..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getPresentacionOptions(form.es_magistral, form.tipo_precio, pesosmagistralescargados).map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Precio Público ($)</Label>
@@ -364,12 +430,12 @@ export default function ProductoDetallePage() {
                     placeholder="45000"
                     value={newVariante.precio_publico}
                     onChange={(e) =>
-                      setNewVariante({ ...newVariante, precio_publico: e.target.value })
+                      updateNewVarianteAndCalc({ precio_publico: e.target.value })
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Precio por Gramo ($ — opcional)</Label>
+                  <Label>Precio por Gramo ($ — calculado automáticamente)</Label>
                   <Input
                     type="number"
                     placeholder="150"
@@ -392,7 +458,7 @@ export default function ProductoDetallePage() {
                     !newVariante.precio_publico
                   }
                 >
-                  Agregar
+                  {editingVarianteId ? "Actualizar" : "Agregar"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -425,7 +491,15 @@ export default function ProductoDetallePage() {
                     <TableCell className="text-right text-muted-foreground">
                       {v.precio_por_gramo ? `$${v.precio_por_gramo}` : "—"}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right flex gap-2 justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditVariante(v)}
+                        className="h-8 w-8"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
                       <DeleteConfirmDialog
                         trigger={
                           <Button

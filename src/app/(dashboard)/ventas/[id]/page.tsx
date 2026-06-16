@@ -11,6 +11,8 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Receipt, User, MapPin, PawPrint, Truck, CheckCircle, Trash2 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
+import { ESTADO_LOGISTICA_LABELS, ESTADO_LOGISTICA_STYLES } from "@/lib/logistica/estadoLabels"
+import type { EstadoPedido } from "@/types"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { toast } from "sonner"
 
@@ -276,9 +278,14 @@ export default function PedidoDetallePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Estado</span>
-                  <Badge variant="outline">{pedido.estado.replace(/_/g, " ")}</Badge>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Estado logístico</span>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs border ${ESTADO_LOGISTICA_STYLES[pedido.estado as EstadoPedido] ?? "bg-gray-100 text-gray-700"}`}
+                  >
+                    {ESTADO_LOGISTICA_LABELS[pedido.estado as EstadoPedido] ?? pedido.estado.replace(/_/g, " ")}
+                  </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Franja</span>

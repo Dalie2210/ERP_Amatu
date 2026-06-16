@@ -76,6 +76,9 @@ export interface CartItem {
   justificacionPrecio?: string;
   aplicaDescuento: boolean;
   categoria: string;
+  // Promotions
+  esPromo?: boolean;   // true → inyectado por promo, sin controles de cantidad
+  promoId?: string;    // qué promoción generó este ítem
 }
 
 export interface CartState {
@@ -301,6 +304,63 @@ export interface PedidoPagoPendienteRow {
   clientes: { nombre_completo: string } | null;
 }
 
+// ============================================================
+// Promotions & Kits
+// ============================================================
+
+export type TipoPromocion = "paga_x_lleva_mas" | "producto_gratis";
+
+export interface Promocion {
+  id: string;
+  nombre: string;
+  tipo: TipoPromocion;
+  isActive: boolean;
+  // Tipo 1: paga_x_lleva_mas
+  productoId?: string;
+  varianteId?: string;
+  pagaX?: number;
+  llevaExtra?: number;
+  // Tipo 2: producto_gratis
+  triggerProductoId?: string;
+  triggerVarianteId?: string;
+  regaloProductoId?: string;
+  regaloVarianteId?: string;
+  regaloCantidad?: number;
+  // Metadata resuelta via JOIN (para UI y syncPromos)
+  productoNombre?: string;
+  productoSku?: string;
+  productoPresentacion?: string;
+  productoCategoria?: string;
+  triggerNombre?: string;
+  regaloNombre?: string;
+  regaloSku?: string;
+  regaloPresentacion?: string;
+  regaloCategoria?: string;
+}
+
+export interface KitItem {
+  id: string;
+  kitId: string;
+  productoId: string;
+  varianteId?: string;
+  cantidad: number;
+  // Campos resueltos via JOIN
+  sku: string;
+  nombre: string;
+  presentacion?: string;
+  precioUnitario: number;
+  aplicaDescuento: boolean;
+  categoria: string;
+}
+
+export interface Kit {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  isActive: boolean;
+  items: KitItem[];
+}
+
 export interface DashboardStats {
   // Base (admin)
   ventasHoy: DashboardCardState<number>;
@@ -323,4 +383,107 @@ export interface DashboardStats {
   pagosPendientesCount?: DashboardCardState<number>;
   comisionesPorLiquidar?: DashboardCardState<number>;
   pedidosPagoPendienteList?: PedidoPagoPendienteRow[];
+}
+
+// ============================================================
+// Logistics — Task Card types (Trello-style Kanban)
+// ============================================================
+
+export type TipoActividadLogistica =
+  | "pedido_creado"
+  | "estado_cambiado"
+  | "nota_agregada"
+  | "nota_completada"
+  | "productos_editados"
+  | "bolsas_asignadas";
+
+export interface NotaLogistica {
+  id: string;
+  pedido_id: string;
+  texto: string;
+  creado_por: string;
+  created_at: string;
+  completada: boolean;
+  completada_por: string | null;
+  completada_en: string | null;
+  autor: { full_name: string } | null;
+  completador: { full_name: string } | null;
+}
+
+export interface PedidoActividad {
+  id: string;
+  pedido_id: string;
+  tipo: TipoActividadLogistica;
+  usuario_id: string | null;
+  usuario_nombre: string | null;
+  created_at: string;
+  payload: Record<string, unknown> | null;
+}
+
+export interface TransicionEstado {
+  estado: EstadoPedido;
+  label: string;
+  description: string;
+  destructive?: boolean;
+  requiresBolsas?: boolean;
+  allowedBackward?: boolean;
+}
+
+export interface PedidoExpanded {
+  id: string;
+  numero_pedido: string;
+  estado: EstadoPedido;
+  estado_pago: string;
+  franja_horaria: string;
+  fecha_tentativa_entrega: string | null;
+  notas_ventas: string | null;
+  notas_despacho: string | null;
+  total: number;
+  subtotal_alimento: number;
+  subtotal_snacks: number;
+  subtotal_otros: number;
+  monto_descuento_compra: number;
+  pct_descuento_compra: number;
+  tarifa_envio_cliente: number;
+  descuento_envio: number;
+  total_envio_cobrado: number;
+  es_contraentrega: boolean;
+  metodo_pago: string | null;
+  fuente: string | null;
+  numero_bolsas: number;
+  fue_editado: boolean;
+  created_at: string;
+  vendedor_id: string | null;
+  clientes: {
+    nombre_completo: string;
+    celular: string;
+    direccion: string;
+    complemento_direccion: string | null;
+  } | null;
+  mascotas: { nombre: string; raza: string | null } | null;
+  zonas_envio: { nombre: string } | null;
+  vendedor: { full_name: string } | null;
+  pedido_ruta: {
+    ruta_id: string;
+    numero_bolsas: number;
+    rutas: { nombre: string; estado: string } | null;
+  }[];
+}
+
+export interface DetalleItemExpanded {
+  id: string;
+  pedido_id: string;
+  producto_id: string | null;
+  variante_id: string | null;
+  cantidad: number;
+  precio_unitario_snapshot: number;
+  subtotal: number;
+  nombre_snapshot: string;
+  es_magistral: boolean;
+  gramaje_magistral: number | null;
+  notas_magistral: string | null;
+  aplica_descuento: boolean;
+  justificacion_precio: string | null;
+  es_promo: boolean;
+  promo_id: string | null;
 }

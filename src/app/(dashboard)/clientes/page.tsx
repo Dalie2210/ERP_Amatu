@@ -280,7 +280,7 @@ export default function ClientesPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="gap-1 "
                           >
                             Ver
                             <ChevronRight className="h-4 w-4" />

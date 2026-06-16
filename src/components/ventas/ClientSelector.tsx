@@ -38,6 +38,7 @@ interface ClienteBasic {
   zona_id: string | null
   tipo_cliente: string
   pct_descuento_distribuidor: number | null
+  notas_defecto: string | null
   zonas_envio: { id: string; nombre: string; tarifa_cliente: number } | null
 }
 
@@ -57,6 +58,7 @@ export function ClientSelector() {
   const setZona = useCartStore((s) => s.setZona)
   const setClienteConfig = useCartStore((s) => s.setClienteConfig)
   const setDescuentoReferidoVet = useCartStore((s) => s.setDescuentoReferidoVet)
+  const setNotasVentas = useCartStore((s) => s.setNotasVentas)
 
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<ClienteBasic[]>([])
@@ -77,6 +79,7 @@ export function ClientSelector() {
         c.pct_descuento_distribuidor ?? 0,
         c.zonas_envio?.tarifa_cliente ?? 0
       )
+      setNotasVentas(c.notas_defecto ?? "")
 
       // Check if client has active vet/trainer referral and is on venta ≤ 2
       const [{ count: orderCount }, { data: referido }] = await Promise.all([
@@ -97,7 +100,7 @@ export function ClientSelector() {
       const tieneDescuento = (orderCount ?? 0) < 2 && !!referido
       setDescuentoReferidoVet(tieneDescuento ? 5 : 0)
     },
-    [supabase, setCliente, setZona, setClienteConfig, setDescuentoReferidoVet]
+    [supabase, setCliente, setZona, setClienteConfig, setDescuentoReferidoVet, setNotasVentas]
   )
 
   const searchClients = useCallback(async () => {
@@ -109,7 +112,7 @@ export function ClientSelector() {
     const { data } = await supabase
       .from("clientes")
       .select(
-        "id, codigo_cliente, nombre_completo, celular, direccion, complemento_direccion, zona_id, tipo_cliente, pct_descuento_distribuidor, zonas_envio(id, nombre, tarifa_cliente)"
+        "id, codigo_cliente, nombre_completo, celular, direccion, complemento_direccion, zona_id, tipo_cliente, pct_descuento_distribuidor, notas_defecto, zonas_envio(id, nombre, tarifa_cliente)"
       )
       .or(
         `nombre_completo.ilike.%${debouncedQuery}%,celular.ilike.%${debouncedQuery}%,codigo_cliente.ilike.%${debouncedQuery}%,numero_documento.ilike.%${debouncedQuery}%`
@@ -146,7 +149,7 @@ export function ClientSelector() {
         const { data } = await supabase
           .from("clientes")
           .select(
-            "id, codigo_cliente, nombre_completo, celular, direccion, complemento_direccion, zona_id, tipo_cliente, pct_descuento_distribuidor, zonas_envio(id, nombre, tarifa_cliente)"
+            "id, codigo_cliente, nombre_completo, celular, direccion, complemento_direccion, zona_id, tipo_cliente, pct_descuento_distribuidor, notas_defecto, zonas_envio(id, nombre, tarifa_cliente)"
           )
           .eq("id", clienteId)
           .single()
@@ -179,6 +182,7 @@ export function ClientSelector() {
     setMascota(null)
     setMascotas([])
     setDescuentoReferidoVet(0)
+    setNotasVentas("")
   }
 
   const handleClienteCreated = async (result: ClienteFormResult) => {
@@ -186,7 +190,7 @@ export function ClientSelector() {
     const { data } = await supabase
       .from("clientes")
       .select(
-        "id, codigo_cliente, nombre_completo, celular, direccion, complemento_direccion, zona_id, tipo_cliente, pct_descuento_distribuidor, zonas_envio(id, nombre, tarifa_cliente)"
+        "id, codigo_cliente, nombre_completo, celular, direccion, complemento_direccion, zona_id, tipo_cliente, pct_descuento_distribuidor, notas_defecto, zonas_envio(id, nombre, tarifa_cliente)"
       )
       .eq("id", result.cliente.id)
       .single()

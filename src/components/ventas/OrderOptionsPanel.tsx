@@ -109,7 +109,7 @@ export function OrderOptionsPanel() {
         {/* Fuente + Tipo de Referido */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Fuente</Label>
+            <Label>Fuente *</Label>
             <Select
               value={showReferidoType ? "referido" : (fuente ?? "")}
               onValueChange={(v) => {
@@ -202,7 +202,7 @@ export function OrderOptionsPanel() {
 
         {/* Método de Pago */}
         <div className="space-y-2">
-          <Label>Método de Pago</Label>
+          <Label>Método de Pago *</Label>
           <Select value={metodoPago ?? ""} onValueChange={(v: string | null) => setMetodoPago((v || null) as MetodoPago | null)}>
             <SelectTrigger>
               <SelectValue placeholder="Seleccionar...">

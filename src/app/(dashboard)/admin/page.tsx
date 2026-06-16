@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Users, Percent, Handshake, Settings2 } from "lucide-react"
+import { Users, Percent, Handshake, Settings2, Scale, Gift } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const adminModules = [
@@ -28,6 +28,18 @@ const adminModules = [
     description: "Crear y gestionar veterinarios y entrenadores aliados.",
     href: "/admin/aliados",
     icon: Handshake,
+  },
+  {
+    title: "Pesos Magistrales",
+    description: "Configurar los gramajes disponibles para variantes de dietas magistrales.",
+    href: "/admin/pesos-magistrales",
+    icon: Scale,
+  },
+  {
+    title: "Promociones & Kits",
+    description: "Configurar promociones automáticas (paga X lleva más, producto gratis) y kits de productos preconfigurados.",
+    href: "/admin/promociones-kits",
+    icon: Gift,
   },
 ]
 

@@ -70,6 +70,10 @@ export function AliadoFormDialog({ trigger, initialData, onSave }: AliadoFormDia
       setError("El nombre es obligatorio.")
       return
     }
+    if (!form.celular.trim()) {
+      setError("El celular es obligatorio.")
+      return
+    }
     setIsSaving(true)
     setError(null)
     try {
@@ -122,7 +126,7 @@ export function AliadoFormDialog({ trigger, initialData, onSave }: AliadoFormDia
           </div>
 
           <div className="space-y-2">
-            <Label>Celular</Label>
+            <Label>Celular *</Label>
             <Input
               placeholder="3001234567"
               value={form.celular}

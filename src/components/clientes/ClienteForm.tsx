@@ -89,6 +89,7 @@ export function ClienteForm({
     fuente: "otro" as FuenteCliente,
     fuente_subtipo: "",
     tipo_cliente: "publico" as TipoCliente,
+    notas_defecto: "",
   })
 
   const [mascotas, setMascotas] = useState<MascotaInput[]>([emptyMascota()])
@@ -112,6 +113,10 @@ export function ClienteForm({
     !!form.numero_documento.trim() &&
     !!form.celular.trim() &&
     !!form.direccion.trim() &&
+    !!form.barrio.trim() &&
+    !!form.zona_id &&
+    !!form.fuente &&
+    !!form.tipo_cliente &&
     mascotas.length > 0 &&
     !!mascotas[0].nombre.trim()
 
@@ -139,6 +144,7 @@ export function ClienteForm({
       fuente: form.fuente,
       fuente_subtipo: isReferido ? form.fuente_subtipo.trim() : "",
       tipo_cliente: form.tipo_cliente,
+      notas_defecto: form.notas_defecto.trim(),
     }
 
     const p_mascotas = mascotas
@@ -277,7 +283,7 @@ export function ClienteForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="cf-barrio">Barrio</Label>
+          <Label htmlFor="cf-barrio">Barrio *</Label>
           <Input
             id="cf-barrio"
             placeholder="Chapinero, Usaquén, Suba..."
@@ -288,7 +294,7 @@ export function ClienteForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Zona de Envío</Label>
+            <Label>Zona de Envío *</Label>
             <Select
               value={form.zona_id}
               onValueChange={(v: string | null) =>
@@ -310,13 +316,13 @@ export function ClienteForm({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Fuente</Label>
+            <Label>Fuente *</Label>
             <Select
               value={form.fuente}
               onValueChange={(v: string | null) =>
                 setForm({
                   ...form,
-                  fuente: (v ?? "otro") as FuenteCliente,
+                  fuente: (v ?? "") as FuenteCliente,
                   fuente_subtipo: "",
                 })
               }
@@ -351,11 +357,11 @@ export function ClienteForm({
         )}
 
         <div className="space-y-2">
-          <Label>Tipo de Cliente</Label>
+          <Label>Tipo de Cliente *</Label>
           <Select
             value={form.tipo_cliente}
             onValueChange={(v: string | null) =>
-              setForm({ ...form, tipo_cliente: (v ?? "publico") as TipoCliente })
+              setForm({ ...form, tipo_cliente: (v ?? "") as TipoCliente })
             }
           >
             <SelectTrigger>
@@ -368,6 +374,16 @@ export function ClienteForm({
               <SelectItem value="distribuidor">Distribuidor</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="cf-notas">Notas por defecto del pedido</Label>
+          <Textarea
+            id="cf-notas"
+            placeholder="Se agregarán automáticamente a cada pedido de este cliente (editable por pedido)..."
+            rows={3}
+            value={form.notas_defecto}
+            onChange={(e) => setForm({ ...form, notas_defecto: e.target.value })}
+          />
         </div>
       </section>
 

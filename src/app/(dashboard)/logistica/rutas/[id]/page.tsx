@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import {
   ArrowLeft, Truck, Package, User, Calendar, Phone, MapPin, AlertTriangle,
-  Printer, Plus, Trash2, ChevronUp, ChevronDown, Send,
+  Printer, Plus, Trash2, ChevronUp, ChevronDown, Send, Scale,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -30,6 +30,13 @@ interface Ruta {
   despachada_en: string | null
 }
 
+interface DetallePedidoItem {
+  cantidad: number
+  es_magistral: boolean
+  gramaje_magistral: number | null
+  producto_variantes: { presentacion: string } | null
+}
+
 interface PedidoAsignado {
   id: string          // pedido_ruta.id
   pedido_id: string
@@ -47,6 +54,7 @@ interface PedidoAsignado {
     clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
     mascotas: { nombre: string } | null
     zonas_envio: { nombre: string } | null
+    detalle_pedido: DetallePedidoItem[] | null
   } | null
 }
 
@@ -59,6 +67,7 @@ interface PedidoDisponible {
   notas_ventas: string | null
   notas_despacho: string | null
   es_contraentrega: boolean
+  numero_bolsas: number
   clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
   mascotas: { nombre: string } | null
   zonas_envio: { nombre: string } | null
@@ -75,6 +84,11 @@ const FRANJA_COLORS: Record<string, string> = {
   PM: "bg-orange-100 text-orange-800",
   intermedia: "bg-purple-100 text-purple-800",
   sin_franja: "bg-gray-100 text-gray-600",
+}
+
+function parseGramos(presentacion: string): number {
+  const m = presentacion.match(/^(\d+(?:\.\d+)?)g$/i)
+  return m ? parseFloat(m[1]) : 0
 }
 
 function formatDate(iso: string) {
@@ -109,7 +123,8 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
             notas_ventas, notas_despacho, es_contraentrega,
             clientes(nombre_completo, celular, direccion, complemento_direccion),
             mascotas(nombre),
-            zonas_envio!zona_id(nombre)
+            zonas_envio!zona_id(nombre),
+            detalle_pedido(cantidad, es_magistral, gramaje_magistral, producto_variantes!variante_id(presentacion))
           )
         `)
         .eq("ruta_id", rutaId)
@@ -123,26 +138,24 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
     // Fetch available orders (en_preparacion + listo_despacho) NOT in any active route
     const asignadosPedidoIds = asignadosList.map((a) => a.pedido_id)
 
-    let dispQuery = supabase
+    const { data: dispData } = await supabase
       .from("pedidos")
       .select(`
         id, numero_pedido, total, total_envio_cobrado, franja_horaria,
-        notas_ventas, notas_despacho, es_contraentrega,
+        notas_ventas, notas_despacho, es_contraentrega, numero_bolsas,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
         mascotas(nombre),
         zonas_envio!zona_id(nombre)
       `)
       .in("estado", ["en_preparacion", "listo_despacho"])
-      .eq("estado_pago", "confirmado")
       .order("created_at", { ascending: true })
 
-    if (asignadosPedidoIds.length > 0) {
-      dispQuery = dispQuery.not("id", "in", `(${asignadosPedidoIds.join(",")})`)
-    }
+    // Filter out orders already assigned to this route (client-side)
+    const filteredDisp = (dispData as PedidoDisponible[] ?? []).filter(
+      (p) => !asignadosPedidoIds.includes(p.id)
+    )
 
-    const { data: dispData } = await dispQuery
-
-    setDisponibles((dispData as PedidoDisponible[]) ?? [])
+    setDisponibles(filteredDisp)
     setIsLoading(false)
   }, [supabase, rutaId])
 
@@ -153,7 +166,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
     const { error } = await supabase.from("pedido_ruta").insert({
       ruta_id: rutaId,
       pedido_id: pedido.id,
-      numero_bolsas: 0,
+      numero_bolsas: pedido.numero_bolsas ?? 0,
       orden_entrega: asignados.length + 1,
     })
     if (error) { toast.error("Error al asignar pedido"); return }
@@ -233,6 +246,16 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
   const totalPedidos = asignados.reduce((s, a) => s + (a.pedidos?.total ?? 0), 0)
   const isDespachada = ruta?.estado === "despachada"
 
+  const pesoTotalKg = asignados.reduce((sum, a) => {
+    const gramos = (a.pedidos?.detalle_pedido ?? []).reduce((s, item) => {
+      const g = item.es_magistral
+        ? (item.gramaje_magistral ?? 0) * item.cantidad
+        : parseGramos(item.producto_variantes?.presentacion ?? "") * item.cantidad
+      return s + g
+    }, 0)
+    return sum + gramos
+  }, 0) / 1000
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -309,10 +332,11 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Pedidos", value: asignados.length, icon: Package },
           { label: "Bolsas Totales", value: totalBolsas, icon: Package },
+          { label: "Peso Total", value: `${pesoTotalKg.toFixed(2)} kg`, icon: Scale },
           { label: "Total Envío", value: `$${totalEnvio.toLocaleString("es-CO")}`, icon: Truck },
         ].map((s) => (
           <Card key={s.label} className="border-none shadow-sm">
@@ -459,7 +483,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
               Disponibles para Agregar ({disponibles.length})
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Pedidos en preparación o listos para despacho, con pago confirmado y sin ruta asignada.
+              Pedidos en preparación o listos para despacho, sin ruta asignada.
             </p>
           </CardHeader>
           <CardContent className="space-y-2">

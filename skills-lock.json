@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "automate-whatsapp": {
+      "source": "gokapso/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/automate-whatsapp/SKILL.md",
+      "computedHash": "145a3a6b750c67eddb9eaa78a7e75b18778d9c46f5c86196397826e1bfce3ba7"
+    },
     "n8n-workflow-patterns": {
       "source": "czlonkowski/n8n-skills",
       "sourceType": "github",

@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "flow-node",
+      "position": { "x": 120, "y": 120 },
+      "data": {
+        "node_type": "start",
+        "config": {}
+      }
+    },
+    {
+      "id": "send_text_1749150000000",
+      "type": "flow-node",
+      "position": { "x": 120, "y": 320 },
+      "data": {
+        "node_type": "send_text",
+        "config": {
+          "to_phone_number": "{{vars.mensajero_celular}}",
+          "message": "🐶 Perro: {{vars.nombre_mascota}}\n👤 Cliente: {{vars.nombre_cliente}}\n🕰️ *HORARIO*: {{vars.franja_horaria}}\n📝 *Notas Ventas*: {{vars.notas_ventas}}\n📍 Dirección: {{vars.direccion_completa}}\n🛻 *Notas Despachos*: {{vars.notas_despacho}}\n📞 Celular: {{vars.celular_cliente}}\n📦 Cantidad bolsas: {{vars.numero_bolsas}}\n\n💵 TOTAL: {{vars.total}}",
+          "delay_seconds": 0
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "source": "start", "target": "send_text_1749150000000", "label": "next" }
+  ]
+}

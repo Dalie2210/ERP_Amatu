@@ -85,6 +85,7 @@ interface ClienteDetail {
   fuente_subtipo: string | null
   tipo_cliente: TipoCliente
   pct_descuento_distribuidor: number
+  notas_defecto: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -156,6 +157,7 @@ export default function ClienteDetailPage() {
     fuente: "otro" as FuenteCliente,
     tipo_cliente: "publico" as TipoCliente,
     pct_descuento_distribuidor: 0,
+    notas_defecto: "",
     is_active: true,
   })
 
@@ -196,6 +198,7 @@ export default function ClienteDetailPage() {
         fuente: c.fuente,
         tipo_cliente: c.tipo_cliente,
         pct_descuento_distribuidor: c.pct_descuento_distribuidor,
+        notas_defecto: c.notas_defecto ?? "",
         is_active: c.is_active,
       })
     }
@@ -246,6 +249,7 @@ export default function ClienteDetailPage() {
         fuente: form.fuente,
         tipo_cliente: form.tipo_cliente,
         pct_descuento_distribuidor: form.pct_descuento_distribuidor,
+        notas_defecto: form.notas_defecto || null,
         is_active: form.is_active,
         updated_at: new Date().toISOString(),
       })
@@ -557,6 +561,20 @@ export default function ClienteDetailPage() {
                 )}
               </div>
 
+              {/* Notas por defecto */}
+              <div className="space-y-2">
+                <Label>Notas por defecto del pedido</Label>
+                <Textarea
+                  placeholder="Estas notas se agregarán automáticamente a cada nuevo pedido de este cliente..."
+                  rows={3}
+                  value={form.notas_defecto}
+                  onChange={(e) => setForm({ ...form, notas_defecto: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se pre-llenarán en el campo de notas al crear un pedido. Se pueden editar o borrar por pedido.
+                </p>
+              </div>
+
               {/* Save button + message */}
               <div className="flex items-center gap-4 pt-4">
                 <Button onClick={handleSave} disabled={isSaving} className="gap-2">
@@ -727,7 +745,7 @@ export default function ClienteDetailPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                          className="h-7 w-7  text-destructive hover:text-destructive"
                           onClick={() => handleDeletePet(mascota.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

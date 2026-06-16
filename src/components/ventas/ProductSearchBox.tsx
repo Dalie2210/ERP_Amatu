@@ -242,7 +242,9 @@ interface VariantPickerProps {
 
 function VariantPicker({ producto, onClose }: VariantPickerProps) {
   const addItem = useCartStore((s) => s.addItem)
-  const activeVariants = producto.producto_variantes.filter((v) => v.is_active)
+  const activeVariants = producto.producto_variantes
+    .filter((v) => v.is_active)
+    .sort((a, b) => a.precio_publico - b.precio_publico)
 
   const handleAdd = (variante: ProductoVariante) => {
     addItem({

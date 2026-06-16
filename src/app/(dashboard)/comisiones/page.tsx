@@ -334,7 +334,7 @@ export default function ComisionesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Link href={`/comisiones/liquidacion/${liq.id}`}>
-                          <Button variant="ghost" size="sm" className="h-7 gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs">
+                          <Button variant="ghost" size="sm" className="h-7 gap-1  text-xs">
                             Ver <ChevronRight className="h-3.5 w-3.5" />
                           </Button>
                         </Link>

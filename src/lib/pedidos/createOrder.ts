@@ -122,6 +122,8 @@ export async function createOrder(
     justificacion_precio: i.justificacionPrecio ?? null,
     aplica_descuento: i.aplicaDescuento,
     nombre_snapshot: i.presentacion ? `${i.nombre} - ${i.presentacion}` : i.nombre,
+    es_promo: i.esPromo ?? false,
+    promo_id: i.promoId ?? null,
   }))
 
   const { error: detErr } = await supabase.from("detalle_pedido").insert(detalles)

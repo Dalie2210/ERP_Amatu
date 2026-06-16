@@ -198,7 +198,7 @@ export default function PedidosPage() {
                       <TableCell className="text-right font-semibold">${p.total.toLocaleString("es-CO")}</TableCell>
                       <TableCell className="text-right">
                         <Link href={`/ventas/${p.id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" className="gap-1 ">
                             Ver <ChevronRight className="h-4 w-4" />
                           </Button>
                         </Link>
