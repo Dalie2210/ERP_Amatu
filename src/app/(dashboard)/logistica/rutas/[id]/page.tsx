@@ -10,9 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import {
   ArrowLeft, Truck, Package, User, Calendar, Phone, MapPin, AlertTriangle,
-  Printer, Plus, Trash2, ChevronUp, ChevronDown, Send, Scale,
+  Printer, Plus, Trash2, ChevronUp, ChevronDown, Send, Scale, Copy,
 } from "lucide-react"
 import Link from "next/link"
+import { MensajeroSelect, type MensajeroOption } from "@/components/logistica/MensajeroSelect"
+import { buildMensajeMensajero } from "@/lib/logistica/mensajeMensajero"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -21,8 +23,9 @@ interface Ruta {
   nombre: string
   fecha: string
   franja: string
-  mensajero_nombre: string
-  mensajero_celular: string
+  mensajero_id: string | null
+  mensajero_nombre: string | null
+  mensajero_celular: string | null
   estado: string
   ajuste_extra_mensajero: number
   motivo_ajuste: string | null
@@ -135,7 +138,12 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
     const asignadosList = (asignadosRes.data as PedidoAsignado[]) ?? []
     setAsignados(asignadosList)
 
-    // Fetch available orders (en_preparacion + listo_despacho) NOT in any active route
+    // Fetch all pedidos already assigned to ANY route
+    const { data: todosAsignados } = await supabase
+      .from("pedido_ruta")
+      .select("pedido_id")
+
+    const todosAsignadosPedidoIds = (todosAsignados ?? []).map((a: { pedido_id: string }) => a.pedido_id)
     const asignadosPedidoIds = asignadosList.map((a) => a.pedido_id)
 
     const { data: dispData } = await supabase
@@ -150,9 +158,9 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
       .in("estado", ["en_preparacion", "listo_despacho"])
       .order("created_at", { ascending: true })
 
-    // Filter out orders already assigned to this route (client-side)
+    // Filter out orders already assigned to any route
     const filteredDisp = (dispData as PedidoDisponible[] ?? []).filter(
-      (p) => !asignadosPedidoIds.includes(p.id)
+      (p) => !todosAsignadosPedidoIds.includes(p.id)
     )
 
     setDisponibles(filteredDisp)
@@ -230,12 +238,38 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
         }
         return
       }
-      toast.success(`Ruta despachada — ${json.pedidosCount} pedidos notificados`)
+      toast.success(`Ruta despachada — ${json.pedidosCount} pedidos`)
       fetchData()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al despachar la ruta")
     } finally {
       setIsDispatching(false)
+    }
+  }
+
+  // Assign / change courier via dropdown (stores id + denormalized snapshot)
+  const handleAsignarMensajero = async (mensajero: MensajeroOption | null) => {
+    const { error } = await supabase
+      .from("rutas")
+      .update({
+        mensajero_id: mensajero?.id ?? null,
+        mensajero_nombre: mensajero?.nombre ?? null,
+        mensajero_celular: mensajero?.telefono ?? null,
+      })
+      .eq("id", rutaId)
+    if (error) { toast.error("Error al asignar mensajero"); return }
+    toast.success(mensajero ? `Mensajero asignado: ${mensajero.nombre}` : "Mensajero removido")
+    fetchData()
+  }
+
+  // Copy WhatsApp message with all deliveries to clipboard
+  const handleCopiarMensaje = async () => {
+    if (!ruta || asignados.length === 0) return
+    try {
+      await navigator.clipboard.writeText(buildMensajeMensajero(ruta, asignados))
+      toast.success("Mensaje copiado al portapapeles")
+    } catch {
+      toast.error("No se pudo copiar el mensaje")
     }
   }
 
@@ -303,16 +337,27 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
                 <Calendar className="h-3.5 w-3.5" /> {formatDate(ruta.fecha)}
               </span>
               <span className="flex items-center gap-1">
-                <User className="h-3.5 w-3.5" /> {ruta.mensajero_nombre}
+                <User className="h-3.5 w-3.5" /> {ruta.mensajero_nombre ?? "Sin mensajero"}
               </span>
-              <span className="flex items-center gap-1">
-                <Phone className="h-3.5 w-3.5" /> {ruta.mensajero_celular}
-              </span>
+              {ruta.mensajero_celular && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> {ruta.mensajero_celular}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleCopiarMensaje}
+            disabled={asignados.length === 0}
+          >
+            <Copy className="h-4 w-4" /> Copiar mensaje
+          </Button>
           <Link href={`/logistica/rutas/${rutaId}/etiquetas`} target="_blank">
             <Button variant="outline" size="sm" className="gap-2">
               <Printer className="h-4 w-4" /> Etiquetas
@@ -347,6 +392,33 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         ))}
       </div>
+
+      {/* Courier assignment */}
+      {!isDespachada && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="h-4 w-4" /> Mensajero
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-w-sm">
+              <MensajeroSelect
+                supabase={supabase}
+                value={ruta.mensajero_id}
+                onChange={handleAsignarMensajero}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Gestiona los mensajeros en{" "}
+                <Link href="/logistica/mensajeros" className="underline">
+                  Logística › Mensajeros
+                </Link>
+                .
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Assigned orders */}
       <Card className="border-none shadow-sm">

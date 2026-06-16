@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { buildDespachoPayload, marcarRutaDespachada } from "@/lib/logistica/despacharRuta"
 import { moveLeadToStage } from "@/lib/integrations/kommo"
-import { triggerRutaWhatsApp } from "@/lib/integrations/kapso"
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -119,13 +118,6 @@ export async function POST(req: NextRequest) {
 
   // Mark as dispatched in DB
   await marcarRutaDespachada(supabase, rutaId, pedidoIds)
-
-  // Send WhatsApp to courier via Kapso (one message per order, non-fatal)
-  try {
-    await triggerRutaWhatsApp(payload)
-  } catch (err) {
-    console.error("[Kapso] Failed to send WhatsApp to courier:", err)
-  }
 
   return NextResponse.json({ success: true, pedidosCount: pedidoIds.length, payload })
 }

@@ -942,6 +942,44 @@ export type Database = {
         }
         Relationships: []
       }
+      mensajeros: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          nombre: string
+          placa_vehiculo: string | null
+          telefono: string
+          zona_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          nombre: string
+          placa_vehiculo?: string | null
+          telefono: string
+          zona_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          nombre?: string
+          placa_vehiculo?: string | null
+          telefono?: string
+          zona_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensajeros_zona_id_fkey"
+            columns: ["zona_id"]
+            isOneToOne: false
+            referencedRelation: "zonas_envio"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rutas: {
         Row: {
           ajuste_extra_mensajero: number
@@ -952,8 +990,9 @@ export type Database = {
           fecha: string
           franja: Database["public"]["Enums"]["franja_horaria"]
           id: string
-          mensajero_celular: string
-          mensajero_nombre: string
+          mensajero_celular: string | null
+          mensajero_id: string | null
+          mensajero_nombre: string | null
           motivo_ajuste: string | null
           nombre: string
           notas: string | null
@@ -967,8 +1006,9 @@ export type Database = {
           fecha: string
           franja?: Database["public"]["Enums"]["franja_horaria"]
           id?: string
-          mensajero_celular: string
-          mensajero_nombre: string
+          mensajero_celular?: string | null
+          mensajero_id?: string | null
+          mensajero_nombre?: string | null
           motivo_ajuste?: string | null
           nombre: string
           notas?: string | null
@@ -982,8 +1022,9 @@ export type Database = {
           fecha?: string
           franja?: Database["public"]["Enums"]["franja_horaria"]
           id?: string
-          mensajero_celular?: string
-          mensajero_nombre?: string
+          mensajero_celular?: string | null
+          mensajero_id?: string | null
+          mensajero_nombre?: string | null
           motivo_ajuste?: string | null
           nombre?: string
           notas?: string | null
@@ -994,6 +1035,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rutas_mensajero_id_fkey"
+            columns: ["mensajero_id"]
+            isOneToOne: false
+            referencedRelation: "mensajeros"
             referencedColumns: ["id"]
           },
         ]

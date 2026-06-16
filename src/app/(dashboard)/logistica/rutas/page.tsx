@@ -26,8 +26,8 @@ interface Ruta {
   nombre: string
   fecha: string
   franja: string
-  mensajero_nombre: string
-  mensajero_celular: string
+  mensajero_nombre: string | null
+  mensajero_celular: string | null
   estado: string
   ajuste_extra_mensajero: number
   notas: string | null
@@ -112,7 +112,7 @@ export default function RutasPage() {
                 </span>
                 <span className="flex items-center gap-1">
                   <User className="h-3.5 w-3.5" />
-                  {ruta.mensajero_nombre}
+                  {ruta.mensajero_nombre ?? "Sin mensajero"}
                 </span>
                 <span className="flex items-center gap-1">
                   <Package className="h-3.5 w-3.5" />

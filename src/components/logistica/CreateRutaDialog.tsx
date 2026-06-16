@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Plus } from "lucide-react"
 import { FRANJA_LABELS } from "@/lib/constants/labels"
+import { MensajeroSelect, type MensajeroOption } from "@/components/logistica/MensajeroSelect"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 interface Props {
@@ -39,12 +40,11 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
   const [nombre, setNombre] = useState("")
   const [fecha, setFecha] = useState(today)
   const [franja, setFranja] = useState("AM")
-  const [mensajeroNombre, setMensajeroNombre] = useState("")
-  const [mensajeroCelular, setMensajeroCelular] = useState("")
+  const [mensajero, setMensajero] = useState<MensajeroOption | null>(null)
 
   const handleCreate = async () => {
-    if (!nombre.trim() || !mensajeroNombre.trim() || !mensajeroCelular.trim()) {
-      toast.error("Nombre de ruta, mensajero y celular son requeridos")
+    if (!nombre.trim()) {
+      toast.error("El nombre de la ruta es requerido")
       return
     }
     setIsLoading(true)
@@ -55,8 +55,9 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
           nombre: nombre.trim(),
           fecha,
           franja,
-          mensajero_nombre: mensajeroNombre.trim(),
-          mensajero_celular: mensajeroCelular.trim(),
+          mensajero_id: mensajero?.id ?? null,
+          mensajero_nombre: mensajero?.nombre ?? null,
+          mensajero_celular: mensajero?.telefono ?? null,
           created_by: userId,
         })
         .select("id")
@@ -67,8 +68,7 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
       toast.success("Ruta creada exitosamente")
       setOpen(false)
       setNombre("")
-      setMensajeroNombre("")
-      setMensajeroCelular("")
+      setMensajero(null)
       onCreated(data.id)
     } catch {
       toast.error("Error al crear la ruta")
@@ -127,21 +127,15 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <Label>Nombre del Mensajero *</Label>
-            <Input
-              placeholder="Nombre completo"
-              value={mensajeroNombre}
-              onChange={(e) => setMensajeroNombre(e.target.value)}
+            <Label>Mensajero</Label>
+            <MensajeroSelect
+              supabase={supabase}
+              value={mensajero?.id ?? null}
+              onChange={setMensajero}
             />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Celular del Mensajero *</Label>
-            <Input
-              placeholder="300 000 0000"
-              value={mensajeroCelular}
-              onChange={(e) => setMensajeroCelular(e.target.value)}
-            />
+            <p className="text-xs text-muted-foreground">
+              Opcional. Puedes asignarlo o cambiarlo luego al gestionar la ruta.
+            </p>
           </div>
         </div>
 

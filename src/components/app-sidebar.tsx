@@ -2,7 +2,7 @@
 
 import {
   Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
-  Handshake, UserCog, Settings2, Percent, Shield,
+  Handshake, Shield, Bike,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -36,18 +36,13 @@ const mainItems: NavItem[] = [
   { title: "Pedidos",    url: "/pedidos",           icon: Package,    roles: ["admin", "vendedor", "logistica"] },
   { title: "Catálogo",   url: "/catalogo",          icon: Leaf,       roles: ["admin", "vendedor"] },
   { title: "Logística",  url: "/logistica",         icon: Truck,      roles: ["admin", "logistica"] },
+  { title: "Mensajeros", url: "/logistica/mensajeros", icon: Bike,    roles: ["admin", "logistica"] },
   { title: "Liq. Mensajero", url: "/logistica/liquidacion-mensajero", icon: DollarSign, roles: ["admin", "logistica"] },
   { title: "Comisiones", url: "/comisiones",        icon: DollarSign, roles: ["admin", "contable", "vendedor"] },
   { title: "Aliados",    url: "/comisiones/aliados", icon: Handshake, roles: ["admin", "contable"] },
   { title: "Clientes",   url: "/clientes",          icon: Users,      roles: ["admin", "vendedor"] },
 ]
 
-const adminItems: NavItem[] = [
-  { title: "Usuarios",         url: "/admin/usuarios",         icon: UserCog,  roles: ["admin"] },
-  { title: "Config Comisiones", url: "/admin/comisiones-config", icon: Settings2, roles: ["admin"] },
-  { title: "Descuentos",       url: "/admin/descuentos",       icon: Percent,  roles: ["admin"] },
-  { title: "Aliados",          url: "/admin/aliados",          icon: Handshake, roles: ["admin"] },
-]
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -129,18 +124,6 @@ export function AppSidebar() {
                     <span className="font-medium">Panel Admin</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      render={<Link href={item.url} />}
-                      isActive={pathname.startsWith(item.url)}
-                      className="rounded-md px-4 py-3"
-                    >
-                      <item.icon className="w-5 h-5" />
-                      <span className="font-medium">{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

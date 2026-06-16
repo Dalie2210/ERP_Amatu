@@ -424,7 +424,7 @@ export default function LogisticaPage() {
     // Create a map of pedido_id -> count
     const notasCountMap: Record<string, number> = {}
     if (notasData) {
-      notasData.forEach(nota => {
+      notasData.forEach((nota: { pedido_id: string }) => {
         notasCountMap[nota.pedido_id] = (notasCountMap[nota.pedido_id] ?? 0) + 1
       })
     }
