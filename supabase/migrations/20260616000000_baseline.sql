@@ -36,7 +36,23 @@ CREATE TYPE public.tipo_promocion AS ENUM ('paga_x_lleva_mas', 'producto_gratis'
 CREATE TYPE public.user_role AS ENUM ('admin', 'vendedor', 'logistica', 'contable');
 
 -- ============================================================
--- 2. HELPER FUNCTIONS (needed by RLS policies and triggers)
+-- 2. TABLES (in dependency order)
+-- ============================================================
+
+-- users: extends auth.users
+CREATE TABLE public.users (
+  id          uuid NOT NULL,
+  full_name   text NOT NULL,
+  role        public.user_role NOT NULL DEFAULT 'vendedor',
+  is_active   boolean NOT NULL DEFAULT true,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+COMMENT ON TABLE public.users IS 'Application user profiles extending Supabase Auth';
+
+-- ============================================================
+-- 3. HELPER FUNCTIONS (require public.users to exist)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.fn_get_user_role()
@@ -67,20 +83,8 @@ END;
 $$;
 
 -- ============================================================
--- 3. TABLES (in dependency order)
+-- 4. REMAINING TABLES (in dependency order)
 -- ============================================================
-
--- users: extends auth.users
-CREATE TABLE public.users (
-  id          uuid NOT NULL,
-  full_name   text NOT NULL,
-  role        public.user_role NOT NULL DEFAULT 'vendedor',
-  is_active   boolean NOT NULL DEFAULT true,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT users_pkey PRIMARY KEY (id),
-  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
-);
-COMMENT ON TABLE public.users IS 'Application user profiles extending Supabase Auth';
 
 -- zonas_envio
 CREATE TABLE public.zonas_envio (
@@ -565,7 +569,7 @@ CREATE TABLE public.pedido_actividad (
 );
 
 -- ============================================================
--- 4. ENABLE ROW LEVEL SECURITY
+-- 5. ENABLE ROW LEVEL SECURITY
 -- ============================================================
 
 ALTER TABLE public.users              ENABLE ROW LEVEL SECURITY;
@@ -596,7 +600,7 @@ ALTER TABLE public.pedido_actividad   ENABLE ROW LEVEL SECURITY;
 -- Note: promociones, kits, kit_items do NOT have RLS enabled in production
 
 -- ============================================================
--- 5. RLS POLICIES
+-- 6. RLS POLICIES
 -- ============================================================
 
 -- users
@@ -833,7 +837,7 @@ CREATE POLICY pedido_actividad_insert ON public.pedido_actividad FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = ANY (ARRAY['admin'::user_role, 'logistica'::user_role])));
 
 -- ============================================================
--- 6. TRIGGER FUNCTIONS
+-- 7. TRIGGER FUNCTIONS
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.fn_handle_new_user()
@@ -971,7 +975,7 @@ END;
 $$;
 
 -- ============================================================
--- 7. TRIGGERS
+-- 8. TRIGGERS
 -- ============================================================
 
 CREATE TRIGGER trg_generar_numero_pedido
@@ -1007,7 +1011,7 @@ CREATE TRIGGER trg_comision_set_vendor_period
   FOR EACH ROW EXECUTE FUNCTION public.fn_set_comision_periodo_on_insert();
 
 -- ============================================================
--- 8. AUTH TRIGGER (on auth.users, managed by Supabase Auth)
+-- 9. AUTH TRIGGER (on auth.users, managed by Supabase Auth)
 -- ============================================================
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
@@ -1015,7 +1019,7 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.fn_handle_new_user();
 
 -- ============================================================
--- 9. ADDITIONAL FUNCTIONS (business logic, called from app)
+-- 10. ADDITIONAL FUNCTIONS (business logic, called from app)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.create_cliente_con_mascotas(
