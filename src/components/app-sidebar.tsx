@@ -2,7 +2,8 @@
 
 import {
   Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
-  Handshake, Shield, Bike,
+  Handshake, Shield, Bike, Boxes, ClipboardList, FlaskConical,
+  ArrowDownToLine, BarChart2, Warehouse, ScanBarcode, Settings2,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -61,6 +62,7 @@ export function AppSidebar() {
     : mainItems.filter((item) => role && item.roles.includes(role))
 
   const showAdmin = !isLoading && role === "admin"
+  const showInventario = !isLoading && (role === "admin" || role === "logistica")
 
   return (
     <Sidebar className="border-r-0 bg-white">
@@ -106,6 +108,48 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {showInventario && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-6 py-4">
+              Inventario
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="px-4 gap-1">
+                {[
+                  { title: "Dashboard Inv.", url: "/inventario",                    icon: Boxes },
+                  { title: "Insumos",        url: "/inventario/insumos",            icon: Warehouse },
+                  { title: "Ingresos",       url: "/inventario/ingresos",           icon: ArrowDownToLine },
+                  { title: "Recetas (BOM)",  url: "/inventario/recetas",            icon: ClipboardList },
+                  { title: "Producción",     url: "/inventario/produccion",         icon: FlaskConical },
+                  { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
+                  { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
+                  { title: "Conteo",         url: "/inventario/conteo",             icon: ScanBarcode },
+                  { title: "Movimientos",    url: "/inventario/movimientos",        icon: BarChart2 },
+                  { title: "Ajustes",        url: "/inventario/ajustes",            icon: Settings2 },
+                  { title: "Rpte. Compras",  url: "/inventario/reportes/compras",   icon: BarChart2 },
+                  { title: "Rpte. Anual",    url: "/inventario/reportes/anual",     icon: BarChart2 },
+                  { title: "Trazabilidad",   url: "/inventario/trazabilidad",       icon: ScanBarcode },
+                ].map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      render={<Link href={item.url} />}
+                      isActive={
+                        item.url === "/inventario"
+                          ? pathname === "/inventario"
+                          : pathname.startsWith(item.url)
+                      }
+                      className="rounded-md px-4 py-3"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium">{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {showAdmin && (
           <SidebarGroup>

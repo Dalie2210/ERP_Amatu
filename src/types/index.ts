@@ -476,6 +476,7 @@ export interface DetalleItemExpanded {
   producto_id: string | null;
   variante_id: string | null;
   cantidad: number;
+  cantidad_entregada: number;
   precio_unitario_snapshot: number;
   subtotal: number;
   nombre_snapshot: string;
@@ -486,4 +487,302 @@ export interface DetalleItemExpanded {
   justificacion_precio: string | null;
   es_promo: boolean;
   promo_id: string | null;
+}
+
+// ============================================================
+// Inventario — Fase 2
+// ============================================================
+
+// --- Enums ---
+
+export type TipoInsumo = "materia_prima" | "producto_seco" | "aseo" | "empaque";
+
+export type UnidadMedida = "g" | "kg" | "ml" | "l" | "unidad";
+
+export type EstadoProduccion =
+  | "planificada"
+  | "en_proceso"
+  | "completada"
+  | "cancelada";
+
+export type EstadoPT = "producido" | "empacado" | "despachado";
+
+export type CategoriaConteo =
+  | "materia_prima"
+  | "producto_seco"
+  | "aseo"
+  | "producto_terminado";
+
+export type TipoMovimiento =
+  | "ingreso_compra"
+  | "consumo_produccion"
+  | "entrada_produccion"
+  | "empaque"
+  | "salida_despacho"
+  | "ajuste_positivo"
+  | "ajuste_negativo"
+  | "merma"
+  | "devolucion";
+
+// --- Master tables ---
+
+export interface Insumo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  tipo: TipoInsumo;
+  unidad_medida: UnidadMedida;
+  stock_minimo: number;
+  merma_pct: number;
+  costo_promedio: number;
+  is_active: boolean;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Receta {
+  id: string;
+  producto_id: string;
+  variante_id: string | null;
+  nombre: string;
+  rendimiento: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface RecetaItem {
+  id: string;
+  receta_id: string;
+  insumo_id: string;
+  cantidad: number;
+  unidad_medida: UnidadMedida;
+}
+
+// --- Lot tables ---
+
+export interface InsumoLote {
+  id: string;
+  insumo_id: string;
+  codigo_lote: string;
+  cantidad_inicial: number;
+  cantidad_disponible: number;
+  costo_unitario: number;
+  proveedor: string | null;
+  fecha_ingreso: string;
+  fecha_vencimiento: string | null;
+  created_at: string;
+}
+
+export interface ProductoLote {
+  id: string;
+  producto_id: string;
+  variante_id: string | null;
+  codigo_lote: string;
+  cantidad_inicial: number;
+  cantidad_disponible: number;
+  estado: EstadoPT;
+  costo_unitario: number;
+  fecha_produccion: string;
+  fecha_vencimiento: string | null;
+  orden_produccion_id: string | null;
+  created_at: string;
+}
+
+// --- Transactional tables ---
+
+export interface Ingreso {
+  id: string;
+  numero: string | null;
+  tipo_ingreso: TipoInsumo;
+  proveedor: string | null;
+  fecha: string;
+  temperatura_llegada: number | null;
+  placa_vehiculo: string | null;
+  total_costo: number;
+  notas: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface IngresoItem {
+  id: string;
+  ingreso_id: string;
+  insumo_id: string;
+  cantidad: number;
+  precio_compra: number;
+  precio_unitario: number | null;
+  codigo_lote: string;
+  fecha_vencimiento: string | null;
+}
+
+export interface OrdenProduccion {
+  id: string;
+  numero: string | null;
+  producto_id: string;
+  variante_id: string | null;
+  receta_id: string | null;
+  cantidad_planificada: number;
+  cantidad_producida: number | null;
+  estado: EstadoProduccion;
+  fecha: string;
+  costo_total: number | null;
+  producto_lote_id: string | null;
+  notas: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ProduccionConsumo {
+  id: string;
+  orden_produccion_id: string;
+  insumo_lote_id: string;
+  cantidad_consumida: number;
+  costo: number;
+}
+
+export interface Remision {
+  id: string;
+  numero: string | null;
+  pedido_id: string;
+  fecha: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RemisionItem {
+  id: string;
+  remision_id: string;
+  detalle_pedido_id: string;
+  producto_id: string;
+  variante_id: string | null;
+  cantidad_entregada: number;
+  producto_lote_id: string | null;
+}
+
+export interface ConteoInventario {
+  id: string;
+  fecha: string;
+  categoria: CategoriaConteo;
+  notas: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ConteoItem {
+  id: string;
+  conteo_id: string;
+  insumo_id: string | null;
+  producto_id: string | null;
+  variante_id: string | null;
+  cantidad_sistema: number;
+  cantidad_contada: number;
+  diferencia: number;
+}
+
+export interface MovimientoInventario {
+  id: string;
+  tipo: TipoMovimiento;
+  insumo_id: string | null;
+  producto_id: string | null;
+  variante_id: string | null;
+  lote_tipo: string | null;
+  lote_id: string | null;
+  cantidad: number;
+  costo_unitario: number;
+  referencia_tipo: string | null;
+  referencia_id: string | null;
+  usuario_id: string | null;
+  notas: string | null;
+  created_at: string;
+}
+
+// --- View types ---
+
+export interface VStockInsumo {
+  insumo_id: string;
+  codigo: string;
+  nombre: string;
+  tipo: TipoInsumo;
+  unidad_medida: UnidadMedida;
+  stock_minimo: number;
+  merma_pct: number;
+  costo_promedio: number;
+  stock_disponible: number;
+  lotes_por_vencer: number;
+  bajo_minimo: boolean;
+}
+
+export interface VStockProducto {
+  producto_id: string;
+  producto_nombre: string;
+  variante_id: string;
+  variante_presentacion: string;
+  estado: EstadoPT | null;
+  stock_disponible: number;
+  costo_promedio_lote: number;
+}
+
+export interface VValorInventario {
+  tipo: "insumo" | "producto_terminado";
+  item_id: string;
+  nombre: string;
+  codigo: string | null;
+  stock_total: number;
+  costo_unitario: number;
+  valor_total: number;
+}
+
+export interface VComponenteVenta {
+  detalle_pedido_id: string;
+  pedido_id: string;
+  componente_producto_id: string;
+  componente_variante_id: string | null;
+  cantidad_componente: number;
+  tipo_componente: "producto" | "promo_regalo";
+}
+
+export interface VDemandaComprometida {
+  producto_id: string;
+  variante_id: string | null;
+  cantidad_pendiente: number;
+}
+
+export interface VTrazabilidadLote {
+  insumo_lote_id: string;
+  codigo_lote: string;
+  insumo_id: string;
+  insumo_nombre: string;
+  fecha_ingreso: string;
+  fecha_vencimiento: string | null;
+  cantidad_inicial: number;
+  cantidad_disponible: number;
+  orden_produccion_id: string | null;
+  numero_op: string | null;
+  producto_lote_id: string | null;
+  codigo_lote_pt: string | null;
+  producto_id: string | null;
+  variante_id: string | null;
+}
+
+// Extended detalle_pedido with delivery tracking
+export interface DetalleItemConEntrega extends DetalleItemExpanded {
+  cantidad_pendiente: number;
+}
+
+// Ingreso with expanded items (for UI)
+export interface IngresoExpanded extends Ingreso {
+  items: (IngresoItem & { insumo: Pick<Insumo, "nombre" | "codigo" | "unidad_medida"> })[];
+}
+
+// Orden de produccion with expanded relations (for UI)
+export interface OrdenProduccionExpanded extends OrdenProduccion {
+  producto: { nombre: string } | null;
+  variante: { presentacion: string } | null;
+  receta: Pick<Receta, "nombre" | "rendimiento"> | null;
+  consumos: (ProduccionConsumo & {
+    insumo_lote: Pick<InsumoLote, "codigo_lote" | "insumo_id"> & {
+      insumo: Pick<Insumo, "nombre" | "unidad_medida">;
+    };
+  })[];
 }
