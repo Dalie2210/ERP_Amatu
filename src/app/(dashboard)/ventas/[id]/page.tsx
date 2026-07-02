@@ -22,6 +22,7 @@ interface DetalleItem {
   id: string
   nombre_snapshot: string
   cantidad: number
+  cantidad_entregada: number | null
   precio_unitario_snapshot: number
   subtotal: number
   es_magistral: boolean
@@ -93,7 +94,7 @@ export default function PedidoDetallePage() {
         setPedido(pData as Pedido)
         const { data: dData } = await supabase
           .from("detalle_pedido")
-          .select("id, nombre_snapshot, cantidad, precio_unitario_snapshot, subtotal, es_magistral, aplica_descuento")
+          .select("id, nombre_snapshot, cantidad, cantidad_entregada, precio_unitario_snapshot, subtotal, es_magistral, aplica_descuento")
           .eq("pedido_id", id)
           .order("created_at")
 
@@ -224,21 +225,36 @@ export default function PedidoDetallePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {detalles.map(d => (
-                  <div key={d.id} className="flex justify-between items-center bg-muted/30 p-3 rounded-lg">
-                    <div>
-                      <p className="font-medium">{d.nombre_snapshot}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-muted-foreground">
-                          {d.cantidad} x {formatCOP(d.precio_unitario_snapshot)}
-                        </span>
-                        {d.es_magistral && <Badge variant="secondary" className="text-[10px]">Magistral</Badge>}
-                        {d.aplica_descuento && <Badge variant="outline" className="text-[10px]">Aplica dcto</Badge>}
+                {detalles.map(d => {
+                  const entregada = d.cantidad_entregada ?? 0
+                  const pendiente = d.cantidad - entregada
+                  return (
+                    <div key={d.id} className="flex justify-between items-center bg-muted/30 p-3 rounded-lg">
+                      <div>
+                        <p className="font-medium">{d.nombre_snapshot}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-sm text-muted-foreground">
+                            {d.cantidad} x {formatCOP(d.precio_unitario_snapshot)}
+                          </span>
+                          {d.es_magistral && <Badge variant="secondary" className="text-[10px]">Magistral</Badge>}
+                          {d.aplica_descuento && <Badge variant="outline" className="text-[10px]">Aplica dcto</Badge>}
+                          {pendiente <= 0 ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 text-[10px]">
+                              Entregado
+                            </Badge>
+                          ) : entregada > 0 ? (
+                            <Badge variant="outline" className="text-[10px] border-amber-200 bg-amber-50 text-amber-700">
+                              Entregado {entregada}/{d.cantidad}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px]">Pendiente {pendiente}</Badge>
+                          )}
+                        </div>
                       </div>
+                      <p className="font-semibold">{formatCOP(d.subtotal)}</p>
                     </div>
-                    <p className="font-semibold">{formatCOP(d.subtotal)}</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

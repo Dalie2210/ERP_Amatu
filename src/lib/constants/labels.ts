@@ -69,6 +69,26 @@ export const UNIDAD_MEDIDA_LABELS: Record<string, string> = {
   unidad: "Unidad",
 }
 
+export const ESTADO_PRODUCCION_LABELS: Record<string, string> = {
+  planificada: "Planificada",
+  en_proceso: "En Proceso",
+  completada: "Completada",
+  cancelada: "Cancelada",
+}
+
+export const ESTADO_PT_LABELS: Record<string, string> = {
+  producido: "Producido",
+  empacado: "Empacado",
+  despachado: "Despachado",
+}
+
+export const CATEGORIA_CONTEO_LABELS: Record<string, string> = {
+  materia_prima: "Materia Prima",
+  producto_seco: "Producto Seco",
+  aseo: "Aseo",
+  producto_terminado: "Producto Terminado",
+}
+
 export const TIPO_MOVIMIENTO_LABELS: Record<string, string> = {
   ingreso_compra: "Ingreso / Compra",
   consumo_produccion: "Consumo Producción",

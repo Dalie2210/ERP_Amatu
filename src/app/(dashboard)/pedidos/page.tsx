@@ -79,6 +79,24 @@ interface Pedido {
   fue_editado: boolean
   clientes: { nombre_completo: string } | null
   users: { full_name: string } | null
+  detalle_pedido: { cantidad: number; cantidad_entregada: number | null }[]
+}
+
+function EntregaBadge({ detalles }: { detalles: { cantidad: number; cantidad_entregada: number | null }[] }) {
+  const totalPedido = detalles.reduce((acc, d) => acc + d.cantidad, 0)
+  const totalEntregado = detalles.reduce((acc, d) => acc + (d.cantidad_entregada ?? 0), 0)
+  if (totalPedido === 0) return <span className="text-xs text-muted-foreground">—</span>
+  if (totalEntregado >= totalPedido) {
+    return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 text-xs">Entregado</Badge>
+  }
+  if (totalEntregado > 0) {
+    return (
+      <Badge variant="outline" className="text-xs border-amber-200 bg-amber-50 text-amber-700">
+        Parcial {totalEntregado}/{totalPedido}
+      </Badge>
+    )
+  }
+  return <Badge variant="outline" className="text-xs">Pendiente 0/{totalPedido}</Badge>
 }
 
 export default function PedidosPage() {
@@ -99,7 +117,7 @@ export default function PedidosPage() {
 
     let query = supabase
       .from("pedidos")
-      .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo), users!pedidos_vendedor_id_fkey(full_name)", { count: "exact" })
+      .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo), users!pedidos_vendedor_id_fkey(full_name), detalle_pedido(cantidad, cantidad_entregada)", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to)
 
@@ -172,6 +190,7 @@ export default function PedidosPage() {
                     <TableHead>Vendedor</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Pago</TableHead>
+                    <TableHead>Entrega</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -195,6 +214,7 @@ export default function PedidosPage() {
                           {pagoLabels[p.estado_pago] ?? p.estado_pago}
                         </Badge>
                       </TableCell>
+                      <TableCell><EntregaBadge detalles={p.detalle_pedido ?? []} /></TableCell>
                       <TableCell className="text-right font-semibold">${p.total.toLocaleString("es-CO")}</TableCell>
                       <TableCell className="text-right">
                         <Link href={`/ventas/${p.id}`}>

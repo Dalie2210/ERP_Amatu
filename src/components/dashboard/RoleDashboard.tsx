@@ -8,7 +8,7 @@ import type { DashboardStats } from "@/types";
 import {
   TrendingUp, Package, Truck, Users, DollarSign, Route,
   ShoppingBag, Leaf, UserCog, Handshake, ChevronRight,
-  ClipboardCheck, Clock,
+  ClipboardCheck, Clock, Warehouse, AlertTriangle, CalendarClock, PackageCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -58,6 +58,11 @@ const CONTABLE_ACTIONS: QuickAction[] = [
 ];
 
 export function AdminDashboard({ stats }: { stats: DashboardStats }) {
+  const valorInventario = stats.valorInventario ?? { value: null, status: "ok" as const };
+  const insumosBajoMinimo = stats.insumosBajoMinimo ?? { value: null, status: "ok" as const };
+  const lotesPorVencer = stats.lotesPorVencer ?? { value: null, status: "ok" as const };
+  const ptPorEstado = stats.ptPorEstado ?? { value: null, status: "ok" as const };
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -65,6 +70,28 @@ export function AdminDashboard({ stats }: { stats: DashboardStats }) {
         <StatCard title="Pedidos Pendientes" icon={Package} state={stats.pedidosPendientes} format={(n) => n.toString()} description="Por preparar o despachar" emptyHint="Sin pendientes" />
         <StatCard title="Envíos en Ruta" icon={Truck} state={stats.enviosEnRuta} format={(n) => n.toString()} description="Despachos en curso" emptyHint="Ninguno en ruta" />
         <StatCard title="Nuevos Clientes" icon={Users} state={stats.nuevosClientes} format={(n) => `+${n}`} description="En los últimos 7 días" emptyHint="Sin altas recientes" />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Inventario</h2>
+          <Link href="/inventario" className="text-xs text-primary hover:underline flex items-center gap-1">
+            Ver dashboard completo <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard title="Valor de Inventario" icon={Warehouse} state={valorInventario} format={formatCOP} description="Insumos + producto terminado" emptyHint="Sin stock valorizado" />
+          <StatCard title="Insumos Bajo Mínimo" icon={AlertTriangle} state={insumosBajoMinimo} format={(n) => n.toString()} description="Requieren reposición" emptyHint="Todo en orden" />
+          <StatCard title="Lotes por Vencer" icon={CalendarClock} state={lotesPorVencer} format={(n) => n.toString()} description="Vencen en ≤30 días" emptyHint="Ninguno próximo a vencer" />
+          <StatCard
+            title="Producto Terminado"
+            icon={PackageCheck}
+            state={ptPorEstado}
+            format={(v) => `${v.producido} / ${v.empacado} / ${v.despachado}`}
+            description="Producido / Empacado / Despachado"
+            emptyHint="Sin stock de PT"
+          />
+        </div>
       </div>
 
       <QuickActions actions={ADMIN_ACTIONS} />

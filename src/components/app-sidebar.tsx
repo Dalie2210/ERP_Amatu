@@ -3,7 +3,7 @@
 import {
   Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
   Handshake, Shield, Bike, Boxes, ClipboardList, FlaskConical,
-  ArrowDownToLine, BarChart2, Warehouse, ScanBarcode, Settings2,
+  ArrowDownToLine, BarChart2, Warehouse, ScanBarcode, Settings2, Calculator,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -130,6 +130,7 @@ export function AppSidebar() {
                   { title: "Rpte. Compras",  url: "/inventario/reportes/compras",   icon: BarChart2 },
                   { title: "Rpte. Anual",    url: "/inventario/reportes/anual",     icon: BarChart2 },
                   { title: "Trazabilidad",   url: "/inventario/trazabilidad",       icon: ScanBarcode },
+                  { title: "Explosión MP",   url: "/inventario/explosion",          icon: Calculator },
                 ].map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

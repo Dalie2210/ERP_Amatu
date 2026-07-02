@@ -239,6 +239,13 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
         return
       }
       toast.success(`Ruta despachada — ${json.pedidosCount} pedidos`)
+      const advertencias = json.advertenciasStock as { numeroPedido: string; productoNombre: string | null; mensaje: string }[] | undefined
+      if (advertencias && advertencias.length > 0) {
+        const detalle = advertencias
+          .map((a) => `• ${a.numeroPedido}${a.productoNombre ? ` (${a.productoNombre})` : ""}: ${a.mensaje}`)
+          .join("\n")
+        toast.warning(`Advertencias de stock al despachar:\n${detalle}`, { duration: 10000 })
+      }
       fetchData()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al despachar la ruta")

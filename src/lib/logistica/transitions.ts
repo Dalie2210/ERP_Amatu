@@ -1,4 +1,21 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EstadoPedido, TransicionEstado, UserRole } from "@/types";
+
+// Confirma un pedido (reserva lógica de demanda vía fn_confirmar_venta).
+// p_confirmar_pago solo debe ser true cuando la confirmación implica pago
+// recibido (transición manual fecha_tentativa -> confirmado); en creación
+// por contraentrega el pago sigue pendiente hasta la entrega.
+export async function confirmarPedido(
+  supabase: SupabaseClient,
+  pedidoId: string,
+  confirmarPago: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc("fn_confirmar_venta", {
+    p_pedido_id: pedidoId,
+    p_confirmar_pago: confirmarPago,
+  });
+  if (error) throw error;
+}
 
 export const STAGE_TRANSITIONS: Record<EstadoPedido, TransicionEstado[]> = {
   fecha_tentativa: [

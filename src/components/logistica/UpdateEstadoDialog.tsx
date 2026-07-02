@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { UserRole } from "@/types"
+import { confirmarPedido } from "@/lib/logistica/transitions"
 
 type EstadoLogistica =
   | "confirmado"
@@ -100,18 +101,22 @@ export function UpdateEstadoDialog({
     if (!selectedEstado) return
     setIsLoading(true)
     try {
-      const updates: Record<string, unknown> = { estado: selectedEstado }
-      if (selectedEstado === "confirmado" && estadoActual === "fecha_tentativa") {
-        updates.estado_pago = "confirmado"
+      if (selectedEstado === "confirmado") {
+        await confirmarPedido(supabase, pedidoId, estadoActual === "fecha_tentativa")
+        if (notasDespacho.trim()) {
+          await supabase.from("pedidos").update({ notas_despacho: notasDespacho.trim() }).eq("id", pedidoId)
+        }
+      } else {
+        const updates: Record<string, unknown> = { estado: selectedEstado }
+        if (notasDespacho.trim()) updates.notas_despacho = notasDespacho.trim()
+
+        const { error } = await supabase
+          .from("pedidos")
+          .update(updates)
+          .eq("id", pedidoId)
+
+        if (error) throw error
       }
-      if (notasDespacho.trim()) updates.notas_despacho = notasDespacho.trim()
-
-      const { error } = await supabase
-        .from("pedidos")
-        .update(updates)
-        .eq("id", pedidoId)
-
-      if (error) throw error
 
       toast.success(`Pedido ${numeroPedido} actualizado`)
       setOpen(false)

@@ -19,7 +19,8 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog"
-import { ArrowLeft, Plus, Trash2, Save, Edit2 } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Save, Edit2, ClipboardList } from "lucide-react"
+import Link from "next/link"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/useAuth"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
@@ -251,6 +252,12 @@ export default function ProductoDetallePage() {
         <Badge variant={form.is_active ? "default" : "secondary"}>
           {form.is_active ? "Activo" : "Inactivo"}
         </Badge>
+        <Link href={`/inventario/recetas?producto=${productoId}`}>
+          <Button variant="outline" size="sm" className="gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Receta (BOM)
+          </Button>
+        </Link>
         {role === "admin" && (
           <DeleteConfirmDialog
             trigger={

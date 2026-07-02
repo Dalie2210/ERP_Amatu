@@ -1,22 +1,70 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { useCartStore } from "@/stores/cartStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { ShoppingCart, Trash2, Minus, Plus, Beaker, PackageOpen, Gift } from "lucide-react"
+import { ShoppingCart, Trash2, Minus, Plus, Beaker, PackageOpen, Gift, AlertTriangle } from "lucide-react"
+import type { VStockProducto } from "@/types"
 
 const fmt = (n: number) => `$${n.toLocaleString("es-CO")}`
 
+function StockBadge({ disponible, cantidad }: { disponible: number; cantidad: number }) {
+  if (disponible <= 0) {
+    return (
+      <Badge variant="outline" className="text-[10px] h-5 border-destructive/30 bg-destructive/5 text-destructive gap-1">
+        <AlertTriangle className="h-2.5 w-2.5" />Sin stock
+      </Badge>
+    )
+  }
+  if (disponible < cantidad) {
+    return (
+      <Badge variant="outline" className="text-[10px] h-5 border-amber-200 bg-amber-50 text-amber-700 gap-1">
+        <AlertTriangle className="h-2.5 w-2.5" />Stock bajo ({disponible})
+      </Badge>
+    )
+  }
+  return null
+}
+
 export function CartPanel() {
+  const supabase = useMemo(() => createClient(), [])
   const items = useCartStore((s) => s.items)
   const removeItem = useCartStore((s) => s.removeItem)
   const updateQuantity = useCartStore((s) => s.updateQuantity)
   const getSubtotal = useCartStore((s) => s.getSubtotal)
   const getItemCount = useCartStore((s) => s.getItemCount)
   const clearCart = useCartStore((s) => s.clearCart)
+
+  const [stockMap, setStockMap] = useState<Map<string, number>>(new Map())
+
+  const varianteIds = useMemo(
+    () => [...new Set(items.filter((i) => i.varianteId && !i.esMagistral).map((i) => i.varianteId as string))],
+    [items]
+  )
+
+  useEffect(() => {
+    if (varianteIds.length === 0) {
+      setStockMap(new Map())
+      return
+    }
+    supabase
+      .from("v_stock_productos")
+      .select("variante_id, estado, stock_disponible")
+      .in("variante_id", varianteIds)
+      .then(({ data }: { data: Pick<VStockProducto, "variante_id" | "estado" | "stock_disponible">[] | null }) => {
+        const map = new Map<string, number>()
+        for (const r of data ?? []) {
+          if (r.estado === "despachado") continue
+          map.set(r.variante_id, (map.get(r.variante_id) ?? 0) + Number(r.stock_disponible))
+        }
+        setStockMap(map)
+      })
+  }, [supabase, varianteIds])
 
   const cnt = getItemCount()
 
@@ -119,8 +167,15 @@ export function CartPanel() {
                     )}
                   </div>
                 </div>
-                {!isPromo && item.aplicaDescuento && (
-                  <Badge variant="outline" className="text-[10px] h-5">Aplica dcto</Badge>
+                {!isPromo && (item.aplicaDescuento || item.varianteId) && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {item.aplicaDescuento && (
+                      <Badge variant="outline" className="text-[10px] h-5">Aplica dcto</Badge>
+                    )}
+                    {item.varianteId && !item.esMagistral && (
+                      <StockBadge disponible={stockMap.get(item.varianteId) ?? 0} cantidad={item.cantidad} />
+                    )}
+                  </div>
                 )}
               </div>
             )

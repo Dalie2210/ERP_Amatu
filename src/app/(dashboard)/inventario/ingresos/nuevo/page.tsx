@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +38,9 @@ const emptyItem = (): ItemRow => ({
 
 export default function NuevoIngresoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const prefillInsumoId = searchParams.get("insumo_id")
+  const prefillCantidad = searchParams.get("cantidad")
   const supabase = useMemo(() => createClient(), [])
 
   const [tipoIngreso, setTipoIngreso] = useState<TipoInsumo>("materia_prima")
@@ -54,6 +57,18 @@ export default function NuevoIngresoPage() {
 
   const esMateriaPrima = tipoIngreso === "materia_prima"
 
+  // Prefill: si viene ?insumo_id= (p.ej. desde /inventario/explosion), detecta el
+  // tipo del insumo para preseleccionar el tab correcto del formulario.
+  useEffect(() => {
+    if (!prefillInsumoId) return
+    const fetchTipo = async () => {
+      const { data } = await supabase.from("insumos").select("tipo").eq("id", prefillInsumoId).single()
+      if (data?.tipo) setTipoIngreso(data.tipo as TipoInsumo)
+    }
+    fetchTipo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillInsumoId])
+
   useEffect(() => {
     const fetchInsumos = async () => {
       const { data } = await supabase
@@ -63,11 +78,22 @@ export default function NuevoIngresoPage() {
         .eq("is_active", true)
         .order("nombre")
       setInsumos(data ?? [])
+
+      if (prefillInsumoId && data?.some((i: Insumo) => i.id === prefillInsumoId)) {
+        setItems((prev) =>
+          prev.map((it, idx) =>
+            idx === 0
+              ? { ...it, insumo_id: prefillInsumoId, cantidad: prefillCantidad ?? it.cantidad }
+              : it
+          )
+        )
+      } else {
+        // Reset selections that no longer match the filtered type
+        setItems((prev) => prev.map((it) => ({ ...it, insumo_id: "" })))
+      }
     }
     fetchInsumos()
-    // Reset selections that no longer match the filtered type
-    setItems((prev) => prev.map((it) => ({ ...it, insumo_id: "" })))
-  }, [tipoIngreso, supabase])
+  }, [tipoIngreso, supabase, prefillInsumoId, prefillCantidad])
 
   const addItem = () => setItems((p) => [...p, emptyItem()])
   const removeItem = (i: number) => setItems((p) => p.filter((_, idx) => idx !== i))

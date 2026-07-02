@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useDebounce } from "@/hooks/useDebounce"
 import { useAuth } from "@/hooks/useAuth"
@@ -75,6 +76,8 @@ function TableSkeleton() {
 export default function InsumosPage() {
   const supabase = useMemo(() => createClient(), [])
   const { role } = useAuth()
+  const searchParams = useSearchParams()
+  const filtro = searchParams.get("filtro") // "bajo_minimo" | "por_vencer"
   const [insumos, setInsumos] = useState<InsumoRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -96,20 +99,23 @@ export default function InsumosPage() {
 
   const fetchInsumos = useCallback(async () => {
     setIsLoading(true)
-    const from = page * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
 
     let query = supabase
       .from("insumos")
       .select("*", { count: "exact" })
       .order("nombre", { ascending: true })
-      .range(from, to)
 
     if (selectedTipo !== "all") {
       query = query.eq("tipo", selectedTipo)
     }
     if (debouncedSearch.trim()) {
       query = query.ilike("nombre", `%${debouncedSearch}%`)
+    }
+    // Con filtro de alerta (bajo mínimo / por vencer) traemos todo para filtrar en cliente
+    if (!filtro) {
+      const from = page * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+      query = query.range(from, to)
     }
 
     const { data, error, count } = await query
@@ -121,10 +127,14 @@ export default function InsumosPage() {
     const { data: stockData } = await supabase.from("v_stock_insumos").select("*")
     const stockById = new Map((stockData ?? []).map((s: VStockInsumo) => [s.insumo_id, s]))
 
-    setInsumos(data.map((i: Insumo) => ({ ...i, stock: stockById.get(i.id) ?? null })))
-    setTotalCount(count ?? 0)
+    let rows = data.map((i: Insumo) => ({ ...i, stock: stockById.get(i.id) ?? null }))
+    if (filtro === "bajo_minimo") rows = rows.filter((r: InsumoRow) => r.stock?.bajo_minimo)
+    if (filtro === "por_vencer") rows = rows.filter((r: InsumoRow) => (r.stock?.lotes_por_vencer ?? 0) > 0)
+
+    setInsumos(rows)
+    setTotalCount(filtro ? rows.length : count ?? 0)
     setIsLoading(false)
-  }, [supabase, selectedTipo, debouncedSearch, page])
+  }, [supabase, selectedTipo, debouncedSearch, page, filtro])
 
   useEffect(() => { setPage(0) }, [debouncedSearch, selectedTipo])
   useEffect(() => { fetchInsumos() }, [fetchInsumos])
@@ -213,6 +223,12 @@ export default function InsumosPage() {
             Maestro de materia prima, producto seco, aseo y empaque.
           </p>
         </div>
+        {filtro && (
+          <Badge className="gap-1">
+            {filtro === "bajo_minimo" ? "Filtrando: bajo mínimo" : "Filtrando: por vencer (≤30 días)"}
+            <Link href="/inventario/insumos" className="ml-1 underline">Quitar</Link>
+          </Badge>
+        )}
         {canWrite && (
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger render={<Button className="gap-2" onClick={openCreate} />}>

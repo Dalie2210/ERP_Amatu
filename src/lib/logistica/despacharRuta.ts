@@ -75,6 +75,73 @@ export async function buildDespachoPayload(
   }
 }
 
+export interface RemisionWarning {
+  numeroPedido: string
+  productoNombre: string | null
+  mensaje: string
+}
+
+// Despacha PT por FEFO para cada pedido de la ruta vía fn_despachar_remision
+// (INV-06/12): entrega el remanente pendiente de cada ítem. No bloquea el
+// despacho si hay faltantes — solo recolecta advertencias para informar.
+export async function despacharRemisionesRuta(
+  supabase: SupabaseClient,
+  pedidoIds: string[]
+): Promise<RemisionWarning[]> {
+  const warnings: RemisionWarning[] = []
+
+  const { data: pedidosInfo } = await supabase
+    .from("pedidos")
+    .select("id, numero_pedido")
+    .in("id", pedidoIds)
+  const numeroPorPedido = new Map(
+    (pedidosInfo ?? []).map((p: { id: string; numero_pedido: string }) => [p.id, p.numero_pedido])
+  )
+
+  for (const pedidoId of pedidoIds) {
+    const { data: detalles } = await supabase
+      .from("detalle_pedido")
+      .select("id, cantidad, cantidad_entregada")
+      .eq("pedido_id", pedidoId)
+
+    const pendientes = (detalles ?? [])
+      .map((d: { id: string; cantidad: number; cantidad_entregada: number | null }) => ({
+        detalle_id: d.id,
+        cantidad: d.cantidad - (d.cantidad_entregada ?? 0),
+      }))
+      .filter((d) => d.cantidad > 0)
+
+    if (pendientes.length === 0) continue
+
+    const { data: resultado, error } = await supabase.rpc("fn_despachar_remision", {
+      p_pedido_id: pedidoId,
+      p_items: pendientes,
+    })
+
+    if (error) {
+      warnings.push({
+        numeroPedido: numeroPorPedido.get(pedidoId) ?? pedidoId,
+        productoNombre: null,
+        mensaje: `Error al despachar remisión: ${error.message}`,
+      })
+      continue
+    }
+
+    type ResultRow = { advertencia: boolean; mensaje: string | null; producto_nombre: string | null }
+    for (const row of (resultado as ResultRow[]) ?? []) {
+      if (row.advertencia) {
+        warnings.push({
+          numeroPedido: numeroPorPedido.get(pedidoId) ?? pedidoId,
+          productoNombre: row.producto_nombre,
+          mensaje: row.mensaje ?? "Stock insuficiente",
+        })
+      }
+    }
+  }
+
+  return warnings
+}
+
 export async function marcarRutaDespachada(
   supabase: SupabaseClient,
   rutaId: string,

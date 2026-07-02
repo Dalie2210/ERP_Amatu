@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { buildDespachoPayload, marcarRutaDespachada } from "@/lib/logistica/despacharRuta"
+import { buildDespachoPayload, marcarRutaDespachada, despacharRemisionesRuta } from "@/lib/logistica/despacharRuta"
 import { moveLeadToStage } from "@/lib/integrations/kommo"
 
 export async function POST(req: NextRequest) {
@@ -116,8 +116,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Descontar PT por FEFO y generar remisiones (INV-06/12) — no bloquea el
+  // despacho si hay faltantes, solo se informan como advertencias.
+  const remisionWarnings = await despacharRemisionesRuta(supabase, pedidoIds)
+
   // Mark as dispatched in DB
   await marcarRutaDespachada(supabase, rutaId, pedidoIds)
 
-  return NextResponse.json({ success: true, pedidosCount: pedidoIds.length, payload })
+  return NextResponse.json({
+    success: true,
+    pedidosCount: pedidoIds.length,
+    payload,
+    advertenciasStock: remisionWarnings,
+  })
 }

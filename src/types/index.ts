@@ -383,6 +383,11 @@ export interface DashboardStats {
   pagosPendientesCount?: DashboardCardState<number>;
   comisionesPorLiquidar?: DashboardCardState<number>;
   pedidosPagoPendienteList?: PedidoPagoPendienteRow[];
+  // Inventario (admin)
+  valorInventario?: DashboardCardState<number>;
+  insumosBajoMinimo?: DashboardCardState<number>;
+  lotesPorVencer?: DashboardCardState<number>;
+  ptPorEstado?: DashboardCardState<{ producido: number; empacado: number; despachado: number }>;
 }
 
 // ============================================================
@@ -749,20 +754,78 @@ export interface VDemandaComprometida {
 }
 
 export interface VTrazabilidadLote {
-  insumo_lote_id: string;
-  codigo_lote: string;
-  insumo_id: string;
-  insumo_nombre: string;
-  fecha_ingreso: string;
-  fecha_vencimiento: string | null;
-  cantidad_inicial: number;
-  cantidad_disponible: number;
+  insumo_lote_id: string | null;
+  codigo_lote_insumo: string | null;
+  insumo_id: string | null;
+  insumo_nombre: string | null;
+  proveedor: string | null;
+  fecha_ingreso: string | null;
+  insumo_fecha_vencimiento: string | null;
+  insumo_cantidad_inicial: number | null;
+  cantidad_consumida: number | null;
   orden_produccion_id: string | null;
   numero_op: string | null;
+  fecha_produccion: string | null;
+  estado_op: EstadoProduccion | null;
   producto_lote_id: string | null;
   codigo_lote_pt: string | null;
   producto_id: string | null;
+  producto_nombre: string | null;
   variante_id: string | null;
+  variante_presentacion: string | null;
+  estado_pt: EstadoPT | null;
+  pt_cantidad_inicial: number | null;
+  pt_fecha_vencimiento: string | null;
+  remision_item_id: string | null;
+  cantidad_entregada: number | null;
+  remision_id: string | null;
+  numero_remision: string | null;
+  fecha_remision: string | null;
+  pedido_id: string | null;
+  numero_pedido: string | null;
+  cliente_nombre: string | null;
+}
+
+// v_compras_producto_periodo (INV-14) — una fila por compra individual
+export interface VCompraProductoPeriodo {
+  insumo_id: string;
+  insumo_codigo: string;
+  insumo_nombre: string;
+  unidad_medida: UnidadMedida;
+  fecha: string;
+  proveedor: string | null;
+  cantidad: number;
+  precio_compra: number;
+  precio_unitario: number | null;
+  codigo_lote: string;
+  fecha_vencimiento: string | null;
+}
+
+// v_compras_anual_producto (INV-15) — una fila por insumo+mes
+export interface VCompraAnualProducto {
+  insumo_id: string;
+  insumo_codigo: string;
+  insumo_nombre: string;
+  unidad_medida: UnidadMedida;
+  anio: number;
+  mes: number;
+  total_cantidad: number;
+  total_valor: number;
+  precio_promedio: number;
+  precio_minimo: number;
+  precio_maximo: number;
+}
+
+// Result row from fn_explosion_materiales RPC (INV-17)
+export interface ExplosionMaterialesRow {
+  insumo_id: string;
+  insumo_codigo: string;
+  insumo_nombre: string;
+  unidad_medida: UnidadMedida;
+  demanda_total: number;
+  stock_disponible: number;
+  faltante: number;
+  sugerido_comprar: number;
 }
 
 // Extended detalle_pedido with delivery tracking
@@ -785,4 +848,29 @@ export interface OrdenProduccionExpanded extends OrdenProduccion {
       insumo: Pick<Insumo, "nombre" | "unidad_medida">;
     };
   })[];
+}
+
+// Receta with expanded relations (for UI)
+export interface RecetaExpanded extends Receta {
+  producto: { nombre: string } | null;
+  variante: { presentacion: string } | null;
+  receta_items: (RecetaItem & {
+    insumo: Pick<Insumo, "nombre" | "unidad_medida" | "merma_pct">;
+  })[];
+}
+
+// Result row from fn_preview_consumo_produccion RPC
+export interface PreviewConsumoProduccion {
+  insumo_id: string;
+  insumo_nombre: string;
+  unidad_medida: UnidadMedida;
+  cocido_requerido: number;
+  crudo_requerido: number;
+  insumo_lote_id: string | null;
+  codigo_lote: string | null;
+  fecha_vencimiento: string | null;
+  cantidad_a_consumir: number;
+  costo_unitario: number;
+  disponible_total: number;
+  suficiente: boolean;
 }

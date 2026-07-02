@@ -79,17 +79,19 @@ export function ProductSelector({
     <div className="flex gap-2">
       {/* Producto picker */}
       <Popover open={openProducto} onOpenChange={setOpenProducto}>
-        <PopoverTrigger>
-          <Button
-            variant="outline"
-            role="combobox"
-            className="flex-1 justify-between font-normal"
-          >
-            <span className="truncate">
-              {selectedProducto ? selectedProducto.nombre : placeholder}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="outline"
+              role="combobox"
+              className="flex-1 justify-between font-normal"
+            />
+          }
+        >
+          <span className="truncate">
+            {selectedProducto ? selectedProducto.nombre : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </PopoverTrigger>
         <PopoverContent className="w-72 p-0" align="start">
           <Command>
@@ -124,17 +126,19 @@ export function ProductSelector({
       {/* Variante picker (optional) */}
       {showVariante && variantesDisponibles.length > 0 && (
         <Popover open={openVariante} onOpenChange={setOpenVariante}>
-          <PopoverTrigger>
-            <Button
-              variant="outline"
-              role="combobox"
-              className="w-36 justify-between font-normal"
-            >
-              <span className="truncate">
-                {selectedVariante ? selectedVariante.presentacion : "Variante (opc.)"}
-              </span>
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                role="combobox"
+                className="w-36 justify-between font-normal"
+              />
+            }
+          >
+            <span className="truncate">
+              {selectedVariante ? selectedVariante.presentacion : "Variante (opc.)"}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </PopoverTrigger>
           <PopoverContent className="w-48 p-0" align="start">
             <Command>

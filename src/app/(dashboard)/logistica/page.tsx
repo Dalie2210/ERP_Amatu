@@ -36,7 +36,7 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import { ESTADO_LOGISTICA_LABELS } from "@/lib/logistica/estadoLabels"
-import { DND_ALLOWED_DROPS } from "@/lib/logistica/transitions"
+import { DND_ALLOWED_DROPS, confirmarPedido } from "@/lib/logistica/transitions"
 import type { EstadoPedido } from "@/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -498,24 +498,25 @@ export default function LogisticaPage() {
       return
     }
 
-    const updates: Record<string, string> = { estado: targetCol.targetEstado }
-    if (sourceCol.key === "por_confirmar") updates.estado_pago = "confirmado"
-
     const snapshot = pedidos
     setPedidos((prev) =>
       prev.map((p) => (p.id === pedidoId ? { ...p, estado: targetCol.targetEstado } : p))
     )
 
-    supabase
-      .from("pedidos")
-      .update(updates)
-      .eq("id", pedidoId)
-      .then(async (result: { error: { message: string } | null }) => {
-        if (result.error) {
-          toast.error("Error al actualizar el pedido")
-          setPedidos(snapshot)
-          return
-        }
+    const isConfirming = sourceCol.key === "por_confirmar"
+
+    const update = isConfirming
+      ? confirmarPedido(supabase, pedidoId, true)
+      : supabase
+          .from("pedidos")
+          .update({ estado: targetCol.targetEstado })
+          .eq("id", pedidoId)
+          .then((result: { error: { message: string } | null }) => {
+            if (result.error) throw result.error
+          })
+
+    update
+      .then(async () => {
         // Log activity
         if (user?.id) {
           await supabase.from("pedido_actividad").insert({
@@ -527,6 +528,10 @@ export default function LogisticaPage() {
           })
         }
         toast.success(`Pedido movido a "${ESTADO_LOGISTICA_LABELS[targetCol.targetEstado]}"`)
+      })
+      .catch(() => {
+        toast.error("Error al actualizar el pedido")
+        setPedidos(snapshot)
       })
   }
 

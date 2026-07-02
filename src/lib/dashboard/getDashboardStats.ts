@@ -1,7 +1,10 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ActiveRouteRow, DashboardCardState, DashboardStats, PedidoPagoPendienteRow, RecentPedidoRow } from "@/types";
+import type {
+  ActiveRouteRow, DashboardCardState, DashboardStats, PedidoPagoPendienteRow, RecentPedidoRow,
+  VValorInventario, VStockInsumo, VStockProducto,
+} from "@/types";
 
 const ESTADOS_VENTA_HOY = [
   "confirmado",
@@ -27,7 +30,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
-  const [ventasResult, pendientesResult, enRutaResult, clientesResult, recentPedidosResult, activeRoutesResult] =
+  const [
+    ventasResult, pendientesResult, enRutaResult, clientesResult, recentPedidosResult, activeRoutesResult,
+    valorInventarioResult, stockInsumosResult, stockProductosResult,
+  ] =
     await Promise.allSettled([
       supabase
         .from("pedidos")
@@ -58,6 +64,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         .eq("estado", "en_preparacion")
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase.from("v_valor_inventario").select("valor_total"),
+      supabase.from("v_stock_insumos").select("bajo_minimo, lotes_por_vencer"),
+      supabase.from("v_stock_productos").select("estado, stock_disponible"),
     ]);
 
   const recentPedidos: RecentPedidoRow[] =
@@ -79,6 +88,37 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         }))
       : [];
 
+  const valorInventario: DashboardCardState<number> =
+    valorInventarioResult.status === "fulfilled" && !valorInventarioResult.value.error
+      ? { value: ((valorInventarioResult.value.data ?? []) as VValorInventario[]).reduce((s, r) => s + r.valor_total, 0), status: "ok" }
+      : { value: null, status: "error" };
+
+  const insumosBajoMinimo: DashboardCardState<number> =
+    stockInsumosResult.status === "fulfilled" && !stockInsumosResult.value.error
+      ? { value: ((stockInsumosResult.value.data ?? []) as VStockInsumo[]).filter((i) => i.bajo_minimo).length, status: "ok" }
+      : { value: null, status: "error" };
+
+  const lotesPorVencer: DashboardCardState<number> =
+    stockInsumosResult.status === "fulfilled" && !stockInsumosResult.value.error
+      ? { value: ((stockInsumosResult.value.data ?? []) as VStockInsumo[]).reduce((s, i) => s + i.lotes_por_vencer, 0), status: "ok" }
+      : { value: null, status: "error" };
+
+  const ptPorEstado: DashboardCardState<{ producido: number; empacado: number; despachado: number }> =
+    stockProductosResult.status === "fulfilled" && !stockProductosResult.value.error
+      ? {
+          value: ((stockProductosResult.value.data ?? []) as VStockProducto[]).reduce(
+            (acc, p) => {
+              if (p.estado === "producido") acc.producido += p.stock_disponible;
+              else if (p.estado === "empacado") acc.empacado += p.stock_disponible;
+              else if (p.estado === "despachado") acc.despachado += p.stock_disponible;
+              return acc;
+            },
+            { producido: 0, empacado: 0, despachado: 0 }
+          ),
+          status: "ok",
+        }
+      : { value: null, status: "error" };
+
   return {
     ventasHoy: toSumCard(ventasResult, "total"),
     pedidosPendientes: toCountCard(pendientesResult),
@@ -86,6 +126,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     nuevosClientes: toCountCard(clientesResult),
     recentPedidos,
     activeRoutes,
+    valorInventario,
+    insumosBajoMinimo,
+    lotesPorVencer,
+    ptPorEstado,
   };
 }
 

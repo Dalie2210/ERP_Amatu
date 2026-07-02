@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js"
 import type { CartItem, ReglaDescuento } from "@/types"
 import { calcularDescuentos } from "@/lib/calculators/discounts"
+import { confirmarPedido } from "@/lib/logistica/transitions"
 
 export interface CreateOrderInput {
   clienteId: string
@@ -147,6 +148,17 @@ export async function createOrder(
   if (comErr) {
     console.error("Comisión provisional no guardada:", comErr)
     // Don't throw - the order is already created
+  }
+
+  // Contraentrega orders start life already "confirmado" — register the
+  // demand reservation (INV-08). Payment stays pending until delivery.
+  if (estadoInicial === "confirmado") {
+    try {
+      await confirmarPedido(supabase, pedido.id, false)
+    } catch (err) {
+      console.error("Reserva de demanda no registrada:", err)
+      // Don't throw - the order is already created
+    }
   }
 
   return {
