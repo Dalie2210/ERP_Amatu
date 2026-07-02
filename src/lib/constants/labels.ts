@@ -53,3 +53,30 @@ export const TIPO_PRECIO_LABELS: Record<string, string> = {
   por_gramo: "Por Gramo",
   escala: "Por Escala (volumen)",
 }
+
+export const TIPO_INSUMO_LABELS: Record<string, string> = {
+  materia_prima: "Materia Prima",
+  producto_seco: "Producto Seco",
+  aseo: "Aseo",
+  empaque: "Empaque",
+}
+
+export const UNIDAD_MEDIDA_LABELS: Record<string, string> = {
+  g: "Gramos (g)",
+  kg: "Kilogramos (kg)",
+  ml: "Mililitros (ml)",
+  l: "Litros (l)",
+  unidad: "Unidad",
+}
+
+export const TIPO_MOVIMIENTO_LABELS: Record<string, string> = {
+  ingreso_compra: "Ingreso / Compra",
+  consumo_produccion: "Consumo Producción",
+  entrada_produccion: "Entrada Producción",
+  empaque: "Empaque",
+  salida_despacho: "Salida Despacho",
+  ajuste_positivo: "Ajuste Positivo",
+  ajuste_negativo: "Ajuste Negativo",
+  merma: "Merma",
+  devolucion: "Devolución",
+}
