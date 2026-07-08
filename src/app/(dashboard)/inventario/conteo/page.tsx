@@ -17,7 +17,7 @@ import {
 import { ClipboardCheck, Save, History, Sliders } from "lucide-react"
 import type { CategoriaConteo } from "@/types"
 import { CATEGORIA_CONTEO_LABELS } from "@/lib/constants/labels"
-import { AjusteRapidoDialog } from "@/components/inventario/AjusteRapidoDialog"
+import { AjusteRapidoDialog, type AjustePreset } from "@/components/inventario/AjusteRapidoDialog"
 
 interface ConteoItemRow {
   key: string
@@ -193,22 +193,11 @@ export default function ConteoPage() {
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-heading tracking-tight">Conteo y Ajustes de Inventario</h1>
-          <p className="text-muted-foreground mt-1">
-            Registra el conteo por categoría y compáralo contra el sistema, o aplica un ajuste puntual.
-          </p>
-        </div>
-        <AjusteRapidoDialog
-          trigger={
-            <Button variant="outline" className="gap-2">
-              <Sliders className="h-4 w-4" />
-              Ajuste rápido
-            </Button>
-          }
-          onSaved={() => { loadItems(); loadHistorico() }}
-        />
+      <div>
+        <h1 className="text-3xl font-bold font-heading tracking-tight">Conteo</h1>
+        <p className="text-muted-foreground mt-1">
+          Registra el conteo por categoría y compáralo contra el sistema, o ajusta un ítem puntual.
+        </p>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -259,6 +248,7 @@ export default function ConteoPage() {
                   <TableHead className="text-right w-[140px]">Contado</TableHead>
                   <TableHead className="text-right">Diferencia</TableHead>
                   <TableHead></TableHead>
+                  <TableHead className="text-right">Ajustar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -266,6 +256,9 @@ export default function ConteoPage() {
                   const contada = parseFloat(it.cantidadContada) || 0
                   const diferencia = contada - it.cantidadSistema
                   const bajoMinimo = it.stockMinimo !== null && contada < it.stockMinimo
+                  const preset: AjustePreset = it.insumoId
+                    ? { tipo: "insumo", nombre: it.nombre, detalle: it.detalle, insumoId: it.insumoId }
+                    : { tipo: "producto", nombre: it.nombre, detalle: it.detalle, productoId: it.productoId ?? undefined, varianteId: it.varianteId ?? undefined }
                   return (
                     <TableRow key={it.key} className={bajoMinimo ? "bg-destructive/5" : ""}>
                       <TableCell className="font-medium">{it.nombre}</TableCell>
@@ -290,6 +283,18 @@ export default function ConteoPage() {
                       </TableCell>
                       <TableCell>
                         {bajoMinimo && <Badge variant="destructive" className="text-[10px]">Bajo mínimo</Badge>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <AjusteRapidoDialog
+                          preset={preset}
+                          onSaved={() => { loadItems(); loadHistorico() }}
+                          trigger={
+                            <Button variant="ghost" size="sm" className="gap-1">
+                              <Sliders className="h-4 w-4" />
+                              Ajustar
+                            </Button>
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   )

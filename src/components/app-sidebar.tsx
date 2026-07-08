@@ -124,7 +124,7 @@ export function AppSidebar() {
                   { title: "Producción",     url: "/inventario/produccion",         icon: FlaskConical },
                   { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
                   { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
-                  { title: "Conteo y Ajustes", url: "/inventario/conteo",           icon: Settings2 },
+                  { title: "Conteo",         url: "/inventario/conteo",             icon: Settings2 },
                   { title: "Resumen",        url: "/inventario/resumen",            icon: ScanBarcode },
                   { title: "Movimientos",    url: "/inventario/movimientos",        icon: BarChart2 },
                   { title: "Trazabilidad",   url: "/inventario/trazabilidad",       icon: ScanBarcode },

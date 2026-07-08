@@ -29,20 +29,33 @@ interface VarianteOption {
   presentacion: string
 }
 
+/** Cuando se pasa `preset`, el ítem viene fijo desde la fila que originó el ajuste
+ * (ya no hay que buscarlo/seleccionarlo dentro del diálogo). */
+export interface AjustePreset {
+  tipo: "insumo" | "producto"
+  nombre: string
+  detalle?: string
+  insumoId?: string
+  productoId?: string
+  varianteId?: string
+}
+
 interface AjusteRapidoDialogProps {
   trigger: React.ReactElement
   /** Se llama tras un ajuste exitoso para refrescar la vista padre. */
   onSaved?: () => void
+  /** Ítem preseleccionado (y bloqueado) al abrir el diálogo. */
+  preset?: AjustePreset
 }
 
-export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps) {
+export function AjusteRapidoDialog({ trigger, onSaved, preset }: AjusteRapidoDialogProps) {
   const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
-  const [tipoItem, setTipoItem] = useState<"insumo" | "producto">("insumo")
+  const [tipoItem, setTipoItem] = useState<"insumo" | "producto">(preset?.tipo ?? "insumo")
   const [insumos, setInsumos] = useState<InsumoOption[]>([])
   const [variantes, setVariantes] = useState<VarianteOption[]>([])
-  const [selectedInsumoId, setSelectedInsumoId] = useState<string>("")
-  const [selectedVarianteKey, setSelectedVarianteKey] = useState<string>("")
+  const [selectedInsumoId, setSelectedInsumoId] = useState<string>(preset?.insumoId ?? "")
+  const [selectedVarianteKey, setSelectedVarianteKey] = useState<string>(preset?.varianteId ?? "")
   const [signo, setSigno] = useState<"+" | "-">("+")
   const [cantidad, setCantidad] = useState("")
   const [motivo, setMotivo] = useState("")
@@ -50,7 +63,7 @@ export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    if (!open) return
+    if (!open || preset) return
     supabase.from("insumos").select("id, nombre, unidad_medida").eq("is_active", true).order("nombre")
       .then(({ data }: { data: InsumoOption[] | null }) => setInsumos(data ?? []))
 
@@ -68,11 +81,11 @@ export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps
           }))
         )
       })
-  }, [supabase, open])
+  }, [supabase, open, preset])
 
   const selectedVariante = variantes.find((v) => v.variante_id === selectedVarianteKey)
   const isValid =
-    (tipoItem === "insumo" ? !!selectedInsumoId : !!selectedVariante) &&
+    (tipoItem === "insumo" ? !!selectedInsumoId : !!(preset ? preset.varianteId : selectedVariante)) &&
     parseFloat(cantidad) > 0 &&
     motivo.trim().length > 0
 
@@ -81,8 +94,10 @@ export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps
     setMotivo("")
     setEsMerma(false)
     setSigno("+")
-    setSelectedInsumoId("")
-    setSelectedVarianteKey("")
+    if (!preset) {
+      setSelectedInsumoId("")
+      setSelectedVarianteKey("")
+    }
   }
 
   const handleSubmit = async () => {
@@ -91,9 +106,9 @@ export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps
     const cantidadFirmada = (signo === "+" ? 1 : -1) * parseFloat(cantidad)
 
     const { error } = await supabase.rpc("fn_ajuste_inventario", {
-      p_insumo_id: tipoItem === "insumo" ? selectedInsumoId : null,
-      p_producto_id: tipoItem === "producto" ? selectedVariante?.producto_id ?? null : null,
-      p_variante_id: tipoItem === "producto" ? selectedVariante?.variante_id ?? null : null,
+      p_insumo_id: tipoItem === "insumo" ? (preset?.insumoId ?? selectedInsumoId) : null,
+      p_producto_id: tipoItem === "producto" ? (preset?.productoId ?? selectedVariante?.producto_id ?? null) : null,
+      p_variante_id: tipoItem === "producto" ? (preset?.varianteId ?? selectedVariante?.variante_id ?? null) : null,
       p_cantidad: cantidadFirmada,
       p_motivo: motivo.trim(),
       p_es_merma: esMerma,
@@ -124,53 +139,65 @@ export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-          <div className="space-y-2">
-            <Label>Tipo de ítem</Label>
-            <Select value={tipoItem} onValueChange={(v) => v && setTipoItem(v as "insumo" | "producto")}>
-              <SelectTrigger>
-                <SelectValue>{tipoItem === "insumo" ? "Insumo (materia prima / seco / aseo / empaque)" : "Producto Terminado"}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="insumo">Insumo (materia prima / seco / aseo / empaque)</SelectItem>
-                <SelectItem value="producto">Producto Terminado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {tipoItem === "insumo" ? (
+          {preset ? (
             <div className="space-y-2">
-              <Label>Insumo</Label>
-              <Select value={selectedInsumoId} onValueChange={(v) => v && setSelectedInsumoId(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar insumo...">
-                    {insumos.find((i) => i.id === selectedInsumoId)?.nombre}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {insumos.map((i) => (
-                    <SelectItem key={i.id} value={i.id}>{i.nombre} ({i.unidad_medida})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Ítem</Label>
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium">
+                {preset.nombre}
+                {preset.detalle && <span className="text-muted-foreground font-normal"> — {preset.detalle}</span>}
+              </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label>Producto / Presentación</Label>
-              <Select value={selectedVarianteKey} onValueChange={(v) => v && setSelectedVarianteKey(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar producto...">
-                    {selectedVariante && `${selectedVariante.producto_nombre} — ${selectedVariante.presentacion}`}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {variantes.map((v) => (
-                    <SelectItem key={v.variante_id} value={v.variante_id}>
-                      {v.producto_nombre} — {v.presentacion}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Tipo de ítem</Label>
+                <Select value={tipoItem} onValueChange={(v) => v && setTipoItem(v as "insumo" | "producto")}>
+                  <SelectTrigger>
+                    <SelectValue>{tipoItem === "insumo" ? "Insumo (materia prima / seco / aseo / empaque)" : "Producto Terminado"}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="insumo">Insumo (materia prima / seco / aseo / empaque)</SelectItem>
+                    <SelectItem value="producto">Producto Terminado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {tipoItem === "insumo" ? (
+                <div className="space-y-2">
+                  <Label>Insumo</Label>
+                  <Select value={selectedInsumoId} onValueChange={(v) => v && setSelectedInsumoId(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar insumo...">
+                        {insumos.find((i) => i.id === selectedInsumoId)?.nombre}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {insumos.map((i) => (
+                        <SelectItem key={i.id} value={i.id}>{i.nombre} ({i.unidad_medida})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Producto / Presentación</Label>
+                  <Select value={selectedVarianteKey} onValueChange={(v) => v && setSelectedVarianteKey(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar producto...">
+                        {selectedVariante && `${selectedVariante.producto_nombre} — ${selectedVariante.presentacion}`}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variantes.map((v) => (
+                        <SelectItem key={v.variante_id} value={v.variante_id}>
+                          {v.producto_nombre} — {v.presentacion}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
           )}
 
           <div className="grid grid-cols-[auto_1fr] gap-3 items-end">
