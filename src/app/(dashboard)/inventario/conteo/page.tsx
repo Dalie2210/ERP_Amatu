@@ -152,7 +152,7 @@ export default function ConteoPage() {
         .single()
       if (conteoErr) throw conteoErr
 
-      const conteoItemsPayload = items.map((it) => {
+      const conteoItemsCalc = items.map((it) => {
         const contada = parseFloat(it.cantidadContada) || 0
         return {
           conteo_id: conteo.id,
@@ -161,15 +161,18 @@ export default function ConteoPage() {
           variante_id: it.varianteId,
           cantidad_sistema: it.cantidadSistema,
           cantidad_contada: contada,
-          diferencia: contada - it.cantidadSistema,
+          diferencia: contada - it.cantidadSistema, // solo para uso local; es columna generada en BD
         }
       })
+
+      // `diferencia` es GENERATED ALWAYS en la BD: no se puede insertar explícitamente.
+      const conteoItemsPayload = conteoItemsCalc.map(({ diferencia: _diferencia, ...rest }) => rest)
 
       const { error: itemsErr } = await supabase.from("conteo_items").insert(conteoItemsPayload)
       if (itemsErr) throw itemsErr
 
       // Aplica ajustes automáticos por cada diferencia detectada
-      const conDiferencia = conteoItemsPayload.filter((it) => it.diferencia !== 0)
+      const conDiferencia = conteoItemsCalc.filter((it) => it.diferencia !== 0)
       for (const it of conDiferencia) {
         await supabase.rpc("fn_ajuste_inventario", {
           p_insumo_id: it.insumo_id,
@@ -246,7 +249,6 @@ export default function ConteoPage() {
                   <TableHead>Detalle</TableHead>
                   <TableHead className="text-right">Sistema</TableHead>
                   <TableHead className="text-right w-[140px]">Contado</TableHead>
-                  <TableHead className="text-right">Diferencia</TableHead>
                   <TableHead></TableHead>
                   <TableHead className="text-right">Ajustar</TableHead>
                 </TableRow>
@@ -254,7 +256,6 @@ export default function ConteoPage() {
               <TableBody>
                 {items.map((it) => {
                   const contada = parseFloat(it.cantidadContada) || 0
-                  const diferencia = contada - it.cantidadSistema
                   const bajoMinimo = it.stockMinimo !== null && contada < it.stockMinimo
                   const preset: AjustePreset = it.insumoId
                     ? { tipo: "insumo", nombre: it.nombre, detalle: it.detalle, insumoId: it.insumoId }
@@ -277,9 +278,6 @@ export default function ConteoPage() {
                             )
                           }
                         />
-                      </TableCell>
-                      <TableCell className={`text-right font-semibold ${diferencia === 0 ? "text-muted-foreground" : diferencia > 0 ? "text-emerald-600" : "text-destructive"}`}>
-                        {diferencia > 0 ? "+" : ""}{diferencia.toLocaleString("es-CO")}
                       </TableCell>
                       <TableCell>
                         {bajoMinimo && <Badge variant="destructive" className="text-[10px]">Bajo mínimo</Badge>}

@@ -84,6 +84,12 @@ export function AjusteRapidoDialog({ trigger, onSaved, preset }: AjusteRapidoDia
   }, [supabase, open, preset])
 
   const selectedVariante = variantes.find((v) => v.variante_id === selectedVarianteKey)
+  const unidadMedida =
+    tipoItem === "insumo"
+      ? preset?.tipo === "insumo"
+        ? preset.detalle
+        : insumos.find((i) => i.id === selectedInsumoId)?.unidad_medida
+      : undefined
   const isValid =
     (tipoItem === "insumo" ? !!selectedInsumoId : !!(preset ? preset.varianteId : selectedVariante)) &&
     parseFloat(cantidad) > 0 &&
@@ -223,15 +229,23 @@ export function AjusteRapidoDialog({ trigger, onSaved, preset }: AjusteRapidoDia
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cantidad-rapido">Cantidad</Label>
-              <Input
-                id="cantidad-rapido"
-                type="number"
-                min={0}
-                placeholder="0"
-                value={cantidad}
-                onChange={(e) => setCantidad(e.target.value)}
-              />
+              <Label htmlFor="cantidad-rapido">Cantidad{unidadMedida ? ` (${unidadMedida})` : ""}</Label>
+              <div className="relative">
+                <Input
+                  id="cantidad-rapido"
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                  className={unidadMedida ? "pr-12" : undefined}
+                />
+                {unidadMedida && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                    {unidadMedida}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
