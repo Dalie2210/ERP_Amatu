@@ -117,18 +117,21 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu className="px-4 gap-1">
                 {[
+                  // Orden según la cadena de ejecución del inventario:
+                  // planificación → compra → stock de insumos → BOM → producción →
+                  // stock de PT → despacho → control (conteo/movimientos/resumen/trazabilidad) → reportes
                   { title: "Dashboard Inv.", url: "/inventario",                    icon: Boxes },
-                  { title: "Insumos",        url: "/inventario/insumos",            icon: Warehouse },
+                  { title: "Explosión MP",   url: "/inventario/explosion",          icon: Calculator },
                   { title: "Ingresos",       url: "/inventario/ingresos",           icon: ArrowDownToLine },
+                  { title: "Insumos",        url: "/inventario/insumos",            icon: Warehouse },
                   { title: "Recetas (BOM)",  url: "/inventario/recetas",            icon: ClipboardList },
                   { title: "Producción",     url: "/inventario/produccion",         icon: FlaskConical },
                   { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
                   { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
                   { title: "Conteo",         url: "/inventario/conteo",             icon: Settings2 },
-                  { title: "Resumen",        url: "/inventario/resumen",            icon: ScanBarcode },
                   { title: "Movimientos",    url: "/inventario/movimientos",        icon: BarChart2 },
+                  { title: "Resumen",        url: "/inventario/resumen",            icon: ScanBarcode },
                   { title: "Trazabilidad",   url: "/inventario/trazabilidad",       icon: ScanBarcode },
-                  { title: "Explosión MP",   url: "/inventario/explosion",          icon: Calculator },
                   { title: "Rpte. Compras",  url: "/inventario/reportes/compras",   icon: BarChart2 },
                   { title: "Rpte. Anual",    url: "/inventario/reportes/anual",     icon: BarChart2 },
                 ].map((item) => (

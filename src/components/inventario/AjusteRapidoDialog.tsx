@@ -14,7 +14,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, Minus } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Minus, AlertTriangle } from "lucide-react"
 
 interface InsumoOption {
   id: string
@@ -38,6 +39,10 @@ export interface AjustePreset {
   insumoId?: string
   productoId?: string
   varianteId?: string
+  /** Stock actual del sistema, para mostrar alertas de bajo mínimo. */
+  stockActual?: number
+  /** Stock mínimo configurado (solo aplica a insumos). */
+  stockMinimo?: number
 }
 
 interface AjusteRapidoDialogProps {
@@ -95,6 +100,21 @@ export function AjusteRapidoDialog({ trigger, onSaved, preset }: AjusteRapidoDia
     parseFloat(cantidad) > 0 &&
     motivo.trim().length > 0
 
+  const bajoMinimoActual =
+    preset?.stockMinimo !== undefined &&
+    preset?.stockActual !== undefined &&
+    preset.stockActual < preset.stockMinimo
+
+  const cantidadNum = parseFloat(cantidad)
+  const stockResultante =
+    preset?.stockActual !== undefined && !isNaN(cantidadNum)
+      ? preset.stockActual + (signo === "+" ? 1 : -1) * cantidadNum
+      : undefined
+  const bajoMinimoResultante =
+    preset?.stockMinimo !== undefined &&
+    stockResultante !== undefined &&
+    stockResultante < preset.stockMinimo
+
   const resetForm = () => {
     setCantidad("")
     setMotivo("")
@@ -148,10 +168,29 @@ export function AjusteRapidoDialog({ trigger, onSaved, preset }: AjusteRapidoDia
           {preset ? (
             <div className="space-y-2">
               <Label>Ítem</Label>
-              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium">
-                {preset.nombre}
-                {preset.detalle && <span className="text-muted-foreground font-normal"> — {preset.detalle}</span>}
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium flex items-center justify-between gap-2 flex-wrap">
+                <span>
+                  {preset.nombre}
+                  {preset.detalle && <span className="text-muted-foreground font-normal"> — {preset.detalle}</span>}
+                </span>
+                {preset.stockActual !== undefined && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Stock actual: {preset.stockActual.toLocaleString("es-CO")}
+                  </span>
+                )}
               </div>
+              {bajoMinimoActual && (
+                <Badge variant="destructive" className="gap-1 text-[11px]">
+                  <AlertTriangle className="h-3 w-3" />
+                  Bajo mínimo (mín. {preset.stockMinimo?.toLocaleString("es-CO")})
+                </Badge>
+              )}
+              {!bajoMinimoActual && bajoMinimoResultante && (
+                <Badge variant="destructive" className="gap-1 text-[11px]">
+                  <AlertTriangle className="h-3 w-3" />
+                  Este ajuste dejará el stock bajo el mínimo ({preset.stockMinimo?.toLocaleString("es-CO")})
+                </Badge>
+              )}
             </div>
           ) : (
             <>
