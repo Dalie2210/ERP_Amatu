@@ -392,7 +392,7 @@ export default function InsumosPage() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Unidad</TableHead>
                     <TableHead className="text-right">Stock Actual</TableHead>
-                    <TableHead className="text-right">Costo Prom.</TableHead>
+                    <TableHead className="text-right">Costo / Unidad</TableHead>
                     <TableHead className="text-right">Stock Mín.</TableHead>
                     <TableHead className="text-right">Merma %</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
@@ -424,6 +424,7 @@ export default function InsumosPage() {
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           ${insumo.costo_promedio.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
+                          <span className="text-xs"> / {insumo.unidad_medida}</span>
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {insumo.stock_minimo.toLocaleString("es-CO")}

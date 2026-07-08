@@ -3,16 +3,18 @@
 import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog"
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Sliders, Plus, Minus } from "lucide-react"
+import { Plus, Minus } from "lucide-react"
 
 interface InsumoOption {
   id: string
@@ -27,8 +29,15 @@ interface VarianteOption {
   presentacion: string
 }
 
-export default function AjustesPage() {
+interface AjusteRapidoDialogProps {
+  trigger: React.ReactElement
+  /** Se llama tras un ajuste exitoso para refrescar la vista padre. */
+  onSaved?: () => void
+}
+
+export function AjusteRapidoDialog({ trigger, onSaved }: AjusteRapidoDialogProps) {
   const supabase = useMemo(() => createClient(), [])
+  const [open, setOpen] = useState(false)
   const [tipoItem, setTipoItem] = useState<"insumo" | "producto">("insumo")
   const [insumos, setInsumos] = useState<InsumoOption[]>([])
   const [variantes, setVariantes] = useState<VarianteOption[]>([])
@@ -41,6 +50,7 @@ export default function AjustesPage() {
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
+    if (!open) return
     supabase.from("insumos").select("id, nombre, unidad_medida").eq("is_active", true).order("nombre")
       .then(({ data }: { data: InsumoOption[] | null }) => setInsumos(data ?? []))
 
@@ -58,13 +68,22 @@ export default function AjustesPage() {
           }))
         )
       })
-  }, [supabase])
+  }, [supabase, open])
 
   const selectedVariante = variantes.find((v) => v.variante_id === selectedVarianteKey)
   const isValid =
     (tipoItem === "insumo" ? !!selectedInsumoId : !!selectedVariante) &&
     parseFloat(cantidad) > 0 &&
     motivo.trim().length > 0
+
+  const resetForm = () => {
+    setCantidad("")
+    setMotivo("")
+    setEsMerma(false)
+    setSigno("+")
+    setSelectedInsumoId("")
+    setSelectedVarianteKey("")
+  }
 
   const handleSubmit = async () => {
     if (!isValid) return
@@ -87,29 +106,24 @@ export default function AjustesPage() {
     }
 
     toast.success("Ajuste registrado correctamente")
-    setCantidad("")
-    setMotivo("")
-    setEsMerma(false)
+    resetForm()
     setIsSaving(false)
+    setOpen(false)
+    onSaved?.()
   }
 
   return (
-    <div className="space-y-8 max-w-[720px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold font-heading tracking-tight">Ajuste Manual de Inventario</h1>
-        <p className="text-muted-foreground mt-1">
-          Registra ajustes de conteo físico o mermas para insumos o producto terminado.
-        </p>
-      </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={trigger} />
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Ajuste Rápido de Inventario</DialogTitle>
+          <DialogDescription>
+            Registra un ajuste puntual o merma para un insumo o producto terminado.
+          </DialogDescription>
+        </DialogHeader>
 
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sliders className="h-4 w-4 text-primary" />
-            Nuevo Ajuste
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <div className="grid gap-4 py-2">
           <div className="space-y-2">
             <Label>Tipo de ítem</Label>
             <Select value={tipoItem} onValueChange={(v) => v && setTipoItem(v as "insumo" | "producto")}>
@@ -182,9 +196,9 @@ export default function AjustesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cantidad">Cantidad</Label>
+              <Label htmlFor="cantidad-rapido">Cantidad</Label>
               <Input
-                id="cantidad"
+                id="cantidad-rapido"
                 type="number"
                 min={0}
                 placeholder="0"
@@ -195,26 +209,29 @@ export default function AjustesPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Switch id="merma" checked={esMerma} onCheckedChange={setEsMerma} disabled={signo === "+"} />
-            <Label htmlFor="merma" className="text-sm">Registrar como merma (siempre negativo)</Label>
+            <Switch id="merma-rapido" checked={esMerma} onCheckedChange={setEsMerma} disabled={signo === "+"} />
+            <Label htmlFor="merma-rapido" className="text-sm">Registrar como merma (siempre negativo)</Label>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="motivo">Motivo</Label>
+            <Label htmlFor="motivo-rapido">Motivo</Label>
             <Textarea
-              id="motivo"
-              placeholder="Ej: diferencia detectada en conteo físico del 2026-07-02"
+              id="motivo-rapido"
+              placeholder="Ej: diferencia detectada fuera del conteo semanal"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               rows={3}
             />
           </div>
+        </div>
 
-          <Button className="w-full" disabled={!isValid || isSaving} onClick={handleSubmit}>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button disabled={!isValid || isSaving} onClick={handleSubmit}>
             {isSaving ? "Guardando..." : "Registrar Ajuste"}
           </Button>
-        </CardContent>
-      </Card>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

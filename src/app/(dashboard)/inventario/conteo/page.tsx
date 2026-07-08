@@ -14,9 +14,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { ClipboardCheck, Save, History } from "lucide-react"
+import { ClipboardCheck, Save, History, Sliders } from "lucide-react"
 import type { CategoriaConteo } from "@/types"
 import { CATEGORIA_CONTEO_LABELS } from "@/lib/constants/labels"
+import { AjusteRapidoDialog } from "@/components/inventario/AjusteRapidoDialog"
 
 interface ConteoItemRow {
   key: string
@@ -192,11 +193,22 @@ export default function ConteoPage() {
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold font-heading tracking-tight">Conteo Físico Semanal</h1>
-        <p className="text-muted-foreground mt-1">
-          Registra el conteo por categoría y compáralo contra el sistema.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold font-heading tracking-tight">Conteo y Ajustes de Inventario</h1>
+          <p className="text-muted-foreground mt-1">
+            Registra el conteo por categoría y compáralo contra el sistema, o aplica un ajuste puntual.
+          </p>
+        </div>
+        <AjusteRapidoDialog
+          trigger={
+            <Button variant="outline" className="gap-2">
+              <Sliders className="h-4 w-4" />
+              Ajuste rápido
+            </Button>
+          }
+          onSaved={() => { loadItems(); loadHistorico() }}
+        />
       </div>
 
       <Card className="border-none shadow-sm">

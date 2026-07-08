@@ -124,13 +124,13 @@ export function AppSidebar() {
                   { title: "Producción",     url: "/inventario/produccion",         icon: FlaskConical },
                   { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
                   { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
-                  { title: "Conteo",         url: "/inventario/conteo",             icon: ScanBarcode },
+                  { title: "Conteo y Ajustes", url: "/inventario/conteo",           icon: Settings2 },
+                  { title: "Resumen",        url: "/inventario/resumen",            icon: ScanBarcode },
                   { title: "Movimientos",    url: "/inventario/movimientos",        icon: BarChart2 },
-                  { title: "Ajustes",        url: "/inventario/ajustes",            icon: Settings2 },
-                  { title: "Rpte. Compras",  url: "/inventario/reportes/compras",   icon: BarChart2 },
-                  { title: "Rpte. Anual",    url: "/inventario/reportes/anual",     icon: BarChart2 },
                   { title: "Trazabilidad",   url: "/inventario/trazabilidad",       icon: ScanBarcode },
                   { title: "Explosión MP",   url: "/inventario/explosion",          icon: Calculator },
+                  { title: "Rpte. Compras",  url: "/inventario/reportes/compras",   icon: BarChart2 },
+                  { title: "Rpte. Anual",    url: "/inventario/reportes/anual",     icon: BarChart2 },
                 ].map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

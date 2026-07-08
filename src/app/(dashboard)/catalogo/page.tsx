@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useDebounce } from "@/hooks/useDebounce"
 import { useAuth } from "@/hooks/useAuth"
@@ -117,6 +118,7 @@ function TableSkeleton() {
 // ---------- Component ----------
 export default function CatalogoPage() {
   const supabase = useMemo(() => createClient(), [])
+  const router = useRouter()
   const { role } = useAuth()
   const [productos, setProductos] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -224,7 +226,7 @@ export default function CatalogoPage() {
     fetchProductos()
   }, [fetchProductos])
 
-  const handleCreate = async () => {
+  const handleCreate = async (opts?: { irAReceta?: boolean }) => {
     setIsSaving(true)
     setSaveError(null)
 
@@ -294,6 +296,10 @@ export default function CatalogoPage() {
     setNewVariantes([emptyVariante()])
     fetchProductos()
     setIsSaving(false)
+
+    if (opts?.irAReceta) {
+      router.push(`/inventario/recetas?producto=${productoId}`)
+    }
   }
 
   const handleDeleteProducto = async (productoId: string, nombre: string) => {
@@ -593,9 +599,8 @@ export default function CatalogoPage() {
               >
                 Cancelar
               </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={
+              {(() => {
+                const disabled =
                   isSaving ||
                   !newProduct.nombre ||
                   !newProduct.categoria_id ||
@@ -605,10 +610,21 @@ export default function CatalogoPage() {
                       v.presentacion.trim() &&
                       v.precio_publico.trim()
                   )
-                }
-              >
-                {isSaving ? "Guardando..." : "Crear Producto"}
-              </Button>
+                return (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleCreate({ irAReceta: true })}
+                      disabled={disabled}
+                    >
+                      {isSaving ? "Guardando..." : "Crear y añadir receta"}
+                    </Button>
+                    <Button onClick={() => handleCreate()} disabled={disabled}>
+                      {isSaving ? "Guardando..." : "Crear Producto"}
+                    </Button>
+                  </>
+                )
+              })()}
             </DialogFooter>
           </DialogContent>
         </Dialog>
