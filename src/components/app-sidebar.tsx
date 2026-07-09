@@ -3,7 +3,7 @@
 import {
   Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
   Handshake, Shield, Bike, Boxes, ClipboardList, FlaskConical,
-  ArrowDownToLine, BarChart2, Warehouse, ScanBarcode, Settings2, Calculator,
+  ArrowDownToLine, Warehouse, Settings2, Calculator,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -119,7 +119,9 @@ export function AppSidebar() {
                 {[
                   // Orden según la cadena de ejecución del inventario:
                   // planificación → compra → stock de insumos → BOM → producción →
-                  // stock de PT → despacho → control (conteo/movimientos/resumen/trazabilidad) → reportes
+                  // stock de PT → despacho → conteo.
+                  // Reportes, movimientos, balance y trazabilidad viven unificados en
+                  // el Dashboard de Inventario (/inventario) mediante pestañas.
                   { title: "Dashboard Inv.", url: "/inventario",                    icon: Boxes },
                   { title: "Explosión MP",   url: "/inventario/explosion",          icon: Calculator },
                   { title: "Ingresos",       url: "/inventario/ingresos",           icon: ArrowDownToLine },
@@ -129,11 +131,6 @@ export function AppSidebar() {
                   { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
                   { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
                   { title: "Conteo",         url: "/inventario/conteo",             icon: Settings2 },
-                  { title: "Movimientos",    url: "/inventario/movimientos",        icon: BarChart2 },
-                  { title: "Resumen",        url: "/inventario/resumen",            icon: ScanBarcode },
-                  { title: "Trazabilidad",   url: "/inventario/trazabilidad",       icon: ScanBarcode },
-                  { title: "Rpte. Compras",  url: "/inventario/reportes/compras",   icon: BarChart2 },
-                  { title: "Rpte. Anual",    url: "/inventario/reportes/anual",     icon: BarChart2 },
                 ].map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

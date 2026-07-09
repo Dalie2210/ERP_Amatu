@@ -38,7 +38,13 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Search, Warehouse, Edit, ChevronRight, ChevronLeft, Trash2 } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Plus, Search, Warehouse, Edit, Eye, ChevronRight, ChevronLeft, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { Insumo, TipoInsumo, UnidadMedida, VStockInsumo } from "@/types"
 import { TIPO_INSUMO_LABELS, UNIDAD_MEDIDA_LABELS } from "@/lib/constants/labels"
@@ -215,6 +221,7 @@ export default function InsumosPage() {
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-8 max-w-[1440px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -462,11 +469,22 @@ export default function InsumosPage() {
                                 Editar
                               </Button>
                             )}
-                            <Link href={`/inventario/insumos/${insumo.id}`}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </Link>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    render={<Link href={`/inventario/insumos/${insumo.id}`} />}
+                                    nativeButton={false}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                }
+                              />
+                              <TooltipContent>Ver detalle</TooltipContent>
+                            </Tooltip>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -498,5 +516,6 @@ export default function InsumosPage() {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   )
 }

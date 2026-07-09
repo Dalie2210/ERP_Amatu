@@ -57,14 +57,14 @@ BEGIN
     v_crudo_req := v_cocido_total / (1 - (v_item.merma_pct / 100.0));
     v_restante := v_crudo_req;
 
-    SELECT COALESCE(SUM(cantidad_disponible), 0) INTO v_disponible_total
-      FROM insumo_lotes WHERE insumo_id = v_item.insumo_id AND cantidad_disponible > 0;
+    SELECT COALESCE(SUM(il.cantidad_disponible), 0) INTO v_disponible_total
+      FROM insumo_lotes il WHERE il.insumo_id = v_item.insumo_id AND il.cantidad_disponible > 0;
 
     FOR v_lote IN
-      SELECT id, codigo_lote, fecha_vencimiento, cantidad_disponible, costo_unitario
-      FROM insumo_lotes
-      WHERE insumo_id = v_item.insumo_id AND cantidad_disponible > 0
-      ORDER BY fecha_vencimiento ASC NULLS LAST, created_at ASC
+      SELECT il.id, il.codigo_lote, il.fecha_vencimiento, il.cantidad_disponible, il.costo_unitario
+      FROM insumo_lotes il
+      WHERE il.insumo_id = v_item.insumo_id AND il.cantidad_disponible > 0
+      ORDER BY il.fecha_vencimiento ASC NULLS LAST, il.created_at ASC
     LOOP
       EXIT WHEN v_restante <= 0;
       v_a_consumir := LEAST(v_restante, v_lote.cantidad_disponible);
@@ -157,8 +157,8 @@ BEGIN
     v_cocido_total := v_item.cantidad * (p_cantidad_producida / v_receta.rendimiento);
     v_crudo_requerido := v_cocido_total / (1 - (v_item.merma_pct / 100.0));
 
-    SELECT COALESCE(SUM(cantidad_disponible), 0) INTO v_disponible_total
-      FROM insumo_lotes WHERE insumo_id = v_item.insumo_id AND cantidad_disponible > 0;
+    SELECT COALESCE(SUM(il.cantidad_disponible), 0) INTO v_disponible_total
+      FROM insumo_lotes il WHERE il.insumo_id = v_item.insumo_id AND il.cantidad_disponible > 0;
 
     IF v_disponible_total < v_crudo_requerido THEN
       RAISE EXCEPTION 'Stock insuficiente de %: requiere % (crudo) pero hay % disponible',
@@ -177,10 +177,10 @@ BEGIN
     v_restante := v_crudo_requerido;
 
     FOR v_lote IN
-      SELECT id, cantidad_disponible, costo_unitario
-      FROM insumo_lotes
-      WHERE insumo_id = v_item.insumo_id AND cantidad_disponible > 0
-      ORDER BY fecha_vencimiento ASC NULLS LAST, created_at ASC
+      SELECT il.id, il.cantidad_disponible, il.costo_unitario
+      FROM insumo_lotes il
+      WHERE il.insumo_id = v_item.insumo_id AND il.cantidad_disponible > 0
+      ORDER BY il.fecha_vencimiento ASC NULLS LAST, il.created_at ASC
       FOR UPDATE
     LOOP
       EXIT WHEN v_restante <= 0;

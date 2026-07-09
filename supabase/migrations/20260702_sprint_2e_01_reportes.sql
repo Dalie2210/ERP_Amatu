@@ -152,13 +152,13 @@ BEGIN
     GROUP BY ri.insumo_id
   ),
   demanda_total AS (
-    SELECT insumo_id, SUM(cantidad) AS cantidad
+    SELECT u.insumo_id, SUM(u.cantidad) AS cantidad
     FROM (
       SELECT * FROM demanda_produccion
       UNION ALL
       SELECT * FROM demanda_pedidos
     ) u
-    GROUP BY insumo_id
+    GROUP BY u.insumo_id
   )
   SELECT
     dt.insumo_id,
