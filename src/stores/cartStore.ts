@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { CartItem, CartState, FuenteCliente, FranjaHoraria, MetodoPago } from "@/types";
 
 interface CartActions {
@@ -58,7 +59,9 @@ const initialState: CartState = {
   descuentoReferidoVet: 0,
 };
 
-export const useCartStore = create<CartState & CartActions>((set, get) => ({
+export const useCartStore = create<CartState & CartActions>()(
+  persist(
+    (set, get) => ({
   ...initialState,
 
   addItem: (item) =>
@@ -143,4 +146,33 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
 
   getItemCount: () =>
     get().items.reduce((acc, i) => acc + i.cantidad, 0),
-}));
+    }),
+    {
+      name: "amatu-cart",
+      storage: createJSONStorage(() => sessionStorage),
+      // Persistir solo el estado de datos; los getters se recomponen del store.
+      partialize: (state) => ({
+        items: state.items,
+        clienteId: state.clienteId,
+        mascotaId: state.mascotaId,
+        zonaId: state.zonaId,
+        fuente: state.fuente,
+        fuenteSubtipo: state.fuenteSubtipo,
+        notasVentas: state.notasVentas,
+        franjaHoraria: state.franjaHoraria,
+        metodoPago: state.metodoPago,
+        fechaTentativaEntrega: state.fechaTentativaEntrega,
+        esDistribuidor: state.esDistribuidor,
+        pctDescuentoDistribuidor: state.pctDescuentoDistribuidor,
+        tarifaEnvioBase: state.tarifaEnvioBase,
+        usaDireccionAlterna: state.usaDireccionAlterna,
+        direccionAlterna: state.direccionAlterna,
+        complementoAlterna: state.complementoAlterna,
+        barrioAlterna: state.barrioAlterna,
+        zonaAlternaId: state.zonaAlternaId,
+        aliadoId: state.aliadoId,
+        descuentoReferidoVet: state.descuentoReferidoVet,
+      }),
+    }
+  )
+);

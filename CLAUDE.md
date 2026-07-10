@@ -1,6 +1,17 @@
 # Amatu ERP — AI Development Guidance
 
-> **Last Updated:** 2026-05-12 | **Status:** Phase 1, Sprint 7 (90% complete)
+> **Last Updated:** 2026-07-10 | **Status:** Phase 1 — auditoría de dirección aplicada (P0 seguridad + correcciones P1)
+
+> **Alcance actual:** Ventas, Pedidos, Comisiones (+ Aliados), Logística (Kanban, Rutas,
+> Mensajeros, Liquidación), Inventario (dashboard con pestañas, ingresos, insumos, recetas/BOM,
+> producción, PT/stock, remisiones, conteo, explosión MP) y Admin (usuarios, config).
+> **Fuera de alcance (retirado):** integraciones n8n y Kommo — eliminadas del código y del esquema.
+
+> **Cambios recientes (2026-07-10):** RLS ahora aísla pedidos/clientes por vendedor (`clientes.creado_por`);
+> registro público eliminado (solo admin crea usuarios); comisión provisional vía trigger DB;
+> despacho atómico vía `fn_despachar_ruta`; motor de comisiones unificado en SQL
+> (`fn_estimar_comisiones_periodo` / `fn_recalcular_comisiones_periodo`); cabeceras de seguridad en
+> `next.config.ts`; sidebar reagrupado; Vitest para los calculadores.
 
 ---
 
@@ -52,15 +63,18 @@ const { data: { user } } = await supabase.auth.getUser()
 - **Toast notifications:** Import from `sonner` and use globally (Toaster mounted in root layout)
 
 ### 3.4 Commission Calculations
-- **Entry point:** `src/lib/calculators/commissions.ts::calcularComision()`
+- **Fuente única (SQL):** la lógica vive en la base de datos, NO en TS.
+  - `fn_estimar_comisiones_periodo(vendedor, periodo)` — estimación de solo lectura (dashboard + `/api/comisiones/preview`).
+  - `fn_recalcular_comisiones_periodo(...)` — persiste al liquidar.
+  - `src/lib/calculators/commissions.ts` solo expone `getPeriodoMes()` (regla 25-a-25).
 - **Rules:** Distributor=0%, venta#7+=0%, referido sources = venta#2+ tier, venta#1 non-referido=0%
-- **Meta Ads close rate:** Query `leads_meta_ads` (leads) vs `pedidos` filtered by fuente + venta#1 (closures)
-- **Always populate `comisiones_detalle`** on order creation (happens in `OrderSummaryCard` after pedido insert)
+- **Meta Ads close rate:** `fn_get_cierre_meta_actual` (leads vs cierres del período)
+- **Comisión provisional:** la crea el trigger `trg_crear_comision_provisional` (AFTER INSERT ON pedidos), NO el cliente.
 
 ### 3.5 Order Creation Flow
-- **Location:** `src/components/ventas/OrderSummaryCard.tsx::handleSave()`
-- **Process:** Insert `pedidos` → Insert `detalle_pedido` → Calculate commission → Insert `comisiones_detalle`
-- **Triggers:** DB triggers auto-calculate `numero_pedido` (year+seq) and `numero_venta_cliente` (count of prior confirmed orders for client)
+- **Location:** `src/lib/pedidos/createOrder.ts` (llamado desde `OrderSummaryCard.tsx::handleSave()`)
+- **Process:** Insert `pedidos` → Insert `detalle_pedido`; la comisión provisional y (contraentrega) la reserva de demanda se disparan por triggers/RPC.
+- **Triggers:** DB triggers auto-calculate `numero_pedido` (year+seq) y `numero_venta_cliente` (SECURITY DEFINER, cuenta pedidos confirmados del cliente en todos los vendedores)
 
 ---
 
@@ -72,9 +86,14 @@ const { data: { user } } = await supabase.auth.getUser()
 - App Router layout.tsx is mandatory; no page.tsx in root (all routes under src/app/)
 
 ### 4.2 Database & RLS
-- **`fn_get_user_role(user_id)`** is `SECURITY INVOKER` (not DEFINER) — safe for authenticated calls
-- **RLS policies enforce vendor isolation:** Vendors see only their own orders, clients, commissions
-- **Admin access:** Role='admin' in `users.role` — no RLS row-level filtering for admins (trusted system)
+- **`fn_get_user_role()`** resuelve el rol del usuario autenticado; usado en todas las políticas.
+- **Aislamiento por vendedor (aplicado):** vendedor ve solo SUS pedidos (`vendedor_id = auth.uid()`) y
+  SUS clientes (`clientes.creado_por = auth.uid()` o con pedido suyo); admin/contable ven todo;
+  logística ve lo confirmado. INSERT de pedidos fija `vendedor_id = auth.uid()` (anti-fraude).
+- **Admin access:** Role='admin' en `users.role` — sin filtrado por fila para admin.
+- **APIs `/api/*`:** el middleware NO cubre `/api`; cada route se autoriza sola (patrón `requireAdmin` /
+  chequeo de rol). Layouts de `admin` e `inventario` validan rol server-side (`src/lib/auth/requireRole.ts`).
+- **Sin registro público:** los usuarios los crea el admin (`POST /api/admin/usuarios`).
 
 ### 4.3 Active Bugs (Fixed in Session 1)
 - ✅ `numero_pedido` now auto-generated via trigger (was client-side Math.random())

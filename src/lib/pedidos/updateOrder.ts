@@ -8,6 +8,7 @@ export interface UpdateOrderInput {
   estadoPago?: string
   metodoPago?: string
   editorId: string
+  editorNombre?: string | null
 }
 
 export async function updateOrder(
@@ -16,7 +17,7 @@ export async function updateOrder(
 ): Promise<{ success: boolean; updatedAt: string }> {
   const now = new Date().toISOString()
 
-  const updateData: Record<string, any> = {
+  const updateData: Record<string, unknown> = {
     fue_editado: true,
     editado_por_id: input.editorId,
     editado_en: now,
@@ -44,6 +45,24 @@ export async function updateOrder(
     .eq("id", input.pedidoId)
 
   if (error) throw error
+
+  // Bitácora unificada en pedido_actividad (misma que usa logística). No es
+  // fatal si falla, pero se registra el error para no perderlo en silencio.
+  const cambios: Record<string, unknown> = {}
+  if (input.franjaHoraria !== undefined) cambios.franja_horaria = input.franjaHoraria
+  if (input.fechaTentativaEntrega !== undefined) cambios.fecha_tentativa_entrega = input.fechaTentativaEntrega
+  if (input.notasVentas !== undefined) cambios.notas_ventas = input.notasVentas
+  if (input.estadoPago !== undefined) cambios.estado_pago = input.estadoPago
+  if (input.metodoPago !== undefined) cambios.metodo_pago = input.metodoPago
+
+  const { error: actErr } = await supabase.from("pedido_actividad").insert({
+    pedido_id: input.pedidoId,
+    tipo: "pedido_editado",
+    usuario_id: input.editorId,
+    usuario_nombre: input.editorNombre ?? null,
+    payload: { cambios },
+  })
+  if (actErr) console.error("No se registró la actividad de edición:", actErr.message)
 
   return { success: true, updatedAt: now }
 }

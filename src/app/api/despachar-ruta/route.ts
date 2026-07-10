@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { buildDespachoPayload, marcarRutaDespachada, despacharRemisionesRuta } from "@/lib/logistica/despacharRuta"
-import { moveLeadToStage } from "@/lib/integrations/kommo"
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -9,6 +7,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  // Solo admin/logística pueden despachar rutas (descuenta stock por FEFO).
+  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
+  if (!profile || !["admin", "logistica"].includes(profile.role)) {
+    return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
   }
 
   const body = await req.json()
@@ -72,61 +76,25 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Build payload
-  const payload = await buildDespachoPayload(supabase, rutaId)
-  if (!payload) {
-    return NextResponse.json({ error: "Error al construir el payload" }, { status: 500 })
+  // Despacho atómico: remisiones (FEFO) + marcar ruta/pedidos en una sola
+  // transacción (fn_despachar_ruta). No bloquea por faltantes; los informa.
+  const { data: warnings, error: despErr } = await supabase.rpc("fn_despachar_ruta", {
+    p_ruta_id: rutaId,
+  })
+  if (despErr) {
+    return NextResponse.json({ error: `Error al despachar: ${despErr.message}` }, { status: 500 })
   }
 
-  // Call n8n webhook if configured
-  const webhookUrl = process.env.N8N_WEBHOOK_URL
-  if (webhookUrl) {
-    try {
-      const webhookRes = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      if (!webhookRes.ok) {
-        console.error("n8n webhook error:", webhookRes.status, await webhookRes.text())
-      }
-    } catch (err) {
-      console.error("Failed to reach n8n webhook:", err)
-      // Not fatal — mark as dispatched even if webhook fails; ops can retry
-    }
-  }
-
-  // Move Kommo leads to "En Camino" stage (non-fatal)
-  const kommoStageId = process.env.KOMMO_STAGE_EN_CAMINO_ID
-  if (kommoStageId) {
-    const { data: kommoRows } = await supabase
-      .from("pedidos")
-      .select("kommo_lead_id")
-      .in("id", pedidoIds)
-      .not("kommo_lead_id", "is", null)
-
-    for (const row of kommoRows ?? []) {
-      if (row.kommo_lead_id) {
-        try {
-          await moveLeadToStage(String(row.kommo_lead_id), kommoStageId)
-        } catch (err) {
-          console.error("[Kommo] Failed to move lead:", err)
-        }
-      }
-    }
-  }
-
-  // Descontar PT por FEFO y generar remisiones (INV-06/12) — no bloquea el
-  // despacho si hay faltantes, solo se informan como advertencias.
-  const remisionWarnings = await despacharRemisionesRuta(supabase, pedidoIds)
-
-  // Mark as dispatched in DB
-  await marcarRutaDespachada(supabase, rutaId, pedidoIds)
+  type WarnRow = { numero_pedido: string; producto_nombre: string | null; mensaje: string | null }
+  const advertenciasStock = ((warnings ?? []) as WarnRow[]).map((w) => ({
+    numeroPedido: w.numero_pedido,
+    productoNombre: w.producto_nombre,
+    mensaje: w.mensaje ?? "Advertencia de stock",
+  }))
 
   return NextResponse.json({
     success: true,
     pedidosCount: pedidoIds.length,
-    payload,
-    advertenciasStock: remisionWarnings,
+    advertenciasStock,
   })
 }

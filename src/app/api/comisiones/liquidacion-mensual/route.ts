@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getPeriodoMes } from "@/lib/calculators/commissions"
 
-// Protected by a shared secret so only n8n (or manual trigger) can call this.
-// Set N8N_WEBHOOK_SECRET in .env.local.
+// Protected by a shared secret so only a scheduled job (or manual trigger) can
+// call this. Set CRON_SECRET in the environment.
 export async function POST(req: NextRequest) {
-  const secret = process.env.N8N_WEBHOOK_SECRET
+  const secret = process.env.CRON_SECRET
   if (secret) {
-    const authHeader = req.headers.get("x-webhook-secret")
+    const authHeader = req.headers.get("x-cron-secret")
     if (authHeader !== secret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }

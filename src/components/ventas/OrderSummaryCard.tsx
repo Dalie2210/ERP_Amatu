@@ -49,23 +49,34 @@ export function OrderSummaryCard() {
   const zonaAlternaId = useCartStore((s) => s.zonaAlternaId)
 
   const [reglas, setReglas] = useState<ReglaDescuento[]>([])
+  const [reglasError, setReglasError] = useState(false)
 
   useEffect(() => {
+    type ReglaRow = {
+      id: string
+      monto_minimo: number
+      pct_descuento_compra: number
+      descuento_envio_fijo: number
+    }
     supabase
       .from("reglas_descuento")
-      .select("*")
+      .select("id, monto_minimo, pct_descuento_compra, descuento_envio_fijo")
       .eq("is_active", true)
-      .then(({ data }: { data: any[] | null }) => {
-        if (data) {
-          setReglas(
-            data.map((r: any) => ({
-              id: r.id,
-              montoMinimo: r.monto_minimo,
-              pctDescuentoCompra: r.pct_descuento_compra,
-              descuentoEnvioFijo: r.descuento_envio_fijo,
-            }))
-          )
+      .then(({ data, error }: { data: ReglaRow[] | null; error: unknown }) => {
+        if (error || !data) {
+          setReglasError(true)
+          toast.error("No se pudieron cargar las reglas de descuento. Recarga la página.")
+          return
         }
+        setReglasError(false)
+        setReglas(
+          data.map((r) => ({
+            id: r.id,
+            montoMinimo: r.monto_minimo,
+            pctDescuentoCompra: r.pct_descuento_compra,
+            descuentoEnvioFijo: r.descuento_envio_fijo,
+          }))
+        )
       })
   }, [supabase])
 
@@ -87,7 +98,7 @@ export function OrderSummaryCard() {
     )
   }, [subAlim, subSnk, subOtr, tarifaEnvioBase, reglas, esDistribuidor, pctDescuentoDistribuidor, descuentoReferidoVet])
 
-  const isValid = items.length > 0 && clienteId && mascotaId && metodoPago
+  const isValid = items.length > 0 && clienteId && mascotaId && metodoPago && !reglasError
 
   const handleSave = async () => {
     if (!isValid) return
@@ -126,7 +137,8 @@ export function OrderSummaryCard() {
       router.push(`/ventas/${result.pedidoId}`)
     } catch (err) {
       console.error(err)
-      toast.error("Error al guardar el pedido")
+      const msg = err instanceof Error ? err.message : "Error desconocido"
+      toast.error(`Error al guardar el pedido: ${msg}`)
       setIsSaving(false)
     }
   }

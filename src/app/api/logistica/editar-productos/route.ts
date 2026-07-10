@@ -95,21 +95,39 @@ export async function POST(req: NextRequest) {
     descuentoEnvioFijo: r.descuento_envio_fijo,
   }));
 
-  // Compute new subtotals
+  // Resolver la categoría real de cada producto para clasificar igual que
+  // createOrder (evita el bug de meter todo lo no-magistral en "snacks").
+  const productoIds = [...new Set(lineas.map((l) => l.producto_id).filter(Boolean))] as string[];
+  const categoriaPorProducto = new Map<string, string>();
+  if (productoIds.length > 0) {
+    const { data: prods } = await supabase
+      .from("productos")
+      .select("id, categorias_producto(slug)")
+      .in("id", productoIds);
+    type ProdRow = { id: string; categorias_producto: { slug: string } | { slug: string }[] | null };
+    for (const p of (prods ?? []) as unknown as ProdRow[]) {
+      const cat = Array.isArray(p.categorias_producto) ? p.categorias_producto[0] : p.categorias_producto;
+      if (cat?.slug) categoriaPorProducto.set(p.id, cat.slug);
+    }
+  }
+
+  // Compute new subtotals (mismo criterio que createOrder.ts:45-55):
+  //  - alimento = líneas con aplica_descuento
+  //  - snacks   = líneas de categoría 'snacks'
+  //  - otros    = el resto (incluye magistrales)
   let subtotalAlimento = 0;
   let subtotalSnacks = 0;
   let subtotalOtros = 0;
 
   for (const linea of lineas) {
     const sub = linea.cantidad * linea.precio_unitario_snapshot;
+    const categoria = linea.producto_id ? categoriaPorProducto.get(linea.producto_id) : undefined;
     if (linea.aplica_descuento) {
       subtotalAlimento += sub;
-    } else if (linea.es_magistral) {
-      subtotalOtros += sub;
-    } else {
-      // Distinguish snacks vs otros by presence of producto_id with snack category
-      // For simplicity: magistral → otros, aplica_descuento → alimento, else → snacks
+    } else if (categoria === "snacks") {
       subtotalSnacks += sub;
+    } else {
+      subtotalOtros += sub;
     }
   }
 

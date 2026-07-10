@@ -1,21 +1,6 @@
-"use client"
+import { requireRole } from "@/lib/auth/requireRole"
 
-import { useAuth } from "@/hooks/useAuth"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { role, isLoading } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (!isLoading && role !== "admin") {
-      router.replace("/dashboard")
-    }
-  }, [role, isLoading, router])
-
-  if (isLoading) return null
-  if (role !== "admin") return null
-
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requireRole(["admin"])
   return <>{children}</>
 }

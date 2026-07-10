@@ -47,7 +47,7 @@ import type {
   UserRole,
 } from "@/types";
 import { ESTADO_LOGISTICA_LABELS, ESTADO_LOGISTICA_STYLES } from "@/lib/logistica/estadoLabels";
-import { getTransitions } from "@/lib/logistica/transitions";
+import { getTransitions, confirmarPedido } from "@/lib/logistica/transitions";
 import { BolsasPopup } from "./BolsasPopup";
 import { EditProductosDialog } from "./EditProductosDialog";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -204,27 +204,38 @@ export function TaskCardDialog({
   }, [open, pedidoId, fetchData]);
 
   async function logActividad(tipo: PedidoActividad["tipo"], payload?: Record<string, unknown>) {
-    await supabase.from("pedido_actividad").insert({
+    const { error } = await supabase.from("pedido_actividad").insert({
       pedido_id: pedidoId,
       tipo,
       usuario_id: userId,
       usuario_nombre: userName,
       payload: payload ?? null,
     });
+    if (error) console.error("No se registró la actividad:", error.message);
   }
 
   async function handleCambiarEstado(nuevoEstado: EstadoPedido, bolsas?: number) {
     if (!pedido) return;
     setSavingEstado(true);
     try {
-      const updates: Record<string, unknown> = { estado: nuevoEstado };
+      // fecha_tentativa → confirmado debe pasar por fn_confirmar_venta (registra
+      // la reserva de demanda y el pago), no por un UPDATE plano.
       if (nuevoEstado === "confirmado" && pedido.estado === "fecha_tentativa") {
-        updates.estado_pago = "confirmado";
+        try {
+          await confirmarPedido(supabase, pedidoId, true);
+        } catch {
+          toast.error("Error al confirmar el pedido");
+          return;
+        }
+        if (bolsas !== undefined) {
+          await supabase.from("pedidos").update({ numero_bolsas: bolsas }).eq("id", pedidoId);
+        }
+      } else {
+        const updates: Record<string, unknown> = { estado: nuevoEstado };
+        if (bolsas !== undefined) updates.numero_bolsas = bolsas;
+        const { error } = await supabase.from("pedidos").update(updates).eq("id", pedidoId);
+        if (error) { toast.error("Error al cambiar estado"); return; }
       }
-      if (bolsas !== undefined) updates.numero_bolsas = bolsas;
-
-      const { error } = await supabase.from("pedidos").update(updates).eq("id", pedidoId);
-      if (error) { toast.error("Error al cambiar estado"); return; }
 
       await logActividad("estado_cambiado", { de: pedido.estado, a: nuevoEstado });
       if (bolsas !== undefined) {

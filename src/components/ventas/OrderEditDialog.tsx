@@ -64,6 +64,9 @@ export function OrderEditDialog({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No hay sesión activa")
 
+      const { data: perfil } = await supabase
+        .from("users").select("full_name").eq("id", user.id).single()
+
       await updateOrder(supabase, {
         pedidoId,
         franjaHoraria: franja,
@@ -72,6 +75,7 @@ export function OrderEditDialog({
         estadoPago,
         metodoPago,
         editorId: user.id,
+        editorNombre: perfil?.full_name ?? user.email ?? null,
       })
 
       toast.success("Pedido actualizado exitosamente")
@@ -79,7 +83,8 @@ export function OrderEditDialog({
       onEditSuccess()
     } catch (err) {
       console.error(err)
-      toast.error("Error al actualizar el pedido")
+      const msg = err instanceof Error ? err.message : "Error desconocido"
+      toast.error(`Error al actualizar el pedido: ${msg}`)
     } finally {
       setIsLoading(false)
     }

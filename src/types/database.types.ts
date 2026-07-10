@@ -133,7 +133,6 @@ export type Database = {
           fuente_subtipo: string | null
           id: string
           is_active: boolean
-          kommo_contact_id: string | null
           nombre_completo: string
           notas_defecto: string | null
           numero_documento: string
@@ -155,7 +154,6 @@ export type Database = {
           fuente_subtipo?: string | null
           id?: string
           is_active?: boolean
-          kommo_contact_id?: string | null
           nombre_completo: string
           notas_defecto?: string | null
           numero_documento: string
@@ -177,7 +175,6 @@ export type Database = {
           fuente_subtipo?: string | null
           id?: string
           is_active?: boolean
-          kommo_contact_id?: string | null
           nombre_completo?: string
           notas_defecto?: string | null
           numero_documento?: string
@@ -1454,7 +1451,6 @@ export type Database = {
           fuente: Database["public"]["Enums"]["fuente_cliente"]
           fuente_subtipo: string | null
           id: string
-          kommo_lead_id: string | null
           mascota_id: string | null
           metodo_pago: Database["public"]["Enums"]["metodo_pago"] | null
           monto_descuento_compra: number
@@ -1496,7 +1492,6 @@ export type Database = {
           fuente?: Database["public"]["Enums"]["fuente_cliente"]
           fuente_subtipo?: string | null
           id?: string
-          kommo_lead_id?: string | null
           mascota_id?: string | null
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_descuento_compra?: number
@@ -1538,7 +1533,6 @@ export type Database = {
           fuente?: Database["public"]["Enums"]["fuente_cliente"]
           fuente_subtipo?: string | null
           id?: string
-          kommo_lead_id?: string | null
           mascota_id?: string | null
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_descuento_compra?: number

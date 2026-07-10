@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createClient } from "@/lib/supabase/client"
 import { Leaf, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
-import Link from "next/link"
 
 // ---------- Friendly error mapping ----------
 const ERROR_MESSAGES: Record<string, string> = {
@@ -163,14 +162,6 @@ export default function LoginPage() {
               </Button>
             </form>
           </CardContent>
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              ¿No tienes cuenta?{" "}
-              <Link href="/register" className="text-primary font-semibold hover:underline">
-                Regístrate aquí
-              </Link>
-            </p>
-          </div>
         </Card>
         
         <p className="text-center text-xs text-muted-foreground mt-8">

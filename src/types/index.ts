@@ -238,34 +238,6 @@ export interface AliadorReferido {
 }
 
 // ============================================================
-// Route/dispatch payload (for n8n webhook)
-// ============================================================
-
-export interface PedidoDespachoPayload {
-  nombreMascota: string;
-  nombreCliente: string;
-  franjaHoraria: string;
-  notasVentas: string;
-  direccion: string;
-  complementoDireccion: string;
-  notasDespacho: string;
-  celular: string;
-  numeroBolsas: number;
-  esContraentrega: boolean;
-  total: number;
-}
-
-export interface RutaDespachoPayload {
-  rutaId: string;
-  nombreRuta: string;
-  fecha: string;
-  franja: string;
-  mensajeroNombre: string;
-  mensajeroCelular: string;
-  pedidos: PedidoDespachoPayload[];
-}
-
-// ============================================================
 // Dashboard KPIs
 // ============================================================
 
@@ -400,6 +372,7 @@ export type TipoActividadLogistica =
   | "nota_agregada"
   | "nota_completada"
   | "productos_editados"
+  | "pedido_editado"
   | "bolsas_asignadas";
 
 export interface NotaLogistica {

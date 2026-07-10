@@ -51,46 +51,44 @@ export async function GET(req: NextRequest) {
 
   if (comErr) return NextResponse.json({ error: comErr.message }, { status: 500 })
 
-  const REFERIDO_SOURCES = ["referido_veterinario", "referido_entrenador", "referido_cliente"]
+  // Fuente única de estimación (misma lógica que fn_recalcular_comisiones_periodo).
+  const { data: estimaciones, error: estErr } = await supabase.rpc("fn_estimar_comisiones_periodo", {
+    p_vendedor_id: targetVendedorId,
+    p_periodo_mes: periodoMes,
+  })
+  if (estErr) return NextResponse.json({ error: estErr.message }, { status: 500 })
 
-  function estimateCommission(
-    numeroVenta: number,
-    fuente: string,
-    esDistribuidor: boolean,
-    base: number,
-    c: { venta_2_pct: number; venta_3_pct: number; venta_4_pct: number; venta_5_pct: number; venta_6_pct: number }
-  ) {
-    if (esDistribuidor) return { aplica: false, pct: 0, monto: 0, razon: "Cliente distribuidor" }
-    const effectiveVenta = REFERIDO_SOURCES.includes(fuente) ? Math.max(numeroVenta, 2) : numeroVenta
-    if (effectiveVenta === 1) return { aplica: false, pct: 0, monto: 0, razon: "Primera venta del cliente" }
-    if (effectiveVenta >= 7) return { aplica: false, pct: 0, monto: 0, razon: "Venta 7 o más" }
-    const pctMap: Record<number, number> = { 2: c.venta_2_pct, 3: c.venta_3_pct, 4: c.venta_4_pct, 5: c.venta_5_pct, 6: c.venta_6_pct }
-    const pct = pctMap[effectiveVenta] ?? 0
-    if (pct === 0) return { aplica: false, pct: 0, monto: 0, razon: "Sin comisión en rango actual" }
-    return { aplica: true, pct, monto: Math.round(base * pct / 100), razon: null }
+  type EstRow = {
+    comision_id: string
+    pct_comision: number
+    monto_comision: number
+    aplica_comision: boolean
+    razon_no_comision: string | null
   }
+  const estPorComision = new Map<string, EstRow>(
+    ((estimaciones ?? []) as EstRow[]).map((e) => [e.comision_id, e])
+  )
 
-  // For provisional rows, overlay estimated commission using current close rate
+  // Overlay estimated commission (provisional) or stored value (liquidated) por id.
   const comisiones = (rawComisiones ?? []).map((c) => {
-    if (!c.is_provisional) return c
-    const pedido = c.pedidos as any
-    const est = estimateCommission(
-      c.numero_venta_cliente,
-      pedido?.fuente ?? "",
-      pedido?.clientes?.tipo_cliente === "distribuidor",
-      Number(c.base_calculo),
-      cierre
-    )
-    return { ...c, aplica_comision: est.aplica, pct_comision: est.pct, monto_comision: est.monto, razon_no_comision: est.razon }
+    const est = estPorComision.get(c.id)
+    if (!est) return c
+    return {
+      ...c,
+      aplica_comision: est.aplica_comision,
+      pct_comision: est.pct_comision,
+      monto_comision: est.monto_comision,
+      razon_no_comision: est.razon_no_comision,
+    }
   })
 
-  // 3. Calculate live provisional totals using current close rate
+  // 3. Totales provisionales con la tasa de cierre vigente
   let montoGanado = 0
   let montoBloqueado = 0
 
   for (const c of comisiones) {
     if (!c.aplica_comision) continue
-    const pedido = c.pedidos as any
+    const pedido = c.pedidos as { estado_pago?: string } | null
     if (pedido?.estado_pago === "confirmado") montoGanado += Number(c.monto_comision)
     else montoBloqueado += Number(c.monto_comision)
   }

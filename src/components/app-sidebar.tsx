@@ -4,6 +4,7 @@ import {
   Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
   Handshake, Shield, Bike, Boxes, ClipboardList, FlaskConical,
   ArrowDownToLine, Warehouse, Settings2, Calculator,
+  PlusCircle, ListOrdered, Route, Wallet,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -29,19 +30,44 @@ interface NavItem {
   url: string
   icon: React.ElementType
   roles: UserRole[]
+  exact?: boolean
 }
 
-const mainItems: NavItem[] = [
-  { title: "Inicio",     url: "/dashboard",        icon: Home,       roles: ["admin", "vendedor", "logistica", "contable"] },
-  { title: "Ventas",     url: "/ventas",            icon: ShoppingBag, roles: ["admin", "vendedor"] },
-  { title: "Pedidos",    url: "/pedidos",           icon: Package,    roles: ["admin", "vendedor", "logistica"] },
-  { title: "Catálogo",   url: "/catalogo",          icon: Leaf,       roles: ["admin", "vendedor"] },
-  { title: "Logística",  url: "/logistica",         icon: Truck,      roles: ["admin", "logistica"] },
-  { title: "Mensajeros", url: "/logistica/mensajeros", icon: Bike,    roles: ["admin", "logistica"] },
-  { title: "Liq. Mensajero", url: "/logistica/liquidacion-mensajero", icon: DollarSign, roles: ["admin", "logistica"] },
-  { title: "Comisiones", url: "/comisiones",        icon: DollarSign, roles: ["admin", "contable", "vendedor"] },
-  { title: "Aliados",    url: "/comisiones/aliados", icon: Handshake, roles: ["admin", "contable"] },
-  { title: "Clientes",   url: "/clientes",          icon: Users,      roles: ["admin", "vendedor"] },
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+// Menú agrupado por dominio (antes era una lista plana de 10 ítems que mezclaba
+// módulos con sub-features). Cada grupo se oculta si el rol no ve ningún ítem.
+const navGroups: NavGroup[] = [
+  {
+    label: "General",
+    items: [
+      { title: "Inicio", url: "/dashboard", icon: Home, roles: ["admin", "vendedor", "logistica", "contable"], exact: true },
+    ],
+  },
+  {
+    label: "Comercial",
+    items: [
+      { title: "Nueva Venta", url: "/ventas/nueva",     icon: PlusCircle,  roles: ["admin", "vendedor"] },
+      { title: "Ventas",      url: "/ventas",           icon: ShoppingBag, roles: ["admin", "vendedor"], exact: true },
+      { title: "Pedidos",     url: "/pedidos",          icon: ListOrdered, roles: ["admin", "vendedor", "logistica"] },
+      { title: "Catálogo",    url: "/catalogo",         icon: Leaf,        roles: ["admin", "vendedor"] },
+      { title: "Clientes",    url: "/clientes",         icon: Users,       roles: ["admin", "vendedor"] },
+      { title: "Comisiones",  url: "/comisiones",       icon: DollarSign,  roles: ["admin", "contable", "vendedor"], exact: true },
+      { title: "Aliados",     url: "/comisiones/aliados", icon: Handshake, roles: ["admin", "contable"] },
+    ],
+  },
+  {
+    label: "Logística",
+    items: [
+      { title: "Tablero",        url: "/logistica",                       icon: Truck,  roles: ["admin", "logistica"], exact: true },
+      { title: "Rutas",          url: "/logistica/rutas",                 icon: Route,  roles: ["admin", "logistica"] },
+      { title: "Mensajeros",     url: "/logistica/mensajeros",            icon: Bike,   roles: ["admin", "logistica"] },
+      { title: "Liq. Mensajero", url: "/logistica/liquidacion-mensajero", icon: Wallet, roles: ["admin", "logistica"] },
+    ],
+  },
 ]
 
 
@@ -57,15 +83,23 @@ export function AppSidebar() {
     router.refresh()
   }
 
-  const visibleMain = isLoading
-    ? mainItems
-    : mainItems.filter((item) => role && item.roles.includes(role))
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: isLoading
+        ? group.items
+        : group.items.filter((item) => role && item.roles.includes(role)),
+    }))
+    .filter((group) => group.items.length > 0)
+
+  const isItemActive = (item: NavItem) =>
+    item.exact ? pathname === item.url : pathname.startsWith(item.url)
 
   const showAdmin = !isLoading && role === "admin"
   const showInventario = !isLoading && (role === "admin" || role === "logistica")
 
   return (
-    <Sidebar className="border-r-0 bg-white">
+    <Sidebar className="border-r-0 bg-sidebar">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3 text-primary">
           <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -83,31 +117,29 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-6 py-4">
-            Menu Principal
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="px-4 gap-1">
-              {visibleMain.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    render={<Link href={item.url} />}
-                    isActive={
-                      item.url === "/dashboard"
-                        ? pathname === "/dashboard"
-                        : pathname.startsWith(item.url)
-                    }
-                    className="rounded-md px-4 py-3"
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {visibleGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-6 py-4">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="px-4 gap-1">
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      render={<Link href={item.url} />}
+                      isActive={isItemActive(item)}
+                      className="rounded-md px-4 py-3"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium">{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
 
         {showInventario && (
           <SidebarGroup>
@@ -182,7 +214,7 @@ export function AppSidebar() {
               onClick={handleLogout}
               className="px-4 py-3 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              <LogOut className="w-5 h-5 mr-3" />
+              <LogOut className="w-5 h-5" />
               <span>Cerrar Sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

@@ -130,25 +130,9 @@ export async function createOrder(
   const { error: detErr } = await supabase.from("detalle_pedido").insert(detalles)
   if (detErr) throw detErr
 
-  // Record provisional commission stub — pct/monto will be set at liquidation time
-  // by fn_recalcular_comisiones_periodo using the month-end close rate.
-  // vendedor_id and periodo_mes are auto-filled by the DB trigger.
-  const baseCalculo = Math.round((calculo.total - calculo.totalEnvioCobrado) * 0.95)
-  const { error: comErr } = await supabase.from("comisiones_detalle").insert({
-    pedido_id: pedido.id,
-    numero_venta_cliente: pedido.numero_venta_cliente,
-    base_calculo: baseCalculo,
-    pct_comision: 0,
-    monto_comision: 0,
-    aplica_comision: false,
-    razon_no_comision: null,
-    is_provisional: true,
-  })
-
-  if (comErr) {
-    console.error("Comisión provisional no guardada:", comErr)
-    // Don't throw - the order is already created
-  }
+  // The provisional commission stub is created automatically by the DB trigger
+  // trg_crear_comision_provisional (AFTER INSERT ON pedidos, SECURITY DEFINER).
+  // pct/monto stay 0 until liquidation runs fn_recalcular_comisiones_periodo.
 
   // Contraentrega orders start life already "confirmado" — register the
   // demand reservation (INV-08). Payment stays pending until delivery.

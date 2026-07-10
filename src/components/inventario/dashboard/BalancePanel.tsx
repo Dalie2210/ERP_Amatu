@@ -86,7 +86,7 @@ export function BalancePanel() {
           <div className="flex flex-col sm:flex-row gap-4 flex-wrap items-end">
             <div className="space-y-2">
               <Label>Desde</Label>
-              <Input type="date" className="w-[170px]" value={desde} onChange={(e) => setDesde(e.target.value)} />
+              <Input type="date" className="w-full sm:w-[170px]" value={desde} onChange={(e) => setDesde(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Hasta</Label>
@@ -95,7 +95,7 @@ export function BalancePanel() {
             <div className="space-y-2">
               <Label>Categoría</Label>
               <Select value={categoria} onValueChange={(v) => setCategoria(v ?? "all")}>
-                <SelectTrigger className="w-[240px]">
+                <SelectTrigger className="w-full sm:w-[240px]">
                   <SelectValue>{categoria === "all" ? "Todas las categorías" : CATEGORIA_CONTEO_LABELS[categoria]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>

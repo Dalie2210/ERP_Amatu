@@ -4,6 +4,18 @@ import { createClient } from "@/lib/supabase/server"
 // GET /api/logistica/liquidacion-mensajero?fecha=YYYY-MM-DD
 // Returns per-courier daily settlement for the given date.
 export async function GET(req: NextRequest) {
+  const supabase = await createClient()
+
+  // Autorización: solo admin/logística (expone datos de contacto de clientes).
+  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  if (authErr || !user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
+  if (!profile || !["admin", "logistica"].includes(profile.role)) {
+    return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
+  }
+
   const { searchParams } = new URL(req.url)
   const fecha = searchParams.get("fecha")
 
@@ -13,8 +25,6 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     )
   }
-
-  const supabase = await createClient()
 
   const { data: rutas, error } = await supabase
     .from("rutas")

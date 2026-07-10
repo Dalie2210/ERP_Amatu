@@ -17,30 +17,13 @@ import {
   RotateCcw, ArrowLeftRight,
 } from "lucide-react"
 import Link from "next/link"
+import {
+  ESTADO_LOGISTICA_LABELS,
+  ESTADO_LOGISTICA_STYLES,
+} from "@/lib/logistica/estadoLabels"
 
-const estadoLabels: Record<string, string> = {
-  fecha_tentativa: "Por Confirmar",
-  confirmado: "Confirmado",
-  en_preparacion: "Preparación",
-  espera_produccion: "Esp. Producción",
-  listo_despacho: "Listo",
-  despachado: "Despachado",
-  devolucion: "Devolución",
-  parcial: "Parcial",
-  cambio: "Cambio",
-}
-
-const estadoColors: Record<string, string> = {
-  fecha_tentativa: "bg-yellow-100 text-yellow-800",
-  confirmado: "bg-green-100 text-green-800",
-  en_preparacion: "bg-blue-100 text-blue-800",
-  espera_produccion: "bg-orange-100 text-orange-800",
-  listo_despacho: "bg-indigo-100 text-indigo-800",
-  despachado: "bg-emerald-100 text-emerald-800",
-  devolucion: "bg-red-100 text-red-800",
-  parcial: "bg-amber-100 text-amber-800",
-  cambio: "bg-pink-100 text-pink-800",
-}
+const estadoLabels: Record<string, string> = ESTADO_LOGISTICA_LABELS
+const estadoColors: Record<string, string> = ESTADO_LOGISTICA_STYLES
 
 const estadoFunnelOrder = [
   "fecha_tentativa", "confirmado", "en_preparacion",

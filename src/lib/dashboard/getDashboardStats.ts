@@ -188,6 +188,8 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
   const now = new Date();
   const periodoMes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const [ventasResult, pendientesResult, comisionResult, clientesResult, pedidosResult] =
     await Promise.allSettled([
       supabase
@@ -199,12 +201,13 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
         .from("pedidos")
         .select("id", { count: "exact", head: true })
         .in("estado", ESTADOS_PENDIENTE as unknown as string[]),
-      supabase
-        .from("comisiones_detalle")
-        .select("monto_comision")
-        .eq("periodo_mes", periodoMes)
-        .is("liquidacion_id", null)
-        .eq("aplica_comision", true),
+      // Comisión estimada del período con la MISMA fuente única que /comisiones.
+      user
+        ? supabase.rpc("fn_estimar_comisiones_periodo", {
+            p_vendedor_id: user.id,
+            p_periodo_mes: periodoMes,
+          })
+        : Promise.resolve({ data: [], error: null }),
       supabase
         .from("clientes")
         .select("id", { count: "exact", head: true }),
