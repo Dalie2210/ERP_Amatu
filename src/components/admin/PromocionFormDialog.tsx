@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { Database } from "@/types/database.types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -106,7 +107,7 @@ export function PromocionFormDialog({ open, onOpenChange, promo, onSaved }: Prop
     }
 
     setSaving(true)
-    const payload = {
+    const payload: Database["public"]["Tables"]["promociones"]["Insert"] = {
       nombre: nombre.trim(),
       tipo,
       is_active: isActive,

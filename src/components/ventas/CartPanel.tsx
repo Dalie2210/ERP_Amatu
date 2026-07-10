@@ -56,9 +56,10 @@ export function CartPanel() {
       .from("v_stock_productos")
       .select("variante_id, estado, stock_disponible")
       .in("variante_id", varianteIds)
-      .then(({ data }: { data: Pick<VStockProducto, "variante_id" | "estado" | "stock_disponible">[] | null }) => {
+      .then(({ data }) => {
+        const rows = (data ?? []) as unknown as Pick<VStockProducto, "variante_id" | "estado" | "stock_disponible">[]
         const map = new Map<string, number>()
-        for (const r of data ?? []) {
+        for (const r of rows) {
           if (r.estado === "despachado") continue
           map.set(r.variante_id, (map.get(r.variante_id) ?? 0) + Number(r.stock_disponible))
         }

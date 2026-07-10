@@ -2,13 +2,13 @@
 
 import { useState, type ReactNode, type ReactElement } from "react"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { ClienteForm, type ClienteFormResult } from "./ClienteForm"
 
 export interface CreateClienteDialogProps {
@@ -41,17 +41,17 @@ export function CreateClienteDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      {trigger ? <DialogTrigger render={trigger as ReactElement} /> : null}
-      <DialogContent className="sm:max-w-[640px]">
-        <DialogHeader>
-          <DialogTitle>Registrar Cliente</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={setOpen}>
+      {trigger ? <SheetTrigger render={trigger as ReactElement} /> : null}
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Registrar Cliente</SheetTitle>
+          <SheetDescription>
             Ingresa los datos del cliente y al menos una mascota. Todo se guarda
             en una sola operación.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto pr-2 -mr-2">
+          </SheetDescription>
+        </SheetHeader>
+        <div className="px-4 pb-4">
           <ClienteForm
             defaultNombre={defaultNombre}
             defaultZonaId={defaultZonaId}
@@ -59,7 +59,7 @@ export function CreateClienteDialog({
             onCancel={() => setOpen(false)}
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

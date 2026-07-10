@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { TaskCardDialog } from "@/components/logistica/TaskCardDialog"
 import { BolsasPopup } from "@/components/logistica/BolsasPopup"
 import { useAuth } from "@/hooks/useAuth"
 import {
@@ -37,6 +37,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { ESTADO_LOGISTICA_LABELS } from "@/lib/logistica/estadoLabels"
 import { DND_ALLOWED_DROPS, confirmarPedido } from "@/lib/logistica/transitions"
+import { FRANJA_STYLES } from "@/lib/constants/labels"
 import type { EstadoPedido } from "@/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -66,12 +67,6 @@ const FRANJA_LABELS: Record<string, string> = {
   AM: "AM", PM: "PM", intermedia: "Interm.", sin_franja: "—",
 }
 
-const FRANJA_COLORS: Record<string, string> = {
-  AM: "bg-sky-100 text-sky-800",
-  PM: "bg-orange-100 text-orange-800",
-  intermedia: "bg-purple-100 text-purple-800",
-  sin_franja: "bg-gray-100 text-gray-600",
-}
 
 const KANBAN_COLUMNS = [
   {
@@ -196,9 +191,9 @@ function PedidoCard({
             </Badge>
           )}
           {pedido.es_contraentrega && (
-            <Badge className="bg-red-100 text-red-800 text-[10px] h-4 px-1.5">C/E</Badge>
+            <Badge className="bg-destructive/10 text-destructive text-[10px] h-4 px-1.5">C/E</Badge>
           )}
-          <Badge className={`text-[10px] h-4 px-1.5 ${FRANJA_COLORS[pedido.franja_horaria] ?? FRANJA_COLORS.sin_franja}`}>
+          <Badge className={`text-[10px] h-4 px-1.5 ${FRANJA_STYLES[pedido.franja_horaria] ?? FRANJA_STYLES.sin_franja}`}>
             {FRANJA_LABELS[pedido.franja_horaria] ?? "—"}
           </Badge>
         </div>
@@ -297,7 +292,7 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       className={`rounded-xl border-2 ${col.borderClass} ${col.bgClass} p-3 transition-all duration-150
-        ${isOver ? "ring-2 ring-offset-1 ring-blue-400 scale-[1.01]" : ""}`}
+        ${isOver ? "ring-2 ring-offset-1 ring-primary/50 scale-[1.01]" : ""}`}
     >
       <div className={`flex items-center justify-between mb-3 ${col.headerClass}`}>
         <div className="flex items-center gap-2">
@@ -338,15 +333,12 @@ function ColumnSkeleton() {
 
 export default function LogisticaPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { user, role: userRole } = useAuth()
+  const router = useRouter()
+  const { user } = useAuth()
   const [userName, setUserName] = useState("")
   const [pedidos, setPedidos] = useState<PedidoKanban[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
-
-  // TaskCardDialog state
-  const [openCardId, setOpenCardId] = useState<string | null>(null)
-  const [cardDialogOpen, setCardDialogOpen] = useState(false)
 
   // BolsasPopup state (for drag-to-listo)
   const [bolsasPending, setBolsasPending] = useState<{
@@ -456,8 +448,7 @@ export default function LogisticaPage() {
   }, [fetchPedidos, supabase])
 
   function openCard(pedidoId: string) {
-    setOpenCardId(pedidoId)
-    setCardDialogOpen(true)
+    router.push(`/logistica/pedido/${pedidoId}`)
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -505,15 +496,17 @@ export default function LogisticaPage() {
 
     const isConfirming = sourceCol.key === "por_confirmar"
 
-    const update = isConfirming
-      ? confirmarPedido(supabase, pedidoId, true)
-      : supabase
-          .from("pedidos")
-          .update({ estado: targetCol.targetEstado })
-          .eq("id", pedidoId)
-          .then((result: { error: { message: string } | null }) => {
-            if (result.error) throw result.error
-          })
+    const update = Promise.resolve(
+      isConfirming
+        ? confirmarPedido(supabase, pedidoId, true)
+        : supabase
+            .from("pedidos")
+            .update({ estado: targetCol.targetEstado })
+            .eq("id", pedidoId)
+            .then((result: { error: { message: string } | null }) => {
+              if (result.error) throw result.error
+            })
+    )
 
     update
       .then(async () => {
@@ -670,23 +663,6 @@ export default function LogisticaPage() {
           ) : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Task Card Dialog */}
-      {openCardId && user?.id && (
-        <TaskCardDialog
-          pedidoId={openCardId}
-          open={cardDialogOpen}
-          onOpenChange={(v) => {
-            setCardDialogOpen(v)
-            if (!v) setOpenCardId(null)
-          }}
-          onStateChange={fetchPedidos}
-          userRole={userRole}
-          userId={user.id}
-          userName={userName}
-          supabase={supabase}
-        />
-      )}
 
       {/* Bolsas popup (for drag-to-listo) */}
       {bolsasPending && (

@@ -2705,11 +2705,79 @@ export type Database = {
         Args: { p_cliente: Json; p_mascotas?: Json }
         Returns: Json
       }
+      fn_ajuste_inventario: {
+        Args: {
+          p_cantidad: number
+          p_es_merma?: boolean
+          p_insumo_id: string | null
+          p_motivo: string
+          p_producto_id: string | null
+          p_variante_id: string | null
+        }
+        Returns: undefined
+      }
       fn_calcular_pct_cierre_meta: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: number
       }
+      fn_completar_produccion: {
+        Args: { p_cantidad_producida: number; p_orden_id: string }
+        Returns: {
+          costo_total: number
+          costo_unitario: number
+          producto_lote_id: string
+        }[]
+      }
+      fn_confirmar_venta: {
+        Args: { p_confirmar_pago?: boolean; p_pedido_id: string }
+        Returns: {
+          cantidad_comprometida: number
+          producto_id: string
+          variante_id: string
+        }[]
+      }
+      fn_despachar_ruta: {
+        Args: { p_ruta_id: string }
+        Returns: {
+          advertencia: boolean
+          mensaje: string
+          numero_pedido: string
+          producto_nombre: string
+        }[]
+      }
+      fn_empacar_lote: {
+        Args: { p_cantidad: number; p_lote_id: string }
+        Returns: { nuevo_lote_id: string }[]
+      }
+      fn_estimar_comisiones_periodo: {
+        Args: { p_periodo_mes: string; p_vendedor_id: string }
+        Returns: {
+          aplica_comision: boolean
+          base_calculo: number
+          comision_id: string
+          estado_pago: string
+          is_provisional: boolean
+          monto_comision: number
+          numero_venta_cliente: number
+          pct_comision: number
+          pedido_id: string
+          razon_no_comision: string | null
+        }[]
+      }
       fn_expirar_periodos_aliado: { Args: never; Returns: number }
+      fn_explosion_materiales: {
+        Args: { p_ordenes_ids?: string[] | null; p_pedidos_ids?: string[] | null }
+        Returns: {
+          demanda_total: number
+          faltante: number
+          insumo_codigo: string
+          insumo_id: string
+          insumo_nombre: string
+          stock_disponible: number
+          sugerido_comprar: number
+          unidad_medida: Database["public"]["Enums"]["unidad_medida"]
+        }[]
+      }
       fn_get_cierre_meta_actual: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: {
@@ -2728,12 +2796,43 @@ export type Database = {
       fn_get_user_role:
         | { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
         | { Args: { user_id: string }; Returns: string }
+      fn_pedidos_estado_counts: {
+        Args: never
+        Returns: {
+          estado: Database["public"]["Enums"]["estado_pedido"]
+          total: number
+        }[]
+      }
+      fn_pedidos_fuente_counts: {
+        Args: never
+        Returns: {
+          fuente: Database["public"]["Enums"]["fuente_cliente"]
+          total: number
+        }[]
+      }
       fn_liquidar_periodo_mensual: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: {
           comisiones_trasladadas: number
           liquidacion_id: string
           monto_confirmado: number
+        }[]
+      }
+      fn_preview_consumo_produccion: {
+        Args: { p_cantidad_producida: number; p_orden_id: string }
+        Returns: {
+          cantidad_a_consumir: number
+          cocido_requerido: number
+          codigo_lote: string | null
+          costo_unitario: number
+          crudo_requerido: number
+          disponible_total: number
+          fecha_vencimiento: string | null
+          insumo_id: string
+          insumo_lote_id: string | null
+          insumo_nombre: string
+          suficiente: boolean
+          unidad_medida: Database["public"]["Enums"]["unidad_medida"]
         }[]
       }
       fn_recalcular_comisiones_periodo: {
@@ -2747,6 +2846,33 @@ export type Database = {
           rango_label: string
           total_cierres: number
           total_leads: number
+        }[]
+      }
+      fn_registrar_ingreso: {
+        Args: { p_cabecera: Json; p_items: Json }
+        Returns: { ingreso_id: string; numero: string }[]
+      }
+      fn_resumen_inventario: {
+        Args: { p_categoria?: string | null; p_desde: string; p_hasta: string }
+        Returns: {
+          ajustes: number
+          entradas: number
+          inventario_inicial: number
+          item_id: string
+          nombre: string
+          num_ajustes: number
+          presentacion: string
+          salidas: number
+          tipo_item: string
+          total_teorico: number
+        }[]
+      }
+      fn_top_productos_vendidos: {
+        Args: { p_limit?: number }
+        Returns: {
+          nombre: string
+          revenue: number
+          unidades: number
         }[]
       }
       fn_top_selling_productos: {

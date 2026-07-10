@@ -13,7 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { Calculator, ArrowDownToLine, AlertTriangle } from "lucide-react"
-import type { ExplosionMaterialesRow } from "@/types"
+import type { ExplosionMaterialesRow, EstadoPedido } from "@/types"
 
 interface OrdenOption {
   id: string
@@ -31,7 +31,7 @@ interface PedidoOption {
   clientes: { nombre_completo: string } | null
 }
 
-const ESTADOS_PEDIDO_PENDIENTE = [
+const ESTADOS_PEDIDO_PENDIENTE: EstadoPedido[] = [
   "confirmado",
   "en_preparacion",
   "espera_produccion",

@@ -29,7 +29,7 @@ export function TrazabilidadPanel() {
       .from("v_trazabilidad_lote")
       .select("*")
       .or(`codigo_lote_insumo.ilike.%${q}%,codigo_lote_pt.ilike.%${q}%`)
-    if (!error) setRows((data ?? []) as VTrazabilidadLote[])
+    if (!error) setRows((data ?? []) as unknown as VTrazabilidadLote[])
     setIsLoading(false)
   }
 

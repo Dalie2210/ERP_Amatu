@@ -159,7 +159,7 @@ export const STAGE_TRANSITIONS: Record<EstadoPedido, TransicionEstado[]> = {
 };
 
 // Para drag-and-drop: solo transiciones primarias hacia adelante
-// Las transiciones hacia atrás solo se hacen desde TaskCardDialog
+// Las transiciones hacia atrás solo se hacen desde el cockpit de pedido (logistica/pedido/[id])
 export const DND_ALLOWED_DROPS: Record<string, string[]> = {
   por_confirmar: ["confirmado"],
   confirmado: ["preparacion"],

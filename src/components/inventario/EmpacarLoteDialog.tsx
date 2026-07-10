@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -73,15 +73,16 @@ export function EmpacarLoteDialog({ open, onOpenChange, productoId, varianteId, 
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Empacar — {productoNombre}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Empacar — {productoNombre}</SheetTitle>
+          <SheetDescription>
             Mueve cantidad de lotes en estado &quot;producido&quot; a &quot;empacado&quot;. Se puede empacar parcialmente.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
+        <div className="px-4 pb-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground py-6 text-center">Cargando lotes...</p>
         ) : lotes.length === 0 ? (
@@ -127,7 +128,8 @@ export function EmpacarLoteDialog({ open, onOpenChange, productoId, varianteId, 
             </TableBody>
           </Table>
         )}
-      </DialogContent>
-    </Dialog>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }

@@ -149,7 +149,8 @@ export default function NuevoIngresoPage() {
       return
     }
 
-    const numero = Array.isArray(data) ? data[0]?.numero : data?.numero
+    const rows = (Array.isArray(data) ? data : data ? [data] : []) as { numero: string }[]
+    const numero = rows[0]?.numero
     toast.success(`Ingreso ${numero ?? ""} registrado correctamente.`)
     router.push("/inventario/ingresos")
   }

@@ -4,30 +4,22 @@ import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { OrderEditDialog } from "@/components/ventas/OrderEditDialog"
+import { EditProductosDialog } from "@/components/logistica/EditProductosDialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Receipt, User, MapPin, PawPrint, Truck, CheckCircle, Trash2 } from "lucide-react"
+import { ArrowLeft, Receipt, User, MapPin, PawPrint, Truck, CheckCircle, Trash2, Pencil } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { ESTADO_LOGISTICA_LABELS, ESTADO_LOGISTICA_STYLES } from "@/lib/logistica/estadoLabels"
-import type { EstadoPedido } from "@/types"
+import type { EstadoPedido, DetalleItemExpanded } from "@/types"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { toast } from "sonner"
 
 const formatCOP = (n: number) => `$${n.toLocaleString("es-CO")}`
 
-interface DetalleItem {
-  id: string
-  nombre_snapshot: string
-  cantidad: number
-  cantidad_entregada: number | null
-  precio_unitario_snapshot: number
-  subtotal: number
-  es_magistral: boolean
-  aplica_descuento: boolean
-}
+type DetalleItem = DetalleItemExpanded
 
 interface Pedido {
   id: string
@@ -61,7 +53,8 @@ interface Pedido {
 }
 
 export default function PedidoDetallePage() {
-  const { id } = useParams()
+  const params = useParams()
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
@@ -70,9 +63,22 @@ export default function PedidoDetallePage() {
   const [detalles, setDetalles] = useState<DetalleItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [showEditProductos, setShowEditProductos] = useState(false)
+
+  const fetchDetalles = async () => {
+    if (!id) return
+    const { data: dData } = await supabase
+      .from("detalle_pedido")
+      .select("id, pedido_id, producto_id, variante_id, nombre_snapshot, cantidad, cantidad_entregada, precio_unitario_snapshot, subtotal, es_magistral, gramaje_magistral, notas_magistral, aplica_descuento, justificacion_precio, es_promo, promo_id")
+      .eq("pedido_id", id)
+      .order("created_at")
+
+    setDetalles((dData ?? []).map((d) => ({ ...d, cantidad_entregada: d.cantidad_entregada ?? 0 })))
+  }
 
   useEffect(() => {
     const fetchPedido = async () => {
+      if (!id) return
       setIsLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUser(user)
@@ -92,13 +98,7 @@ export default function PedidoDetallePage() {
 
       if (pData) {
         setPedido(pData as Pedido)
-        const { data: dData } = await supabase
-          .from("detalle_pedido")
-          .select("id, nombre_snapshot, cantidad, cantidad_entregada, precio_unitario_snapshot, subtotal, es_magistral, aplica_descuento")
-          .eq("pedido_id", id)
-          .order("created_at")
-
-        setDetalles(dData || [])
+        await fetchDetalles()
       }
       setIsLoading(false)
     }
@@ -140,6 +140,7 @@ export default function PedidoDetallePage() {
         .single()
 
       if (pData) setPedido(pData as Pedido)
+      await fetchDetalles()
     }
   }
 
@@ -200,8 +201,14 @@ export default function PedidoDetallePage() {
               onConfirm={handleDeletePedido}
             />
           )}
+          {canEditOrder && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowEditProductos(true)}>
+              <Pencil className="h-4 w-4" /> Editar productos
+            </Button>
+          )}
           <OrderEditDialog
             pedidoId={pedido.id}
+            currentEstado={pedido.estado}
             currentFranja={pedido.franja_horaria}
             currentFechaTentativa={pedido.fecha_tentativa_entrega}
             currentNotas={pedido.notas_ventas}
@@ -212,6 +219,18 @@ export default function PedidoDetallePage() {
           />
         </div>
       </div>
+
+      {canEditOrder && (
+        <EditProductosDialog
+          open={showEditProductos}
+          onOpenChange={setShowEditProductos}
+          pedidoId={pedido.id}
+          pedidoNumero={pedido.numero_pedido}
+          detallesActuales={detalles}
+          supabase={supabase}
+          onSuccess={handleEditSuccess}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column - Details */}

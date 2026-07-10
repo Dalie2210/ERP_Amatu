@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Select,
   SelectContent,
@@ -346,9 +346,7 @@ export default function ClienteDetailPage() {
             {cliente.codigo_cliente}
           </p>
         </div>
-        <Badge variant={cliente.is_active ? "default" : "secondary"}>
-          {cliente.is_active ? "Activo" : "Inactivo"}
-        </Badge>
+        <StatusBadge active={cliente.is_active} />
         {role === "admin" && (
           <DeleteConfirmDialog
             trigger={

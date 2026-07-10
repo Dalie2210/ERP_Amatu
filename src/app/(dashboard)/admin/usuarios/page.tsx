@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, UserCheck, UserX, KeyRound, Trash2 } from "lucide-reac
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -296,14 +297,7 @@ export default function AdminUsuariosPage() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={u.is_active
-                          ? "border-emerald-200 text-emerald-700"
-                          : "border-slate-200 text-slate-500"}
-                      >
-                        {u.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
+                      <StatusBadge active={u.is_active} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

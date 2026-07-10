@@ -15,6 +15,7 @@ import {
 import Link from "next/link"
 import { MensajeroSelect, type MensajeroOption } from "@/components/logistica/MensajeroSelect"
 import { buildMensajeMensajero } from "@/lib/logistica/mensajeMensajero"
+import { FRANJA_STYLES } from "@/lib/constants/labels"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,13 +81,6 @@ interface PedidoDisponible {
 
 const FRANJA_LABELS: Record<string, string> = {
   AM: "AM", PM: "PM", intermedia: "Interm.", sin_franja: "—",
-}
-
-const FRANJA_COLORS: Record<string, string> = {
-  AM: "bg-sky-100 text-sky-800",
-  PM: "bg-orange-100 text-orange-800",
-  intermedia: "bg-purple-100 text-purple-800",
-  sin_franja: "bg-gray-100 text-gray-600",
 }
 
 function parseGramos(presentacion: string): number {
@@ -332,7 +326,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold font-heading tracking-tight">{ruta.nombre}</h1>
-              <Badge className={FRANJA_COLORS[ruta.franja] ?? "bg-gray-100 text-gray-700"}>
+              <Badge className={FRANJA_STYLES[ruta.franja] ?? "bg-gray-100 text-gray-700"}>
                 {FRANJA_LABELS[ruta.franja] ?? ruta.franja}
               </Badge>
               {isDespachada && (
@@ -461,7 +455,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
                           {p?.es_contraentrega && (
                             <Badge className="bg-red-100 text-red-800 text-[10px] h-4 px-1.5">C/E</Badge>
                           )}
-                          <Badge className={`text-[10px] h-4 px-1.5 ${FRANJA_COLORS[p?.franja_horaria ?? "sin_franja"] ?? ""}`}>
+                          <Badge className={`text-[10px] h-4 px-1.5 ${FRANJA_STYLES[p?.franja_horaria ?? "sin_franja"] ?? ""}`}>
                             {FRANJA_LABELS[p?.franja_horaria ?? "sin_franja"]}
                           </Badge>
                         </div>
@@ -576,7 +570,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{p.numero_pedido}</span>
-                      <Badge className={`text-[10px] h-4 px-1.5 ${FRANJA_COLORS[p.franja_horaria] ?? ""}`}>
+                      <Badge className={`text-[10px] h-4 px-1.5 ${FRANJA_STYLES[p.franja_horaria] ?? ""}`}>
                         {FRANJA_LABELS[p.franja_horaria]}
                       </Badge>
                       {p.es_contraentrega && (

@@ -112,15 +112,15 @@ export function LiquidacionPreviewDialog({
             <div className="space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-muted-foreground flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Ganado (pago confirmado)
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Ganado (pago confirmado)
                 </span>
-                <span className="font-semibold text-emerald-700">{formatCOP(montoGanado)}</span>
+                <span className="font-semibold text-success">{formatCOP(montoGanado)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground flex items-center gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-500" /> Bloqueado (pago pendiente)
+                  <AlertCircle className="h-3.5 w-3.5 text-warning" /> Bloqueado (pago pendiente)
                 </span>
-                <span className="font-semibold text-amber-700">{formatCOP(montoBloqueado)}</span>
+                <span className="font-semibold text-warning">{formatCOP(montoBloqueado)}</span>
               </div>
               <Separator className="my-1" />
               <div className="flex justify-between font-bold text-base">

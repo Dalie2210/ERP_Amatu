@@ -26,6 +26,7 @@ import {
   ESTADO_LOGISTICA_LABELS,
   ESTADO_LOGISTICA_STYLES,
 } from "@/lib/logistica/estadoLabels"
+import type { EstadoPedido } from "@/types"
 
 const estadoLabels: Record<string, string> = ESTADO_LOGISTICA_LABELS
 const estadoColors: Record<string, string> = ESTADO_LOGISTICA_STYLES
@@ -89,7 +90,7 @@ export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [estadoFilter, setEstadoFilter] = useState("all")
+  const [estadoFilter, setEstadoFilter] = useState<EstadoPedido | "all">("all")
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
@@ -140,7 +141,7 @@ export default function PedidosPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar por # pedido..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
-            <Select value={estadoFilter} onValueChange={(v: string | null) => setEstadoFilter(v ?? "all")}>
+            <Select value={estadoFilter} onValueChange={(v: string | null) => setEstadoFilter((v as EstadoPedido | "all") ?? "all")}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Todos los estados">
                   {estadoFilter === "all" ? "Todos los estados" : (estadoLabels[estadoFilter as keyof typeof estadoLabels] ?? estadoFilter)}

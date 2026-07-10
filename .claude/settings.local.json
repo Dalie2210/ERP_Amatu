@@ -28,7 +28,12 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(xargs grep -l \"Link.*ventas\")",
       "Bash(xargs grep -l \"producto_variantes\\\\|precios_escala\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(cd \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\" && grep -A15 \"CreateRutaDialog.tsx$\" /tmp/finallint.txt | head -20)",
+      "Read(//tmp/**)",
+      "Bash(npx eslint *)",
+      "Bash(cd \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\" && grep -A12 \"ventas.\\\\[id\\\\].page.tsx$\" /tmp/finallint.txt | head -20)",
+      "Bash(echo \"TSC exit: $?\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\danie\\OneDrive\\Desktop\\Amatu\\ERP\\src\\app\\api\\comisiones\\liquidacion\\[id]"

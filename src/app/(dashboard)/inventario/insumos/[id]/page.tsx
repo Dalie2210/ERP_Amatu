@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -57,7 +58,7 @@ export default function InsumoDetailPage() {
       ])
 
     setInsumo(insumoData)
-    setStock(stockData)
+    setStock(stockData as unknown as VStockInsumo | null)
     setLotes(lotesData ?? [])
     setMovimientos(movData ?? [])
     setIsLoading(false)
@@ -97,9 +98,7 @@ export default function InsumoDetailPage() {
             <h1 className="text-2xl font-bold font-heading tracking-tight">{insumo.nombre}</h1>
             <span className="text-sm text-muted-foreground font-mono">{insumo.codigo}</span>
             {bajoMinimo && <Badge variant="destructive">Bajo mínimo</Badge>}
-            <Badge variant={insumo.is_active ? "default" : "secondary"}>
-              {insumo.is_active ? "Activo" : "Inactivo"}
-            </Badge>
+            <StatusBadge active={insumo.is_active} />
           </div>
           <p className="text-muted-foreground mt-1">
             {TIPO_INSUMO_LABELS[insumo.tipo]} · {UNIDAD_MEDIDA_LABELS[insumo.unidad_medida]}

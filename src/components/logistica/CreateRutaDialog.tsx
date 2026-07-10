@@ -37,22 +37,32 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
 
   const today = new Date().toISOString().split("T")[0]
 
-  const [nombre, setNombre] = useState("")
+  const nombreAutogenerado = (f: string, fr: string) => `Ruta ${FRANJA_LABELS[fr] ?? fr} ${f}`
+
+  const [nombre, setNombre] = useState(() => nombreAutogenerado(today, "AM"))
+  const [nombreEditadoManualmente, setNombreEditadoManualmente] = useState(false)
   const [fecha, setFecha] = useState(today)
   const [franja, setFranja] = useState("AM")
   const [mensajero, setMensajero] = useState<MensajeroOption | null>(null)
 
+  function updateFecha(v: string) {
+    setFecha(v)
+    if (!nombreEditadoManualmente) setNombre(nombreAutogenerado(v, franja))
+  }
+
+  function updateFranja(v: string) {
+    setFranja(v)
+    if (!nombreEditadoManualmente) setNombre(nombreAutogenerado(fecha, v))
+  }
+
   const handleCreate = async () => {
-    if (!nombre.trim()) {
-      toast.error("El nombre de la ruta es requerido")
-      return
-    }
+    const nombreFinal = nombre.trim() || nombreAutogenerado(fecha, franja)
     setIsLoading(true)
     try {
       const { data, error } = await supabase
         .from("rutas")
         .insert({
-          nombre: nombre.trim(),
+          nombre: nombreFinal,
           fecha,
           franja,
           mensajero_id: mensajero?.id ?? null,
@@ -67,7 +77,8 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
 
       toast.success("Ruta creada exitosamente")
       setOpen(false)
-      setNombre("")
+      setNombre(nombreAutogenerado(today, "AM"))
+      setNombreEditadoManualmente(false)
       setMensajero(null)
       onCreated(data.id)
     } catch {
@@ -92,11 +103,14 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
 
         <div className="space-y-4">
           <div className="grid gap-2">
-            <Label>Nombre de la Ruta *</Label>
+            <Label>Nombre de la Ruta</Label>
             <Input
               placeholder="Ej: Ruta Norte AM"
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              onChange={(e) => {
+                setNombre(e.target.value)
+                setNombreEditadoManualmente(true)
+              }}
             />
           </div>
 
@@ -106,12 +120,12 @@ export function CreateRutaDialog({ supabase, userId, onCreated }: Props) {
               <Input
                 type="date"
                 value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
+                onChange={(e) => updateFecha(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
               <Label>Franja</Label>
-              <Select value={franja} onValueChange={(v) => setFranja(v ?? "AM")}>
+              <Select value={franja} onValueChange={(v) => updateFranja(v ?? "AM")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar...">
                     {franja ? (FRANJA_LABELS[franja] ?? franja) : null}

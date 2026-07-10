@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { toast } from "sonner"
 
 interface ConfigRow {
@@ -126,12 +126,7 @@ export default function ComisionesConfigPage() {
                       <CardTitle className="text-base font-heading">
                         Cierre {edit.cierre_min}% – {edit.cierre_max}%
                       </CardTitle>
-                      <Badge
-                        variant="outline"
-                        className={row.is_active ? "border-emerald-200 text-emerald-700" : "border-slate-200 text-slate-500"}
-                      >
-                        {row.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
+                      <StatusBadge active={row.is_active} />
                     </div>
                     <Button
                       size="sm"

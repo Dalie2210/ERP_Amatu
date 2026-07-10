@@ -30,10 +30,26 @@ export const FRANJA_LABELS: Record<string, string> = {
   sin_franja: "Sin Franja",
 }
 
+export const FRANJA_STYLES: Record<string, string> = {
+  AM: "bg-sky-100 text-sky-800",
+  PM: "bg-orange-100 text-orange-800",
+  intermedia: "bg-purple-100 text-purple-800",
+  sin_franja: "bg-gray-100 text-gray-600",
+}
+
 export const ESTADO_PAGO_LABELS: Record<string, string> = {
   pendiente: "Pendiente",
   confirmado: "Confirmado",
 }
+
+// Comisiones: "ganado" (pago confirmado, ya liquidable) vs "bloqueado" (pago
+// pendiente, se libera al confirmar). Mismo par semántico usado en badges y
+// en texto/íconos de montos a través de comisiones/page.tsx, ComisionesTable,
+// LiquidacionPreviewDialog, comisiones/aliados y comisiones/liquidacion/[id].
+export const COMISION_ESTADO_STYLES = {
+  ganado: "bg-success/10 text-success border-success/20",
+  bloqueado: "bg-warning/10 text-warning border-warning/20",
+} as const
 
 export const TIPO_DOC_LABELS: Record<string, string> = {
   CC: "C.C.",

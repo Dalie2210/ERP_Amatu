@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -139,13 +139,13 @@ export function KitFormDialog({ open, onOpenChange, kit, onSaved }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar kit" : "Nuevo kit"}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{isEdit ? "Editar kit" : "Nuevo kit"}</SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 px-4">
           <div className="space-y-1.5">
             <Label>Nombre</Label>
             <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Kit Iniciador Cachorros" />
@@ -213,13 +213,13 @@ export function KitFormDialog({ open, onOpenChange, kit, onSaved }: Props) {
           </div>
         </div>
 
-        <DialogFooter>
+        <SheetFooter className="border-t sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear kit"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

@@ -110,11 +110,12 @@ export default function VentasPage() {
 
       const [
         { data: pedidosMes },
-        { data: allPedidos },
+        { data: estadoCountsRows },
+        { data: fuenteCountsRows },
         { data: comisiones },
         { count: leadsCount },
         { count: closuresCount },
-        { data: detalles },
+        { data: topProductosRows },
         { data: recentOrders },
         { data: aliadoPedidos },
       ] = await Promise.all([
@@ -122,9 +123,8 @@ export default function VentasPage() {
           .from("pedidos")
           .select("total, estado")
           .gte("created_at", monthStart),
-        supabase
-          .from("pedidos")
-          .select("estado, fuente"),
+        supabase.rpc("fn_pedidos_estado_counts"),
+        supabase.rpc("fn_pedidos_fuente_counts"),
         supabase
           .from("comisiones_detalle")
           .select("monto_comision")
@@ -137,9 +137,7 @@ export default function VentasPage() {
           .select("*", { count: "exact", head: true })
           .eq("fuente", "meta_ads")
           .eq("numero_venta_cliente", 1),
-        supabase
-          .from("detalle_pedido")
-          .select("cantidad, subtotal, productos(nombre)"),
+        supabase.rpc("fn_top_productos_vendidos", { p_limit: 5 }),
         supabase
           .from("pedidos")
           .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo)")
@@ -156,34 +154,28 @@ export default function VentasPage() {
         .filter((p: { estado: string; total: number | null }) => p.estado !== "devolucion")
         .reduce((acc: number, p: { estado: string; total: number | null }) => acc + (p.total ?? 0), 0)
 
-      const activeOrders = (allPedidos ?? [])
-        .filter((p: { estado: string }) => !["despachado", "devolucion", "cambio"].includes(p.estado)).length
-
       const commissionThisMonth = (comisiones ?? [])
         .reduce((acc: number, c: { monto_comision: number | null }) => acc + (c.monto_comision ?? 0), 0)
 
       const estadoCounts: Record<string, number> = {}
-      for (const p of allPedidos ?? []) {
-        estadoCounts[p.estado] = (estadoCounts[p.estado] ?? 0) + 1
+      for (const row of estadoCountsRows ?? []) {
+        estadoCounts[row.estado] = Number(row.total)
       }
+
+      const activeOrders = Object.entries(estadoCounts)
+        .filter(([estado]) => !["despachado", "devolucion", "cambio"].includes(estado))
+        .reduce((acc, [, count]) => acc + count, 0)
 
       const fuenteCounts: Record<string, number> = {}
-      for (const p of allPedidos ?? []) {
-        if (p.fuente) fuenteCounts[p.fuente] = (fuenteCounts[p.fuente] ?? 0) + 1
+      for (const row of fuenteCountsRows ?? []) {
+        if (row.fuente) fuenteCounts[row.fuente] = Number(row.total)
       }
 
-      type DetalleRow = { cantidad: number; subtotal: number; productos: { nombre: string } | null }
-      const productMap: Record<string, { unidades: number; revenue: number }> = {}
-      for (const d of (detalles as DetalleRow[] | null) ?? []) {
-        const nombre = d.productos?.nombre ?? "Desconocido"
-        if (!productMap[nombre]) productMap[nombre] = { unidades: 0, revenue: 0 }
-        productMap[nombre].unidades += d.cantidad ?? 0
-        productMap[nombre].revenue += d.subtotal ?? 0
-      }
-      const topProducts = Object.entries(productMap)
-        .map(([nombre, v]) => ({ nombre, ...v }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5)
+      const topProducts = (topProductosRows ?? []).map((r) => ({
+        nombre: r.nombre,
+        unidades: Number(r.unidades),
+        revenue: Number(r.revenue),
+      }))
 
       // Build aliado breakdown per fuente
       type AliadoPedidoRow = {

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
-  ActiveRouteRow, DashboardCardState, DashboardStats, PedidoPagoPendienteRow, RecentPedidoRow,
+  ActiveRouteRow, DashboardCardState, DashboardStats, EstadoPedido, PedidoPagoPendienteRow, RecentPedidoRow,
   VValorInventario, VStockInsumo, VStockProducto,
 } from "@/types";
 
@@ -38,12 +38,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       supabase
         .from("pedidos")
         .select("total")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as string[])
+        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
         .gte("created_at", startOfDayIso),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
-        .in("estado", ESTADOS_PENDIENTE as unknown as string[]),
+        .in("estado", ESTADOS_PENDIENTE as unknown as EstadoPedido[]),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
@@ -195,12 +195,12 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
       supabase
         .from("pedidos")
         .select("total")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as string[])
+        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
         .gte("created_at", startOfDayIso),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
-        .in("estado", ESTADOS_PENDIENTE as unknown as string[]),
+        .in("estado", ESTADOS_PENDIENTE as unknown as EstadoPedido[]),
       // Comisión estimada del período con la MISMA fuente única que /comisiones.
       user
         ? supabase.rpc("fn_estimar_comisiones_periodo", {
@@ -214,7 +214,7 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
       supabase
         .from("pedidos")
         .select("id, numero_pedido, estado, estado_pago, total, created_at, clientes(nombre_completo)")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as string[])
+        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
@@ -308,7 +308,7 @@ export async function getContableDashboardStats(): Promise<DashboardStats> {
       supabase
         .from("pedidos")
         .select("total")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as string[])
+        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
         .gte("created_at", startOfDayIso),
       supabase
         .from("pedidos")

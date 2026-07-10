@@ -18,6 +18,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import Link from "next/link"
+import { FRANJA_STYLES } from "@/lib/constants/labels"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,12 +41,6 @@ interface Ruta {
 
 const FRANJA_LABELS: Record<string, string> = {
   AM: "AM (Mañana)", PM: "PM (Tarde)", intermedia: "Intermedia", sin_franja: "Sin Franja",
-}
-
-const FRANJA_COLORS: Record<string, string> = {
-  AM: "bg-sky-100 text-sky-800",
-  PM: "bg-orange-100 text-orange-800",
-  intermedia: "bg-purple-100 text-purple-800",
 }
 
 function formatDate(iso: string) {
@@ -97,7 +92,7 @@ export default function RutasPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold">{ruta.nombre}</h3>
-                <Badge className={`text-xs ${FRANJA_COLORS[ruta.franja] ?? "bg-gray-100 text-gray-700"}`}>
+                <Badge className={`text-xs ${FRANJA_STYLES[ruta.franja] ?? "bg-gray-100 text-gray-700"}`}>
                   {FRANJA_LABELS[ruta.franja] ?? ruta.franja}
                 </Badge>
                 {isDespachada && (

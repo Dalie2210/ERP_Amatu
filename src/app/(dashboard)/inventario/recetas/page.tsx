@@ -9,7 +9,7 @@ import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -139,9 +139,7 @@ export default function RecetasPage() {
                       {r.receta_items.length}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={r.is_active ? "default" : "secondary"}>
-                        {r.is_active ? "Activa" : "Inactiva"}
-                      </Badge>
+                      <StatusBadge active={r.is_active} activeLabel="Activa" inactiveLabel="Inactiva" />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

@@ -28,6 +28,7 @@ import { FRANJA_LABELS, ESTADO_PAGO_LABELS, METODO_PAGO_LABELS } from "@/lib/con
 
 interface OrderEditDialogProps {
   pedidoId: string
+  currentEstado: string
   currentFranja: string
   currentFechaTentativa: string | null
   currentNotas: string | null
@@ -39,6 +40,7 @@ interface OrderEditDialogProps {
 
 export function OrderEditDialog({
   pedidoId,
+  currentEstado,
   currentFranja,
   currentFechaTentativa,
   currentNotas,
@@ -142,20 +144,31 @@ export function OrderEditDialog({
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="estado-pago">Estado de Pago</Label>
-            <Select value={estadoPago} onValueChange={(v) => setEstadoPago(v ?? currentEstadoPago)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar...">
-                  {estadoPago ? (ESTADO_PAGO_LABELS[estadoPago] ?? estadoPago) : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendiente">Pendiente</SelectItem>
-                <SelectItem value="confirmado">Confirmado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {currentEstado === "fecha_tentativa" ? (
+            <div className="grid gap-1.5">
+              <Label>Estado de Pago</Label>
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
+                Este pedido aún no está confirmado. El estado de pago se actualiza al confirmar la venta
+                desde el Kanban o la página del pedido en Logística — allí se registra la reserva de
+                demanda correctamente.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="estado-pago">Estado de Pago</Label>
+              <Select value={estadoPago} onValueChange={(v) => setEstadoPago(v ?? currentEstadoPago)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar...">
+                    {estadoPago ? (ESTADO_PAGO_LABELS[estadoPago] ?? estadoPago) : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="confirmado">Confirmado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid gap-2">
             <Label htmlFor="metodo-pago">Método de Pago</Label>

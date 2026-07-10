@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+
+const LiquidarSchema = z.object({
+  vendedor_id: z.string().uuid(),
+  periodo_mes: z.string().regex(/^\d{4}-\d{2}$/),
+})
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -12,11 +18,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { vendedor_id, periodo_mes } = body
-
-  if (!vendedor_id || !periodo_mes) {
-    return NextResponse.json({ error: "Faltan campos: vendedor_id, periodo_mes" }, { status: 400 })
+  const parsed = LiquidarSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
+  const { vendedor_id, periodo_mes } = parsed.data
 
   // Guard: no duplicate liquidation for this vendor+period
   const { data: existing } = await supabase

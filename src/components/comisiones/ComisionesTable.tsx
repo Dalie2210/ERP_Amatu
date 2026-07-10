@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table"
 import { ExternalLink, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { COMISION_ESTADO_STYLES } from "@/lib/constants/labels"
 
 const formatCOP = (n: number) => `$${Number(n).toLocaleString("es-CO")}`
 
@@ -115,8 +116,8 @@ export function ComisionesTable({ comisiones }: ComisionesTableProps) {
                     key={c.id}
                     className={cn(
                       "text-sm",
-                      c.aplica_comision && isConfirmed && "bg-emerald-50/50",
-                      c.aplica_comision && !isConfirmed && "bg-amber-50/50",
+                      c.aplica_comision && isConfirmed && "bg-success/5",
+                      c.aplica_comision && !isConfirmed && "bg-warning/5",
                       !c.aplica_comision && "opacity-60"
                     )}
                   >
@@ -146,7 +147,7 @@ export function ComisionesTable({ comisiones }: ComisionesTableProps) {
                     </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">
                       {c.aplica_comision ? (
-                        <span className={isConfirmed ? "text-emerald-700" : "text-amber-700"}>
+                        <span className={isConfirmed ? "text-success" : "text-warning"}>
                           {formatCOP(c.monto_comision)}
                         </span>
                       ) : (
@@ -155,8 +156,8 @@ export function ComisionesTable({ comisiones }: ComisionesTableProps) {
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge
-                        variant={isConfirmed ? "default" : "outline"}
-                        className={cn("text-[10px] h-5", isConfirmed ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "border-amber-200 text-amber-700")}
+                        variant="outline"
+                        className={cn("text-[10px] h-5", isConfirmed ? COMISION_ESTADO_STYLES.ganado : COMISION_ESTADO_STYLES.bloqueado)}
                       >
                         {isConfirmed ? "Confirmado" : "Pendiente"}
                       </Badge>
@@ -168,7 +169,7 @@ export function ComisionesTable({ comisiones }: ComisionesTableProps) {
                           Provisional
                         </span>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] h-5 text-emerald-700 border-emerald-200">
+                        <Badge variant="outline" className={cn("text-[10px] h-5", COMISION_ESTADO_STYLES.ganado)}>
                           Liquidado
                         </Badge>
                       )}

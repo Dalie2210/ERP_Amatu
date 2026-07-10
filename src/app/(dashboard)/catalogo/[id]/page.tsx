@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -249,9 +249,7 @@ export default function ProductoDetallePage() {
             {form.nombre || "Producto"}
           </h1>
         </div>
-        <Badge variant={form.is_active ? "default" : "secondary"}>
-          {form.is_active ? "Activo" : "Inactivo"}
-        </Badge>
+        <StatusBadge active={form.is_active} />
         <Link href={`/inventario/recetas?producto=${productoId}`}>
           <Button variant="outline" size="sm" className="gap-2">
             <ClipboardList className="h-4 w-4" />

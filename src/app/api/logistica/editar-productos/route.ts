@@ -1,28 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { z } from "zod";
 import { calcularDescuentos } from "@/lib/calculators/discounts";
 import type { ReglaDescuento } from "@/types";
 
-interface LineaEditada {
-  producto_id: string | null;
-  variante_id: string | null;
-  nombre_snapshot: string;
-  cantidad: number;
-  precio_unitario_snapshot: number;
-  aplica_descuento: boolean;
-  es_magistral: boolean;
-  gramaje_magistral: number | null;
-  notas_magistral: string | null;
-  justificacion_precio: string | null;
-  es_promo: boolean;
-  promo_id: string | null;
-}
+const LineaSchema = z.object({
+  producto_id: z.string().uuid().nullable(),
+  variante_id: z.string().uuid().nullable(),
+  nombre_snapshot: z.string().min(1),
+  cantidad: z.number().positive(),
+  precio_unitario_snapshot: z.number().nonnegative(),
+  aplica_descuento: z.boolean(),
+  es_magistral: z.boolean(),
+  gramaje_magistral: z.number().positive().nullable(),
+  notas_magistral: z.string().nullable(),
+  justificacion_precio: z.string().nullable(),
+  es_promo: z.boolean(),
+  promo_id: z.string().uuid().nullable(),
+});
 
-interface EditarProductosBody {
-  pedido_id: string;
-  lineas: LineaEditada[];
-}
+const EditarProductosSchema = z.object({
+  pedido_id: z.string().uuid(),
+  lineas: z.array(LineaSchema).min(1),
+});
 
 const ESTADOS_BLOQUEADOS = ["listo_despacho", "despachado", "devolucion", "parcial"];
 
@@ -54,26 +55,31 @@ export async function POST(req: NextRequest) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || !["admin", "logistica"].includes(userData.role)) {
+  const allowedRoles = ["admin", "logistica", "vendedor"];
+  if (!userData || !allowedRoles.includes(userData.role)) {
     return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
   }
 
-  const body: EditarProductosBody = await req.json();
-  const { pedido_id, lineas } = body;
-
-  if (!pedido_id || !lineas || lineas.length === 0) {
-    return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
+  const body = await req.json();
+  const parsed = EditarProductosSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
+  const { pedido_id, lineas } = parsed.data;
 
   // Fetch current pedido
   const { data: pedido, error: pedidoError } = await supabase
     .from("pedidos")
-    .select("id, estado, tarifa_envio_cliente, detalle_pedido(*)")
+    .select("id, estado, vendedor_id, tarifa_envio_cliente, detalle_pedido(*)")
     .eq("id", pedido_id)
     .single();
 
   if (pedidoError || !pedido) {
     return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  }
+
+  if (userData.role === "vendedor" && pedido.vendedor_id !== user.id) {
+    return NextResponse.json({ error: "No puedes editar pedidos de otro vendedor" }, { status: 403 });
   }
 
   if (ESTADOS_BLOQUEADOS.includes(pedido.estado)) {

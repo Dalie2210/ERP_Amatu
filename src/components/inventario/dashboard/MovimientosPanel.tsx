@@ -53,7 +53,7 @@ export function MovimientosPanel() {
   const [rows, setRows] = useState<MovimientoRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [tipoFilter, setTipoFilter] = useState("all")
+  const [tipoFilter, setTipoFilter] = useState<TipoMovimiento | "all">("all")
   const [fechaDesde, setFechaDesde] = useState("")
   const [fechaHasta, setFechaHasta] = useState("")
   const [page, setPage] = useState(0)
@@ -110,7 +110,7 @@ export function MovimientosPanel() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={tipoFilter} onValueChange={(v) => setTipoFilter(v ?? "all")}>
+            <Select value={tipoFilter} onValueChange={(v) => setTipoFilter((v as TipoMovimiento | "all") ?? "all")}>
               <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Todos los tipos">
                   {tipoFilter === "all" ? "Todos los tipos" : TIPO_MOVIMIENTO_LABELS[tipoFilter]}

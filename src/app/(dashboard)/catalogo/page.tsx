@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Select,
   SelectContent,
@@ -27,14 +28,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -358,7 +359,7 @@ export default function CatalogoPage() {
             Gestiona los productos, variantes y precios de Amatu.
           </p>
         </div>
-        <Dialog
+        <Sheet
           open={showCreateDialog}
           onOpenChange={(open) => {
             setShowCreateDialog(open)
@@ -368,18 +369,18 @@ export default function CatalogoPage() {
             }
           }}
         >
-          <DialogTrigger render={<Button className="gap-2" />}>
+          <SheetTrigger render={<Button className="gap-2" />}>
             <Plus className="h-4 w-4" />
             Nuevo Producto
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Crear Producto</DialogTitle>
-              <DialogDescription>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Crear Producto</SheetTitle>
+              <SheetDescription>
                 Agrega un nuevo producto al catálogo de Amatu.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 py-4 px-4">
               {/* Nombre */}
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre del Producto</Label>
@@ -592,7 +593,7 @@ export default function CatalogoPage() {
                 </div>
               )}
             </div>
-            <DialogFooter>
+            <SheetFooter className="border-t sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateDialog(false)}
@@ -625,9 +626,9 @@ export default function CatalogoPage() {
                   </>
                 )
               })()}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Filters */}
@@ -717,17 +718,13 @@ export default function CatalogoPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant={
-                            producto.is_active ? "default" : "secondary"
-                          }
+                        <StatusBadge
+                          active={producto.is_active}
                           className="cursor-pointer"
                           onClick={() =>
                             handleToggleActive(producto.id, producto.is_active)
                           }
-                        >
-                          {producto.is_active ? "Activo" : "Inactivo"}
-                        </Badge>
+                        />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">

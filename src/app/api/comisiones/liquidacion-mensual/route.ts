@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   // Get all active vendors
   const { data: vendors, error: vendorErr } = await supabase
     .from("users")
-    .select("id, full_name, email")
+    .select("id, full_name")
     .eq("role", "vendedor")
     .eq("is_active", true)
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       results.push({
         vendedor_id: vendor.id,
-        nombre: vendor.full_name ?? vendor.email,
+        nombre: vendor.full_name,
         monto_confirmado: 0,
         comisiones_trasladadas: 0,
         liquidacion_id: null,
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       const row = Array.isArray(data) ? data[0] : data
       results.push({
         vendedor_id: vendor.id,
-        nombre: vendor.full_name ?? vendor.email,
+        nombre: vendor.full_name,
         monto_confirmado: row?.monto_confirmado ?? 0,
         comisiones_trasladadas: row?.comisiones_trasladadas ?? 0,
         liquidacion_id: row?.liquidacion_id ?? null,

@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -255,13 +255,13 @@ export function EditProductosDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Editar productos — {pedidoNumero}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col">
+        <SheetHeader>
+          <SheetTitle>Editar productos — {pedidoNumero}</SheetTitle>
+        </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-4 px-4">
           {/* Current line items */}
           <div className="space-y-2">
             {lineas.map((linea) => (
@@ -374,15 +374,15 @@ export function EditProductosDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t pt-3">
+        <SheetFooter className="border-t sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={saving || lineas.length === 0}>
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

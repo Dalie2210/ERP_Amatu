@@ -94,7 +94,7 @@ export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFuente, setSelectedFuente] = useState<string>("all")
+  const [selectedFuente, setSelectedFuente] = useState<FuenteCliente | "all">("all")
 
   // Pagination
   const [page, setPage] = useState(0)
@@ -180,7 +180,7 @@ export default function ClientesPage() {
             </div>
             <Select
               value={selectedFuente}
-              onValueChange={(v: string | null) => setSelectedFuente(v ?? "all")}
+              onValueChange={(v: string | null) => setSelectedFuente((v as FuenteCliente | "all") ?? "all")}
             >
               <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Todas las fuentes">

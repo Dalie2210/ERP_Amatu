@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -163,14 +163,7 @@ export default function DescuentosPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={row.is_active
-                            ? "border-emerald-200 text-emerald-700"
-                            : "border-slate-200 text-slate-500"}
-                        >
-                          {row.is_active ? "Activa" : "Inactiva"}
-                        </Badge>
+                        <StatusBadge active={row.is_active} activeLabel="Activa" inactiveLabel="Inactiva" />
                       </TableCell>
                       <TableCell className="text-right">
                         <Button

@@ -20,6 +20,7 @@ import {
 import { ArrowLeft, DollarSign, Lock, Check, RefreshCw, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import type { EstadoLiquidacion } from "@/types"
+import type { Database } from "@/types/database.types"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -28,9 +29,9 @@ function formatCOP(amount: number): string {
 }
 
 const estadoColors: Record<EstadoLiquidacion, string> = {
-  borrador: "bg-gray-100 text-gray-700",
-  cerrado: "bg-blue-100 text-blue-700",
-  pagado: "bg-green-100 text-green-700",
+  borrador: "bg-muted text-muted-foreground",
+  cerrado: "bg-info/10 text-info",
+  pagado: "bg-success/10 text-success",
 }
 
 const estadoLabels: Record<EstadoLiquidacion, string> = {
@@ -148,7 +149,7 @@ export default function LiquidacionDetailPage() {
 
   const handleUpdateEstado = async (nuevoEstado: EstadoLiquidacion) => {
     setIsUpdating(true)
-    const updates: Record<string, unknown> = { estado: nuevoEstado }
+    const updates: Database["public"]["Tables"]["liquidaciones_comision"]["Update"] = { estado: nuevoEstado }
     if (nuevoEstado === "pagado") {
       updates.fecha_liquidacion = new Date().toISOString()
     }
@@ -269,7 +270,7 @@ export default function LiquidacionDetailPage() {
                   size="sm"
                   onClick={handleRecalcular}
                   disabled={isUpdating}
-                  className="gap-2 text-amber-700 border-amber-200 hover:bg-amber-50"
+                  className="gap-2 text-warning border-warning/20 hover:bg-warning/10"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Recalcular
@@ -351,7 +352,7 @@ export default function LiquidacionDetailPage() {
             <CardContent className="pb-4 px-4">
               <span
                 className={`text-xl font-bold font-heading leading-none ${
-                  stat.highlight ? "text-green-600" : ""
+                  stat.highlight ? "text-success" : ""
                 }`}
               >
                 {stat.value}
@@ -366,13 +367,13 @@ export default function LiquidacionDetailPage() {
         <div className="flex flex-wrap gap-4">
           <div className="text-sm text-muted-foreground">
             Confirmado:{" "}
-            <span className="font-semibold text-green-600">
+            <span className="font-semibold text-success">
               {formatCOP(summary.totalConfirmado)}
             </span>
           </div>
           <div className="text-sm text-muted-foreground">
             Bloqueado (pago pendiente):{" "}
-            <span className="font-semibold text-amber-600">
+            <span className="font-semibold text-warning">
               {formatCOP(summary.totalPendiente)}
             </span>
           </div>
@@ -431,8 +432,8 @@ export default function LiquidacionDetailPage() {
                         <span
                           className={
                             row.pedidos?.estado_pago === "confirmado"
-                              ? "text-green-600"
-                              : "text-amber-600"
+                              ? "text-success"
+                              : "text-warning"
                           }
                         >
                           {formatCOP(Number(row.monto_comision))}
@@ -458,7 +459,7 @@ export default function LiquidacionDetailPage() {
                     <TableCell>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {row.aplica_comision ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
                             Comisiona
                           </span>
                         ) : (
@@ -470,7 +471,7 @@ export default function LiquidacionDetailPage() {
                           </span>
                         )}
                         {row.is_provisional && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600">
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-warning">
                             <AlertCircle className="h-3 w-3" />
                             Provisional
                           </span>

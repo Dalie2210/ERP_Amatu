@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -160,14 +161,7 @@ export default function AdminAliadosPage() {
                       {aliado.correo ?? "—"}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={aliado.is_active
-                          ? "border-emerald-200 text-emerald-700"
-                          : "border-slate-200 text-slate-500"}
-                      >
-                        {aliado.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
+                      <StatusBadge active={aliado.is_active} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

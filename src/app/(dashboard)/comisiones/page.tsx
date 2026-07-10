@@ -44,9 +44,9 @@ function getMonthOptions() {
 }
 
 const LIQ_ESTADO_COLORS: Record<EstadoLiquidacion, string> = {
-  borrador: "bg-slate-100 text-slate-700",
-  cerrado: "bg-blue-100 text-blue-700",
-  pagado: "bg-emerald-100 text-emerald-700",
+  borrador: "bg-muted text-muted-foreground",
+  cerrado: "bg-info/10 text-info",
+  pagado: "bg-success/10 text-success",
 }
 const LIQ_ESTADO_LABELS: Record<EstadoLiquidacion, string> = {
   borrador: "Borrador", cerrado: "Cerrado", pagado: "Pagado",
@@ -245,8 +245,8 @@ export default function ComisionesPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end justify-between">
-                <span className="text-3xl font-bold font-heading text-emerald-600">{formatCOP(montoGanado)}</span>
-                <DollarSign className="h-8 w-8 text-emerald-500/30" />
+                <span className="text-3xl font-bold font-heading text-success">{formatCOP(montoGanado)}</span>
+                <DollarSign className="h-8 w-8 text-success/30" />
               </div>
               <p className="text-xs text-muted-foreground mt-1">Pedidos con pago confirmado</p>
             </CardContent>
@@ -258,8 +258,8 @@ export default function ComisionesPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end justify-between">
-                <span className="text-3xl font-bold font-heading text-amber-600">{formatCOP(montoBloqueado)}</span>
-                <Clock className="h-8 w-8 text-amber-500/30" />
+                <span className="text-3xl font-bold font-heading text-warning">{formatCOP(montoBloqueado)}</span>
+                <Clock className="h-8 w-8 text-warning/30" />
               </div>
               <p className="text-xs text-muted-foreground mt-1">Se libera al confirmar pago</p>
             </CardContent>

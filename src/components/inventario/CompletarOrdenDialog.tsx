@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -84,16 +84,16 @@ export function CompletarOrdenDialog({ open, onOpenChange, orden, onCompleted }:
   if (!orden) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Completar Orden {orden.numero}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Completar Orden {orden.numero}</SheetTitle>
+          <SheetDescription>
             {orden.producto?.nombre} — {orden.variante?.presentacion ?? "Todas"} · Receta: {orden.receta?.nombre}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 px-4">
           <div className="space-y-2 max-w-[220px]">
             <Label>Cantidad Realmente Producida</Label>
             <Input
@@ -173,13 +173,13 @@ export function CompletarOrdenDialog({ open, onOpenChange, orden, onCompleted }:
           )}
         </div>
 
-        <DialogFooter>
+        <SheetFooter className="border-t sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleConfirmar} disabled={confirming || loadingPreview || preview.length === 0 || hayFaltantes}>
             {confirming ? "Completando..." : "Confirmar y Completar"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

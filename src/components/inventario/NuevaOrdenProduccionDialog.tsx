@@ -71,7 +71,7 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved }: Prop
     supabase
       .from("v_stock_insumos")
       .select("insumo_id, stock_disponible")
-      .then(({ data }: { data: StockRow[] | null }) => setStockInsumos(data ?? []))
+      .then(({ data }) => setStockInsumos((data ?? []) as unknown as StockRow[]))
   }, [open, supabase])
 
   const receta = recetas.find((r) => r.id === recetaId) ?? null

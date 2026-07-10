@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { PromocionFormDialog } from "@/components/admin/PromocionFormDialog"
@@ -198,9 +199,7 @@ export default function PromocionesKitsPage() {
                         {promoDetalle(p)}
                       </TableCell>
                       <TableCell>
-                        <Badge className={p.is_active ? "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-100"}>
-                          {p.is_active ? "Activa" : "Inactiva"}
-                        </Badge>
+                        <StatusBadge active={p.is_active} activeLabel="Activa" inactiveLabel="Inactiva" />
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -272,9 +271,7 @@ export default function PromocionesKitsPage() {
                         <Badge variant="secondary">{k.kit_items.length}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={k.is_active ? "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-100"}>
-                          {k.is_active ? "Activo" : "Inactivo"}
-                        </Badge>
+                        <StatusBadge active={k.is_active} />
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">

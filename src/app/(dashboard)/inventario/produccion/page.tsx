@@ -46,6 +46,7 @@ export default function ProduccionPage() {
         receta:recetas!receta_id(nombre, rendimiento)
       `)
       .order("created_at", { ascending: false })
+      .limit(100)
 
     if (error) {
       toast.error("Error cargando órdenes: " + error.message)

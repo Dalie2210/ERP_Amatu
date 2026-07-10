@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ import {
 import { Plus, Search, Warehouse, Edit, Eye, ChevronRight, ChevronLeft, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { Insumo, TipoInsumo, UnidadMedida, VStockInsumo } from "@/types"
+import type { Database } from "@/types/database.types"
 import { TIPO_INSUMO_LABELS, UNIDAD_MEDIDA_LABELS } from "@/lib/constants/labels"
 
 const PAGE_SIZE = 20
@@ -87,7 +89,7 @@ export default function InsumosPage() {
   const [insumos, setInsumos] = useState<InsumoRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTipo, setSelectedTipo] = useState<string>("all")
+  const [selectedTipo, setSelectedTipo] = useState<TipoInsumo | "all">("all")
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -131,7 +133,7 @@ export default function InsumosPage() {
     }
 
     const { data: stockData } = await supabase.from("v_stock_insumos").select("*")
-    const stockById = new Map((stockData ?? []).map((s: VStockInsumo) => [s.insumo_id, s]))
+    const stockById = new Map((stockData ?? []).map((s) => [s.insumo_id, s as unknown as VStockInsumo]))
 
     let rows = data.map((i: Insumo) => ({ ...i, stock: stockById.get(i.id) ?? null }))
     if (filtro === "bajo_minimo") rows = rows.filter((r: InsumoRow) => r.stock?.bajo_minimo)
@@ -185,7 +187,7 @@ export default function InsumosPage() {
 
     const { error } = editingId
       ? await supabase.from("insumos").update(payload).eq("id", editingId)
-      : await supabase.from("insumos").insert([payload])
+      : await supabase.from("insumos").insert([payload as Database["public"]["Tables"]["insumos"]["Insert"]])
 
     if (error) {
       setSaveError(error.message)
@@ -363,7 +365,7 @@ export default function InsumosPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={selectedTipo} onValueChange={(v) => setSelectedTipo(v ?? "all")}>
+            <Select value={selectedTipo} onValueChange={(v) => setSelectedTipo((v as TipoInsumo | "all") ?? "all")}>
               <SelectTrigger className="w-full sm:w-[220px]">
                 <SelectValue placeholder="Todos los tipos">
                   {selectedTipo === "all" ? "Todos los tipos" : TIPO_INSUMO_LABELS[selectedTipo]}
@@ -440,13 +442,11 @@ export default function InsumosPage() {
                           {insumo.merma_pct}%
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge
-                            variant={insumo.is_active ? "default" : "secondary"}
+                          <StatusBadge
+                            active={insumo.is_active}
                             className="cursor-pointer"
                             onClick={() => canWrite && handleToggleActive(insumo.id, insumo.is_active)}
-                          >
-                            {insumo.is_active ? "Activo" : "Inactivo"}
-                          </Badge>
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">

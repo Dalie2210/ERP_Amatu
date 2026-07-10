@@ -13,6 +13,7 @@ import {
 import {
   ArrowLeft, Users, ChevronDown, DollarSign, Clock, CheckCircle2,
 } from "lucide-react"
+import { COMISION_ESTADO_STYLES } from "@/lib/constants/labels"
 
 const formatCOP = (n: number) => `$${Math.round(n).toLocaleString("es-CO")}`
 
@@ -158,8 +159,8 @@ export default function AliadosPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end justify-between">
-                <span className="text-3xl font-bold font-heading text-amber-600">{formatCOP(totalPendiente)}</span>
-                <Clock className="h-8 w-8 text-amber-400/20" />
+                <span className="text-3xl font-bold font-heading text-warning">{formatCOP(totalPendiente)}</span>
+                <Clock className="h-8 w-8 text-warning/20" />
               </div>
             </CardContent>
           </Card>
@@ -170,8 +171,8 @@ export default function AliadosPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-end justify-between">
-                <span className="text-3xl font-bold font-heading text-emerald-600">{formatCOP(totalLiquidada)}</span>
-                <CheckCircle2 className="h-8 w-8 text-emerald-400/20" />
+                <span className="text-3xl font-bold font-heading text-success">{formatCOP(totalLiquidada)}</span>
+                <CheckCircle2 className="h-8 w-8 text-success/20" />
               </div>
             </CardContent>
           </Card>
@@ -225,11 +226,11 @@ export default function AliadosPage() {
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Pendiente</p>
-                            <p className="font-semibold tabular-nums text-amber-700">{formatCOP(pendiente)}</p>
+                            <p className="font-semibold tabular-nums text-warning">{formatCOP(pendiente)}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Liquidado</p>
-                            <p className="font-semibold tabular-nums text-emerald-700">{formatCOP(liquidada)}</p>
+                            <p className="font-semibold tabular-nums text-success">{formatCOP(liquidada)}</p>
                           </div>
                         </div>
                       </div>
@@ -305,11 +306,11 @@ export default function AliadosPage() {
                                       </TableCell>
                                       <TableCell className="text-right tabular-nums">{formatCOP(com.base_calculo)}</TableCell>
                                       <TableCell className="text-center font-medium">{com.porcentaje}%</TableCell>
-                                      <TableCell className="text-right font-semibold tabular-nums text-amber-700">{formatCOP(com.monto)}</TableCell>
+                                      <TableCell className={`text-right font-semibold tabular-nums ${com.estado === "liquidada" ? "text-success" : "text-warning"}`}>{formatCOP(com.monto)}</TableCell>
                                       <TableCell className="text-center">
                                         <Badge
                                           variant="outline"
-                                          className={`text-[10px] h-5 ${com.estado === "liquidada" ? "border-emerald-200 text-emerald-700" : "border-amber-200 text-amber-700"}`}
+                                          className={`text-[10px] h-5 ${com.estado === "liquidada" ? COMISION_ESTADO_STYLES.ganado : COMISION_ESTADO_STYLES.bloqueado}`}
                                         >
                                           {com.estado === "liquidada" ? "Liquidada" : "Pendiente"}
                                         </Badge>
