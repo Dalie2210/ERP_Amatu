@@ -32,7 +32,7 @@ export function OrderSummaryCard() {
   const pctDescuentoDistribuidor = useCartStore((s) => s.pctDescuentoDistribuidor)
   const tarifaEnvioBase = useCartStore((s) => s.tarifaEnvioBase)
   const clienteId = useCartStore((s) => s.clienteId)
-  const mascotaId = useCartStore((s) => s.mascotaId)
+  const mascotaIds = useCartStore((s) => s.mascotaIds)
   const metodoPago = useCartStore((s) => s.metodoPago)
   const descuentoReferidoVet = useCartStore((s) => s.descuentoReferidoVet)
   const fuente = useCartStore((s) => s.fuente)
@@ -98,7 +98,7 @@ export function OrderSummaryCard() {
     )
   }, [subAlim, subSnk, subOtr, tarifaEnvioBase, reglas, esDistribuidor, pctDescuentoDistribuidor, descuentoReferidoVet])
 
-  const isValid = items.length > 0 && clienteId && mascotaId && metodoPago && !reglasError
+  const isValid = items.length > 0 && clienteId && mascotaIds.length > 0 && metodoPago && !reglasError
 
   const handleSave = async () => {
     if (!isValid) return
@@ -110,7 +110,7 @@ export function OrderSummaryCard() {
 
       const result = await createOrder(supabase, {
         clienteId: clienteId!,
-        mascotaId: mascotaId!,
+        mascotaIds,
         vendedorId: user.id,
         items,
         fuente,

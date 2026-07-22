@@ -26,7 +26,7 @@ export interface MensajePedidoInfo {
       direccion: string
       complemento_direccion: string | null
     } | null
-    mascotas: { nombre: string } | null
+    pedido_mascotas: { mascotas: { nombre: string } | null }[]
     zonas_envio: { nombre: string } | null
   } | null
 }
@@ -53,7 +53,8 @@ export function buildMensajeMensajero(
     if (!p) return
 
     const cliente = p.clientes?.nombre_completo ?? "—"
-    const mascota = p.mascotas?.nombre ? ` 🐾 ${p.mascotas.nombre}` : ""
+    const nombresMascotas = p.pedido_mascotas.map((pm) => pm.mascotas?.nombre).filter(Boolean).join(", ")
+    const mascota = nombresMascotas ? ` 🐾 ${nombresMascotas}` : ""
     const direccionPartes = [
       p.clientes?.direccion,
       p.clientes?.complemento_direccion,

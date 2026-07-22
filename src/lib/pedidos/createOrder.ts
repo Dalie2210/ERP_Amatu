@@ -5,7 +5,7 @@ import { confirmarPedido } from "@/lib/logistica/transitions"
 
 export interface CreateOrderInput {
   clienteId: string
-  mascotaId: string
+  mascotaIds: string[]
   vendedorId: string
   items: CartItem[]
   fuente: string | null
@@ -73,7 +73,6 @@ export async function createOrder(
     .from("pedidos")
     .insert({
       cliente_id: input.clienteId,
-      mascota_id: input.mascotaId,
       vendedor_id: input.vendedorId,
       estado: estadoInicial,
       estado_pago: "pendiente",
@@ -129,6 +128,11 @@ export async function createOrder(
 
   const { error: detErr } = await supabase.from("detalle_pedido").insert(detalles)
   if (detErr) throw detErr
+
+  const { error: mascErr } = await supabase
+    .from("pedido_mascotas")
+    .insert(input.mascotaIds.map((mascotaId) => ({ pedido_id: pedido.id, mascota_id: mascotaId })))
+  if (mascErr) throw mascErr
 
   // The provisional commission stub is created automatically by the DB trigger
   // trg_crear_comision_provisional (AFTER INSERT ON pedidos, SECURITY DEFINER).

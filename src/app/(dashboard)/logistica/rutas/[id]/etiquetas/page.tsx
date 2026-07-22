@@ -35,7 +35,7 @@ interface EtiquetaData {
     complemento_entrega: string | null
     barrio_entrega: string | null
     clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
-    mascotas: { nombre: string } | null
+    pedido_mascotas: { mascotas: { nombre: string } | null }[]
     zonas_envio: { nombre: string } | null
     detalle_pedido: DetallePedido[]
   }[]
@@ -75,7 +75,7 @@ export default function EtiquetasPage({ params }: { params: Promise<{ id: string
             notas_ventas, notas_despacho,
             direccion_entrega, complemento_entrega, barrio_entrega,
             clientes(nombre_completo, celular, direccion, complemento_direccion),
-            mascotas(nombre),
+            pedido_mascotas(mascotas(nombre)),
             zonas_envio!zona_id(nombre),
             detalle_pedido(nombre_snapshot, cantidad, es_magistral)
           )
@@ -185,10 +185,12 @@ export default function EtiquetasPage({ params }: { params: Promise<{ id: string
                   <span className="label-field-key">Cliente:</span>
                   <span className="label-field-val label-client-name">{p.clientes?.nombre_completo ?? "—"}</span>
                 </div>
-                {p.mascotas && (
+                {p.pedido_mascotas.length > 0 && (
                   <div className="label-field">
-                    <span className="label-field-key">Perrito:</span>
-                    <span className="label-field-val">{p.mascotas.nombre}</span>
+                    <span className="label-field-key">Perrito{p.pedido_mascotas.length > 1 ? "s" : ""}:</span>
+                    <span className="label-field-val">
+                      {p.pedido_mascotas.map((pm) => pm.mascotas?.nombre).filter(Boolean).join(", ")}
+                    </span>
                   </div>
                 )}
                 <div className="label-field label-field-addr">

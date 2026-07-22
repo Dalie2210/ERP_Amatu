@@ -1429,6 +1429,36 @@ export type Database = {
           },
         ]
       }
+      pedido_mascotas: {
+        Row: {
+          mascota_id: string
+          pedido_id: string
+        }
+        Insert: {
+          mascota_id: string
+          pedido_id: string
+        }
+        Update: {
+          mascota_id?: string
+          pedido_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_mascotas_mascota_id_fkey"
+            columns: ["mascota_id"]
+            isOneToOne: false
+            referencedRelation: "mascotas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_mascotas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           aliado_id: string | null
@@ -1451,7 +1481,6 @@ export type Database = {
           fuente: Database["public"]["Enums"]["fuente_cliente"]
           fuente_subtipo: string | null
           id: string
-          mascota_id: string | null
           metodo_pago: Database["public"]["Enums"]["metodo_pago"] | null
           monto_descuento_compra: number
           notas_despacho: string | null
@@ -1492,7 +1521,6 @@ export type Database = {
           fuente?: Database["public"]["Enums"]["fuente_cliente"]
           fuente_subtipo?: string | null
           id?: string
-          mascota_id?: string | null
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_descuento_compra?: number
           notas_despacho?: string | null
@@ -1533,7 +1561,6 @@ export type Database = {
           fuente?: Database["public"]["Enums"]["fuente_cliente"]
           fuente_subtipo?: string | null
           id?: string
-          mascota_id?: string | null
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_descuento_compra?: number
           notas_despacho?: string | null
@@ -1573,13 +1600,6 @@ export type Database = {
             columns: ["editado_por_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pedidos_mascota_id_fkey"
-            columns: ["mascota_id"]
-            isOneToOne: false
-            referencedRelation: "mascotas"
             referencedColumns: ["id"]
           },
           {

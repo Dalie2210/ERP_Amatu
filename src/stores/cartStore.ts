@@ -7,7 +7,8 @@ interface CartActions {
   removeItem: (productoId: string, varianteId?: string) => void;
   updateQuantity: (productoId: string, cantidad: number, varianteId?: string) => void;
   setCliente: (clienteId: string | null) => void;
-  setMascota: (mascotaId: string | null) => void;
+  setMascotas: (mascotaIds: string[]) => void;
+  toggleMascota: (mascotaId: string) => void;
   setZona: (zonaId: string | null) => void;
   setFuente: (fuente: FuenteCliente | null, subtipo?: string | null) => void;
   setNotasVentas: (notas: string) => void;
@@ -39,7 +40,7 @@ interface CartActions {
 const initialState: CartState = {
   items: [],
   clienteId: null,
-  mascotaId: null,
+  mascotaIds: [],
   zonaId: null,
   fuente: null,
   fuenteSubtipo: null,
@@ -113,7 +114,13 @@ export const useCartStore = create<CartState & CartActions>()(
     })),
 
   setCliente: (clienteId) => set({ clienteId }),
-  setMascota: (mascotaId) => set({ mascotaId }),
+  setMascotas: (mascotaIds) => set({ mascotaIds }),
+  toggleMascota: (mascotaId) =>
+    set((state) => ({
+      mascotaIds: state.mascotaIds.includes(mascotaId)
+        ? state.mascotaIds.filter((id) => id !== mascotaId)
+        : [...state.mascotaIds, mascotaId],
+    })),
   setZona: (zonaId) => set({ zonaId }),
   setFuente: (fuente, subtipo = null) => set({ fuente, fuenteSubtipo: subtipo }),
   setNotasVentas: (notasVentas) => set({ notasVentas }),
@@ -154,7 +161,7 @@ export const useCartStore = create<CartState & CartActions>()(
       partialize: (state) => ({
         items: state.items,
         clienteId: state.clienteId,
-        mascotaId: state.mascotaId,
+        mascotaIds: state.mascotaIds,
         zonaId: state.zonaId,
         fuente: state.fuente,
         fuenteSubtipo: state.fuenteSubtipo,

@@ -84,7 +84,7 @@ export interface CartItem {
 export interface CartState {
   items: CartItem[];
   clienteId: string | null;
-  mascotaId: string | null;
+  mascotaIds: string[];
   zonaId: string | null;
   fuente: FuenteCliente | null;
   fuenteSubtipo: string | null;
@@ -438,7 +438,7 @@ export interface PedidoExpanded {
     direccion: string;
     complemento_direccion: string | null;
   } | null;
-  mascotas: { nombre: string; raza: string | null } | null;
+  pedido_mascotas: { mascotas: { nombre: string; raza: string | null } | null }[];
   zonas_envio: { nombre: string } | null;
   vendedor: { full_name: string } | null;
   pedido_ruta: {

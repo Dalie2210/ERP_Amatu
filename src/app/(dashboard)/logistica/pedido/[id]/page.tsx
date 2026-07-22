@@ -156,7 +156,7 @@ export default function PedidoCockpitPage({ params }: { params: Promise<{ id: st
           total_envio_cobrado, es_contraentrega, metodo_pago, fuente, numero_bolsas,
           fue_editado, created_at, vendedor_id,
           clientes(nombre_completo, celular, direccion, complemento_direccion),
-          mascotas(nombre, raza),
+          pedido_mascotas(mascotas(nombre, raza)),
           zonas_envio!zona_id(nombre),
           vendedor:users!pedidos_vendedor_id_fkey(full_name),
           pedido_ruta(ruta_id, numero_bolsas, rutas(nombre, estado))
@@ -527,12 +527,14 @@ export default function PedidoCockpitPage({ params }: { params: Promise<{ id: st
                     {pedido.zonas_envio ? ` (${pedido.zonas_envio.nombre})` : ""}
                   </span>
                 </div>
-                {pedido.mascotas && (
+                {pedido.pedido_mascotas.length > 0 && (
                   <div className="flex items-start gap-1.5">
                     <Tag className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                     <span>
-                      {pedido.mascotas.nombre}
-                      {pedido.mascotas.raza ? ` (${pedido.mascotas.raza})` : ""}
+                      {pedido.pedido_mascotas
+                        .map((pm) => pm.mascotas ? `${pm.mascotas.nombre}${pm.mascotas.raza ? ` (${pm.mascotas.raza})` : ""}` : null)
+                        .filter(Boolean)
+                        .join(", ")}
                     </span>
                   </div>
                 )}

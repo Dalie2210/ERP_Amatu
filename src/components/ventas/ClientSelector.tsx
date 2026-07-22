@@ -8,13 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Command,
   CommandEmpty,
@@ -26,7 +21,7 @@ import {
 } from "@/components/ui/command"
 import { CreateClienteDialog } from "@/components/clientes/CreateClienteDialog"
 import type { ClienteFormResult } from "@/components/clientes/ClienteForm"
-import { User, PawPrint, X, MapPin, UserPlus } from "lucide-react"
+import { User, PawPrint, X, MapPin, UserPlus, ChevronsUpDown } from "lucide-react"
 
 interface ClienteBasic {
   id: string
@@ -52,9 +47,10 @@ interface MascotaBasic {
 export function ClientSelector() {
   const supabase = useMemo(() => createClient(), [])
   const clienteId = useCartStore((s) => s.clienteId)
-  const mascotaId = useCartStore((s) => s.mascotaId)
+  const mascotaIds = useCartStore((s) => s.mascotaIds)
   const setCliente = useCartStore((s) => s.setCliente)
-  const setMascota = useCartStore((s) => s.setMascota)
+  const setMascotas = useCartStore((s) => s.setMascotas)
+  const toggleMascota = useCartStore((s) => s.toggleMascota)
   const setZona = useCartStore((s) => s.setZona)
   const setClienteConfig = useCartStore((s) => s.setClienteConfig)
   const setDescuentoReferidoVet = useCartStore((s) => s.setDescuentoReferidoVet)
@@ -63,7 +59,7 @@ export function ClientSelector() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<ClienteBasic[]>([])
   const [selectedCliente, setSelectedCliente] = useState<ClienteBasic | null>(null)
-  const [mascotas, setMascotas] = useState<MascotaBasic[]>([])
+  const [mascotas, setMascotasDisponibles] = useState<MascotaBasic[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -128,7 +124,7 @@ export function ClientSelector() {
 
   useEffect(() => {
     if (!clienteId) {
-      setMascotas([])
+      setMascotasDisponibles([])
       return
     }
     const fetchMascotas = async () => {
@@ -137,7 +133,7 @@ export function ClientSelector() {
         .select("id, nombre, raza, peso_kg")
         .eq("cliente_id", clienteId)
         .order("nombre")
-      setMascotas((data as MascotaBasic[]) ?? [])
+      setMascotasDisponibles((data as MascotaBasic[]) ?? [])
     }
     fetchMascotas()
   }, [supabase, clienteId])
@@ -169,7 +165,7 @@ export function ClientSelector() {
 
   const handleSelectCliente = (c: ClienteBasic) => {
     applyCliente(c)
-    setMascota(null)
+    setMascotas([])
     setQuery("")
     setResults([])
   }
@@ -179,8 +175,8 @@ export function ClientSelector() {
     setCliente(null)
     setZona(null)
     setClienteConfig(false, 0, 0)
-    setMascota(null)
     setMascotas([])
+    setMascotasDisponibles([])
     setDescuentoReferidoVet(0)
     setNotasVentas("")
   }
@@ -204,13 +200,8 @@ export function ClientSelector() {
       raza: m.raza,
       peso_kg: m.peso_kg,
     }))
-    setMascotas(newMascotas)
-
-    if (newMascotas.length === 1) {
-      setMascota(newMascotas[0].id)
-    } else {
-      setMascota(null)
-    }
+    setMascotasDisponibles(newMascotas)
+    setMascotas(newMascotas.map((m) => m.id))
 
     setQuery("")
     setResults([])
@@ -329,28 +320,55 @@ export function ClientSelector() {
           <div className="space-y-2">
             <Label className="text-sm flex items-center gap-1.5">
               <PawPrint className="h-3.5 w-3.5 text-primary" />
-              Mascota
+              Mascota{mascotas.length > 1 ? "s" : ""}
             </Label>
-            <Select
-              value={mascotaId ?? ""}
-              onValueChange={(v: string | null) => setMascota(v || null)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar mascota...">
-                  {mascotaId
-                    ? mascotas.find((m) => m.id === mascotaId)?.nombre
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between font-normal"
+                  />
+                }
+              >
+                <span className="truncate">
+                  {mascotaIds.length > 0
+                    ? mascotas
+                        .filter((m) => mascotaIds.includes(m.id))
+                        .map((m) => m.nombre)
+                        .join(", ")
                     : "Seleccionar mascota..."}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </PopoverTrigger>
+              <PopoverContent className="w-[--anchor-width] p-1" align="start">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer border-b mb-1">
+                  <Checkbox
+                    checked={mascotaIds.length === mascotas.length}
+                    indeterminate={mascotaIds.length > 0 && mascotaIds.length < mascotas.length}
+                    onCheckedChange={(checked) =>
+                      setMascotas(checked ? mascotas.map((m) => m.id) : [])
+                    }
+                  />
+                  <span className="text-sm font-medium">Seleccionar todo</span>
+                </label>
                 {mascotas.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.nombre} {m.raza ? `(${m.raza})` : ""}{" "}
-                    {m.peso_kg ? `— ${m.peso_kg}kg` : ""}
-                  </SelectItem>
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={mascotaIds.includes(m.id)}
+                      onCheckedChange={() => toggleMascota(m.id)}
+                    />
+                    <span className="text-sm">
+                      {m.nombre} {m.raza ? `(${m.raza})` : ""}{" "}
+                      {m.peso_kg ? `— ${m.peso_kg}kg` : ""}
+                    </span>
+                  </label>
                 ))}
-              </SelectContent>
-            </Select>
+              </PopoverContent>
+            </Popover>
           </div>
         )}
 

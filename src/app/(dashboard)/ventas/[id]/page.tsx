@@ -46,7 +46,7 @@ interface Pedido {
   editado_en: string | null
   created_at: string
   clientes: { nombre_completo: string; celular: string; direccion: string } | null
-  mascotas: { nombre: string } | null
+  pedido_mascotas: { mascotas: { nombre: string } | null }[]
   zonas_envio: { nombre: string } | null
   users: { full_name: string } | null
   editor: { full_name: string } | null
@@ -88,7 +88,7 @@ export default function PedidoDetallePage() {
         .select(`
           *,
           clientes(nombre_completo, celular, direccion),
-          mascotas(nombre),
+          pedido_mascotas(mascotas(nombre)),
           zonas_envio!zona_id(nombre),
           users!pedidos_vendedor_id_fkey(full_name),
           editor:users!pedidos_editado_por_id_fkey(full_name)
@@ -131,7 +131,7 @@ export default function PedidoDetallePage() {
         .select(`
           *,
           clientes(nombre_completo, celular, direccion),
-          mascotas(nombre),
+          pedido_mascotas(mascotas(nombre)),
           zonas_envio!zona_id(nombre),
           users!pedidos_vendedor_id_fkey(full_name),
           editor:users!pedidos_editado_por_id_fkey(full_name)
@@ -297,10 +297,13 @@ export default function PedidoDetallePage() {
                     {pedido.zonas_envio?.nombre}
                   </span>
                 </div>
-                {pedido.mascotas && (
+                {pedido.pedido_mascotas.length > 0 && (
                   <div className="flex gap-2 items-center text-muted-foreground">
                     <PawPrint className="h-4 w-4" />
-                    <span>Mascota: {pedido.mascotas.nombre}</span>
+                    <span>
+                      Mascota{pedido.pedido_mascotas.length > 1 ? "s" : ""}:{" "}
+                      {pedido.pedido_mascotas.map((pm) => pm.mascotas?.nombre).filter(Boolean).join(", ")}
+                    </span>
                   </div>
                 )}
               </CardContent>

@@ -56,7 +56,7 @@ interface PedidoAsignado {
     notas_despacho: string | null
     es_contraentrega: boolean
     clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
-    mascotas: { nombre: string } | null
+    pedido_mascotas: { mascotas: { nombre: string } | null }[]
     zonas_envio: { nombre: string } | null
     detalle_pedido: DetallePedidoItem[] | null
   } | null
@@ -73,7 +73,7 @@ interface PedidoDisponible {
   es_contraentrega: boolean
   numero_bolsas: number
   clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
-  mascotas: { nombre: string } | null
+  pedido_mascotas: { mascotas: { nombre: string } | null }[]
   zonas_envio: { nombre: string } | null
 }
 
@@ -119,7 +119,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
             id, numero_pedido, total, total_envio_cobrado, franja_horaria,
             notas_ventas, notas_despacho, es_contraentrega,
             clientes(nombre_completo, celular, direccion, complemento_direccion),
-            mascotas(nombre),
+            pedido_mascotas(mascotas(nombre)),
             zonas_envio!zona_id(nombre),
             detalle_pedido(cantidad, es_magistral, gramaje_magistral, producto_variantes!variante_id(presentacion))
           )
@@ -146,7 +146,7 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
         id, numero_pedido, total, total_envio_cobrado, franja_horaria,
         notas_ventas, notas_despacho, es_contraentrega, numero_bolsas,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
-        mascotas(nombre),
+        pedido_mascotas(mascotas(nombre)),
         zonas_envio!zona_id(nombre)
       `)
       .in("estado", ["en_preparacion", "listo_despacho"])
@@ -460,7 +460,11 @@ export default function RutaDetailPage({ params }: { params: Promise<{ id: strin
                           </Badge>
                         </div>
                         <p className="font-medium text-sm">{p?.clientes?.nombre_completo}</p>
-                        {p?.mascotas && <p className="text-xs text-muted-foreground">🐾 {p.mascotas.nombre}</p>}
+                        {p && p.pedido_mascotas.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            🐾 {p.pedido_mascotas.map((pm) => pm.mascotas?.nombre).filter(Boolean).join(", ")}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">

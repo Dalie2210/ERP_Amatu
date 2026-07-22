@@ -55,7 +55,7 @@ interface PedidoKanban {
   es_contraentrega: boolean
   numero_bolsas: number
   clientes: { nombre_completo: string; celular: string; direccion: string; complemento_direccion: string | null } | null
-  mascotas: { nombre: string } | null
+  pedido_mascotas: { mascotas: { nombre: string } | null }[]
   zonas_envio: { nombre: string } | null
   pedido_ruta: { ruta_id: string; numero_bolsas: number; rutas: { nombre: string; estado: string } | null }[]
   notas_logistica_count?: number
@@ -203,8 +203,10 @@ function PedidoCard({
         <p className="font-medium text-sm leading-tight">
           {pedido.clientes?.nombre_completo ?? "—"}
         </p>
-        {pedido.mascotas && (
-          <p className="text-xs text-muted-foreground">🐾 {pedido.mascotas.nombre}</p>
+        {pedido.pedido_mascotas.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            🐾 {pedido.pedido_mascotas.map((pm) => pm.mascotas?.nombre).filter(Boolean).join(", ")}
+          </p>
         )}
       </div>
 
@@ -380,7 +382,7 @@ export default function LogisticaPage() {
         id, numero_pedido, estado, estado_pago, franja_horaria, fecha_tentativa_entrega,
         notas_ventas, notas_despacho, total, es_contraentrega, numero_bolsas,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
-        mascotas(nombre),
+        pedido_mascotas(mascotas(nombre)),
         zonas_envio!zona_id(nombre),
         pedido_ruta(ruta_id, numero_bolsas, rutas(nombre, estado))
       `)
@@ -395,7 +397,7 @@ export default function LogisticaPage() {
         id, numero_pedido, estado, estado_pago, franja_horaria, fecha_tentativa_entrega,
         notas_ventas, notas_despacho, total, es_contraentrega, numero_bolsas,
         clientes(nombre_completo, celular, direccion, complemento_direccion),
-        mascotas(nombre),
+        pedido_mascotas(mascotas(nombre)),
         zonas_envio!zona_id(nombre),
         pedido_ruta(ruta_id, numero_bolsas, rutas(nombre, estado))
       `)
