@@ -17,6 +17,8 @@ import type { OrdenProduccionItemExpanded, PreviewConsumoProduccion } from "@/ty
 
 interface Props {
   item: OrdenProduccionItemExpanded
+  /** La orden ya está cerrada (completada/cancelada): forzar solo lectura. */
+  bloqueado?: boolean
   /** Se llama tras completar/cerrar el ítem para refrescar datos. */
   onDone: () => void
   /** Se llama con el resultado antes de refrescar (para registrar historial). */
@@ -28,10 +30,10 @@ interface Props {
  * cantidad realmente producida + preview FEFO del consumo + confirmación.
  * Reutilizada por el detalle de la orden y por el sheet de completar.
  */
-export function CompletarItemCard({ item, onDone, onCompleted }: Props) {
+export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Props) {
   const supabase = useMemo(() => createClient(), [])
 
-  const yaCompletado = item.estado === "completada" || item.estado === "parcial"
+  const yaCompletado = !!bloqueado || item.estado === "completada" || item.estado === "parcial"
   const [cantidad, setCantidad] = useState(String(item.cantidad_planificada))
   const [motivo, setMotivo] = useState("")
   const [preview, setPreview] = useState<PreviewConsumoProduccion[]>([])
@@ -98,11 +100,16 @@ export function CompletarItemCard({ item, onDone, onCompleted }: Props) {
 
   if (yaCompletado) {
     const parcial = item.estado === "parcial"
+    const sinProducir = bloqueado && (item.estado === "planificada" || item.estado === "en_proceso")
     return (
       <div className="rounded-lg border p-4 space-y-1 bg-muted/30">
         <div className="flex items-center justify-between">
           <span className="font-medium">{titulo}</span>
-          {parcial ? (
+          {sinProducir ? (
+            <Badge variant="outline" className="gap-1 text-muted-foreground">
+              Sin producción
+            </Badge>
+          ) : parcial ? (
             <Badge variant="outline" className="gap-1 border-amber-500 text-amber-600">
               <AlertTriangle className="h-3 w-3" /> Parcial
             </Badge>

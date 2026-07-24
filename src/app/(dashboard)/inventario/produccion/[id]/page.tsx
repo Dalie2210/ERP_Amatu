@@ -200,7 +200,11 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
   const [dirty, setDirty] = useState(false)
 
   const tab = searchParams.get("tab") ?? "proceso"
-  const canEdit = role === "admin" || role === "logistica" || role === "jefe_produccion"
+  // Una orden completada o cancelada queda congelada: nada se vuelve a editar
+  // (ni la hoja de proceso, ni la de mezclas, ni la completación de productos).
+  // Los campos quedan visibles con su último valor guardado, solo lectura.
+  const bloqueado = orden?.estado === "completada" || orden?.estado === "cancelada"
+  const canEdit = (role === "admin" || role === "logistica" || role === "jefe_produccion") && !bloqueado
 
   function setTab(value: string) {
     const sp = new URLSearchParams(searchParams.toString())
@@ -379,8 +383,6 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
   )
 
   const pendientes = items.filter((it) => it.estado === "planificada" || it.estado === "en_proceso")
-  // Una orden cerrada (completada/cancelada) queda en solo lectura.
-  const bloqueado = orden?.estado === "completada" || orden?.estado === "cancelada"
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-4">
@@ -440,6 +442,14 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
         )}
       </div>
 
+      {!loading && orden && bloqueado && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          Esta orden está {orden.estado === "cancelada" ? "cancelada" : "completada"}: todos los campos quedaron
+          bloqueados con su último valor guardado y no se pueden modificar.
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-4">
           <Skeleton className="h-8 w-64" />
@@ -470,6 +480,7 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
                 <CompletarItemCard
                   key={it.id}
                   item={it}
+                  bloqueado={bloqueado}
                   onDone={handleItemDone}
                   onCompleted={(info) => handleItemCompletado(it, info)}
                 />
