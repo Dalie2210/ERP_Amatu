@@ -108,7 +108,7 @@ export default function InsumoDetailPage() {
 
       {/* Info section */}
       <Card className="border-none shadow-sm">
-        <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <CardContent className="pt-6 grid grid-cols-2 sm:grid-cols-5 gap-6">
           <div>
             <p className="text-sm text-muted-foreground">Stock Disponible</p>
             <p className="text-xl font-semibold">
@@ -128,6 +128,10 @@ export default function InsumoDetailPage() {
           <div>
             <p className="text-sm text-muted-foreground">Merma</p>
             <p className="text-xl font-semibold">{insumo.merma_pct}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Rendimiento</p>
+            <p className="text-xl font-semibold">{insumo.rendimiento_pct}%</p>
           </div>
         </CardContent>
       </Card>

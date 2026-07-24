@@ -15,13 +15,18 @@ import {
 import { Calculator, ArrowDownToLine, AlertTriangle } from "lucide-react"
 import type { ExplosionMaterialesRow, EstadoPedido } from "@/types"
 
+interface OrdenItemOption {
+  cantidad_planificada: number
+  estado: string
+  productos: { nombre: string } | null
+  producto_variantes: { presentacion: string } | null
+}
+
 interface OrdenOption {
   id: string
   numero: string | null
-  cantidad_planificada: number
   fecha: string
-  productos: { nombre: string } | null
-  producto_variantes: { presentacion: string } | null
+  orden_produccion_items: OrdenItemOption[]
 }
 
 interface PedidoOption {
@@ -54,8 +59,8 @@ export default function ExplosionMaterialesPage() {
     const [ordenesRes, pedidosRes] = await Promise.all([
       supabase
         .from("ordenes_produccion")
-        .select("id, numero, cantidad_planificada, fecha, productos(nombre), producto_variantes(presentacion)")
-        .eq("estado", "planificada")
+        .select("id, numero, fecha, orden_produccion_items(cantidad_planificada, estado, productos(nombre), producto_variantes(presentacion))")
+        .in("estado", ["planificada", "en_proceso"])
         .order("fecha", { ascending: true }),
       supabase
         .from("pedidos")
@@ -127,15 +132,22 @@ export default function ExplosionMaterialesPage() {
               <p className="text-sm text-muted-foreground p-6">No hay órdenes planificadas.</p>
             ) : (
               <div className="divide-y">
-                {ordenes.map((o) => (
-                  <label key={o.id} className="flex items-center gap-3 px-6 py-3 hover:bg-muted/40 cursor-pointer">
-                    <Checkbox checked={selectedOrdenes.has(o.id)} onCheckedChange={() => toggleOrden(o.id)} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{o.numero} — {o.productos?.nombre} ({o.producto_variantes?.presentacion})</p>
-                      <p className="text-xs text-muted-foreground">Planificado: {o.cantidad_planificada} · {o.fecha}</p>
-                    </div>
-                  </label>
-                ))}
+                {ordenes.map((o) => {
+                  const planificados = (o.orden_produccion_items ?? []).filter((it) => it.estado === "planificada")
+                  const resumen = planificados
+                    .map((it) => `${it.productos?.nombre ?? "—"} ${it.producto_variantes?.presentacion ?? ""}`.trim())
+                    .join(", ")
+                  const totalPlan = planificados.reduce((s, it) => s + (it.cantidad_planificada ?? 0), 0)
+                  return (
+                    <label key={o.id} className="flex items-center gap-3 px-6 py-3 hover:bg-muted/40 cursor-pointer">
+                      <Checkbox checked={selectedOrdenes.has(o.id)} onCheckedChange={() => toggleOrden(o.id)} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" title={resumen}>{o.numero} — {resumen || "sin ítems planificados"}</p>
+                        <p className="text-xs text-muted-foreground">Planificado: {totalPlan.toLocaleString("es-CO")} · {o.fecha}</p>
+                      </div>
+                    </label>
+                  )
+                })}
               </div>
             )}
           </CardContent>

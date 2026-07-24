@@ -16,6 +16,7 @@ interface Permissions {
   canViewCommissions: boolean;
   canLiquidateCommissions: boolean;
   canDispatchRoutes: boolean;
+  canManageProduccion: boolean;
   isAdmin: boolean;
 }
 
@@ -33,6 +34,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
     canViewCommissions: true,
     canLiquidateCommissions: true,
     canDispatchRoutes: true,
+    canManageProduccion: true,
     isAdmin: true,
   },
   vendedor: {
@@ -48,6 +50,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
     canViewCommissions: true,
     canLiquidateCommissions: false,
     canDispatchRoutes: false,
+    canManageProduccion: false,
     isAdmin: false,
   },
   logistica: {
@@ -63,6 +66,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
     canViewCommissions: false,
     canLiquidateCommissions: false,
     canDispatchRoutes: true,
+    canManageProduccion: true,
     isAdmin: false,
   },
   contable: {
@@ -78,6 +82,23 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
     canViewCommissions: true,
     canLiquidateCommissions: true,
     canDispatchRoutes: false,
+    canManageProduccion: false,
+    isAdmin: false,
+  },
+  jefe_produccion: {
+    canCreateOrders: false,
+    canEditOwnOrders: false,
+    canEditAnyOrder: false,
+    canConfirmPayment: false,
+    canManageLogistics: false,
+    canViewAllSales: false,
+    canManageCatalog: false,
+    canManageUsers: false,
+    canManageConfig: false,
+    canViewCommissions: false,
+    canLiquidateCommissions: false,
+    canDispatchRoutes: false,
+    canManageProduccion: true,
     isAdmin: false,
   },
 };
@@ -101,6 +122,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     canViewCommissions: false,
     canLiquidateCommissions: false,
     canDispatchRoutes: false,
+    canManageProduccion: false,
     isAdmin: false,
   };
 

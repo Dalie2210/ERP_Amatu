@@ -38,7 +38,7 @@ export default function RecetasPage() {
         *,
         producto:productos!producto_id(nombre),
         variante:producto_variantes!variante_id(presentacion),
-        receta_items(*, insumo:insumos!insumo_id(nombre, unidad_medida, merma_pct))
+        receta_items(*, insumo:insumos!insumo_id(nombre, unidad_medida, merma_pct, rendimiento_pct))
       `)
       .order("created_at", { ascending: false })
 

@@ -44,7 +44,7 @@ const navGroups: NavGroup[] = [
   {
     label: "General",
     items: [
-      { title: "Inicio", url: "/dashboard", icon: Home, roles: ["admin", "vendedor", "logistica", "contable"], exact: true },
+      { title: "Inicio", url: "/dashboard", icon: Home, roles: ["admin", "vendedor", "logistica", "contable", "jefe_produccion"], exact: true },
     ],
   },
   {
@@ -96,7 +96,9 @@ export function AppSidebar() {
     item.exact ? pathname === item.url : pathname.startsWith(item.url)
 
   const showAdmin = !isLoading && role === "admin"
-  const showInventario = !isLoading && (role === "admin" || role === "logistica")
+  const showInventario = !isLoading && (role === "admin" || role === "logistica" || role === "jefe_produccion")
+  // El jefe de producción solo ve Producción (+ Recetas y PT/Stock en lectura).
+  const inventarioRolesJefe = ["/inventario/produccion", "/inventario/recetas", "/inventario/productos"]
 
   return (
     <Sidebar className="border-r-0 bg-sidebar">
@@ -163,7 +165,8 @@ export function AppSidebar() {
                   { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
                   { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
                   { title: "Conteo",         url: "/inventario/conteo",             icon: Settings2 },
-                ].map((item) => (
+                ].filter((item) => role !== "jefe_produccion" || inventarioRolesJefe.includes(item.url))
+                  .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       render={<Link href={item.url} />}

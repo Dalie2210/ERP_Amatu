@@ -7,7 +7,7 @@
 // Enums (mirror PostgreSQL enums for type safety)
 // ============================================================
 
-export type UserRole = "admin" | "vendedor" | "logistica" | "contable";
+export type UserRole = "admin" | "vendedor" | "logistica" | "contable" | "jefe_produccion";
 
 export type TipoDocumento = "CC" | "CE" | "NIT" | "Pasaporte";
 
@@ -105,6 +105,8 @@ export interface CartState {
   aliadoId: string | null;
   // B6: 5% discount for clients referred by vet/trainer (active period, venta ≤ 2)
   descuentoReferidoVet: number;
+  // Promo IDs desactivados manualmente por el vendedor para este pedido
+  disabledPromoIds: string[];
 }
 
 // ============================================================
@@ -480,6 +482,7 @@ export type UnidadMedida = "g" | "kg" | "ml" | "l" | "unidad";
 export type EstadoProduccion =
   | "planificada"
   | "en_proceso"
+  | "parcial"
   | "completada"
   | "cancelada";
 
@@ -512,6 +515,7 @@ export interface Insumo {
   unidad_medida: UnidadMedida;
   stock_minimo: number;
   merma_pct: number;
+  rendimiento_pct: number;
   costo_promedio: number;
   is_active: boolean;
   notas: string | null;
@@ -597,10 +601,11 @@ export interface IngresoItem {
 export interface OrdenProduccion {
   id: string;
   numero: string | null;
-  producto_id: string;
+  // Legacy (histórico): las órdenes nuevas viven en orden_produccion_items.
+  producto_id: string | null;
   variante_id: string | null;
   receta_id: string | null;
-  cantidad_planificada: number;
+  cantidad_planificada: number | null;
   cantidad_producida: number | null;
   estado: EstadoProduccion;
   fecha: string;
@@ -609,6 +614,89 @@ export interface OrdenProduccion {
   notas: string | null;
   created_by: string | null;
   created_at: string;
+  // Si esta orden fue generada como reposición del faltante de otra orden parcial.
+  orden_origen_id: string | null;
+  // Auditoría de la documentación del proceso (jefe de producción).
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+// Documentación del proceso por materia prima (una fila por insumo por orden).
+export interface OrdenProduccionProceso {
+  id: string;
+  orden_id: string;
+  insumo_id: string;
+  cant_requerida_crudo: number | null;
+  temp_descongelacion: number | null;
+  cant_real_crudo: number | null;
+  lotes: string | null;
+  tiempo_coccion_horas: number | null;
+  temp_final_coccion: number | null;
+  kilos_antes_molido: number | null;
+  tiempo_molienda: number | null;
+  kilos_final_molido: number | null;
+  responsable_coccion: string | null;
+  responsable: string | null;
+  empaque_conforme: boolean | null;
+  rotulado: boolean | null;
+  liberacion_lote: boolean | null;
+  orden_index: number;
+  created_at: string;
+}
+
+// Hoja de mezcla por dieta (una fila por producto por orden). El ERP calcula el
+// nº de mezclas sugerido (total gramos / 1200); el nº final y las firmas de
+// trazabilidad los diligencia el equipo de producción.
+export interface OrdenMezcla {
+  id: string;
+  orden_id: string;
+  producto_id: string;
+  total_gramos: number | null;
+  num_mezclas_sugerido: number | null;
+  num_mezclas: number | null;
+  porcion_estandar: number;
+  firma_mezclo: string | null;
+  firma_empaco: string | null;
+  firma_fecho: string | null;
+  firma_sello: string | null;
+  firma_verifico: string | null;
+  observaciones: string | null;
+  orden_index: number;
+  created_at: string;
+}
+
+export type TipoActividadProduccion =
+  | "proceso_guardado"
+  | "mezcla_guardada"
+  | "item_completado"
+  | "item_parcial"
+  | "orden_completada"
+  | "orden_cancelada";
+
+export interface OrdenProduccionActividad {
+  id: string;
+  orden_id: string;
+  tipo: TipoActividadProduccion;
+  usuario_id: string | null;
+  usuario_nombre: string | null;
+  payload: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface OrdenProduccionItem {
+  id: string;
+  orden_id: string;
+  producto_id: string;
+  variante_id: string | null;
+  receta_id: string | null;
+  cantidad_planificada: number;
+  cantidad_producida: number | null;
+  costo_total: number | null;
+  producto_lote_id: string | null;
+  estado: EstadoProduccion;
+  created_at: string;
+  // Motivo obligatorio cuando estado === "parcial".
+  motivo_parcial: string | null;
 }
 
 export interface ProduccionConsumo {
@@ -685,6 +773,7 @@ export interface VStockInsumo {
   unidad_medida: UnidadMedida;
   stock_minimo: number;
   merma_pct: number;
+  rendimiento_pct: number;
   costo_promedio: number;
   stock_disponible: number;
   lotes_por_vencer: number;
@@ -699,6 +788,7 @@ export interface VStockProducto {
   estado: EstadoPT | null;
   stock_disponible: number;
   costo_promedio_lote: number;
+  stock_minimo: number;
 }
 
 export interface VValorInventario {
@@ -811,11 +901,29 @@ export interface IngresoExpanded extends Ingreso {
   items: (IngresoItem & { insumo: Pick<Insumo, "nombre" | "codigo" | "unidad_medida"> })[];
 }
 
+// Orden de produccion item with expanded relations (for UI)
+export interface OrdenProduccionItemExpanded extends OrdenProduccionItem {
+  producto: { nombre: string } | null;
+  variante: { presentacion: string } | null;
+  receta: Pick<Receta, "nombre" | "rendimiento"> | null;
+}
+
+// Fila de proceso con el insumo (materia prima) expandido para la UI.
+export interface OrdenProduccionProcesoExpanded extends OrdenProduccionProceso {
+  insumo: Pick<Insumo, "nombre" | "codigo" | "unidad_medida" | "tipo"> | null;
+}
+
+// Fila de mezcla con la dieta (producto) expandida para la UI.
+export interface OrdenMezclaExpanded extends OrdenMezcla {
+  producto: { nombre: string } | null;
+}
+
 // Orden de produccion with expanded relations (for UI)
 export interface OrdenProduccionExpanded extends OrdenProduccion {
   producto: { nombre: string } | null;
   variante: { presentacion: string } | null;
   receta: Pick<Receta, "nombre" | "rendimiento"> | null;
+  items: OrdenProduccionItemExpanded[];
   consumos: (ProduccionConsumo & {
     insumo_lote: Pick<InsumoLote, "codigo_lote" | "insumo_id"> & {
       insumo: Pick<Insumo, "nombre" | "unidad_medida">;
@@ -828,7 +936,7 @@ export interface RecetaExpanded extends Receta {
   producto: { nombre: string } | null;
   variante: { presentacion: string } | null;
   receta_items: (RecetaItem & {
-    insumo: Pick<Insumo, "nombre" | "unidad_medida" | "merma_pct">;
+    insumo: Pick<Insumo, "nombre" | "unidad_medida" | "merma_pct" | "rendimiento_pct">;
   })[];
 }
 

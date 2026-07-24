@@ -27,6 +27,7 @@ interface CartActions {
   // B6: referido vet discount
   setDescuentoReferidoVet: (pct: number) => void;
   setItems: (items: CartItem[]) => void;
+  togglePromoEnabled: (promoId: string) => void;
   clearCart: () => void;
 
   // Computed
@@ -58,6 +59,7 @@ const initialState: CartState = {
   zonaAlternaId: null,
   aliadoId: null,
   descuentoReferidoVet: 0,
+  disabledPromoIds: [],
 };
 
 export const useCartStore = create<CartState & CartActions>()(
@@ -137,6 +139,12 @@ export const useCartStore = create<CartState & CartActions>()(
   setAliadoId: (aliadoId) => set({ aliadoId }),
   setDescuentoReferidoVet: (descuentoReferidoVet) => set({ descuentoReferidoVet }),
   setItems: (items) => set({ items }),
+  togglePromoEnabled: (promoId) =>
+    set((state) => ({
+      disabledPromoIds: state.disabledPromoIds.includes(promoId)
+        ? state.disabledPromoIds.filter((id) => id !== promoId)
+        : [...state.disabledPromoIds, promoId],
+    })),
   clearCart: () => set(initialState),
 
   getSubtotalAlimento: () =>
@@ -179,6 +187,7 @@ export const useCartStore = create<CartState & CartActions>()(
         zonaAlternaId: state.zonaAlternaId,
         aliadoId: state.aliadoId,
         descuentoReferidoVet: state.descuentoReferidoVet,
+        disabledPromoIds: state.disabledPromoIds,
       }),
     }
   )

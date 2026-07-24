@@ -89,9 +89,10 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
     const insumo = insumoById(item.insumoId)
     const cocido = parseFloat(item.cantidadCocido)
     if (!insumo || isNaN(cocido) || cocido <= 0) return null
-    const factor = 1 - insumo.merma_pct / 100
-    if (factor <= 0) return null
-    return cocido / factor
+    const factorMerma = 1 - insumo.merma_pct / 100
+    const factorRendimiento = insumo.rendimiento_pct / 100
+    if (factorMerma <= 0 || factorRendimiento <= 0) return null
+    return cocido / factorRendimiento / factorMerma
   }
 
   function updateItem(idx: number, patch: Partial<ItemDraft>) {
@@ -240,7 +241,8 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
                     <SelectContent>
                       {insumos.map((ins) => (
                         <SelectItem key={ins.id} value={ins.id}>
-                          {ins.nombre} ({ins.merma_pct}% merma)
+                          {ins.nombre} ({ins.merma_pct}% merma
+                          {ins.rendimiento_pct !== 100 ? `, ${ins.rendimiento_pct}% rendimiento` : ""})
                         </SelectItem>
                       ))}
                     </SelectContent>

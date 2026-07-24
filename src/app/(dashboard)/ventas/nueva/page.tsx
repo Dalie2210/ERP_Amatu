@@ -15,7 +15,7 @@ import { useActivePromociones } from "@/hooks/useActivePromociones"
 import { syncPromos } from "@/lib/promociones/syncPromos"
 
 export default function NuevaVentaPage() {
-  const { items, setItems } = useCartStore()
+  const { items, setItems, disabledPromoIds } = useCartStore()
   const { promociones } = useActivePromociones()
 
   // Serialize only real items to detect meaningful cart changes
@@ -23,24 +23,28 @@ export default function NuevaVentaPage() {
     .filter((i) => !i.esPromo)
     .map((i) => `${i.productoId}:${i.varianteId ?? ""}:${i.cantidad}`)
     .join(",")
+  const disabledKey = disabledPromoIds.join(",")
 
   const prevKeyRef = useRef<string>("")
   const prevPromosRef = useRef<typeof promociones>([])
+  const prevDisabledKeyRef = useRef<string>("")
 
   useEffect(() => {
     const promosChanged = prevPromosRef.current !== promociones
     const cartChanged = prevKeyRef.current !== realKey
+    const disabledChanged = prevDisabledKeyRef.current !== disabledKey
 
-    if (!promosChanged && !cartChanged) return
+    if (!promosChanged && !cartChanged && !disabledChanged) return
 
     prevKeyRef.current = realKey
     prevPromosRef.current = promociones
+    prevDisabledKeyRef.current = disabledKey
 
     const realItems = items.filter((i) => !i.esPromo)
-    const promoItems = syncPromos(realItems, promociones)
+    const promoItems = syncPromos(realItems, promociones, disabledPromoIds)
     setItems([...realItems, ...promoItems])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realKey, promociones])
+  }, [realKey, promociones, disabledKey])
 
   return (
     <div className="max-w-[1440px] mx-auto space-y-6">

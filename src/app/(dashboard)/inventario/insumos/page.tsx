@@ -61,6 +61,7 @@ const emptyForm = () => ({
   unidad_medida: "kg" as UnidadMedida,
   stock_minimo: "",
   merma_pct: "0",
+  rendimiento_pct: "100",
   notas: "",
 })
 
@@ -162,6 +163,7 @@ export default function InsumosPage() {
       unidad_medida: insumo.unidad_medida,
       stock_minimo: String(insumo.stock_minimo),
       merma_pct: String(insumo.merma_pct),
+      rendimiento_pct: String(insumo.rendimiento_pct),
       notas: insumo.notas ?? "",
     })
     setSaveError(null)
@@ -182,6 +184,7 @@ export default function InsumosPage() {
       unidad_medida: form.unidad_medida,
       stock_minimo: parseFloat(form.stock_minimo) || 0,
       merma_pct: parseFloat(form.merma_pct) || 0,
+      rendimiento_pct: parseFloat(form.rendimiento_pct) || 100,
       notas: form.notas.trim() || null,
     }
 
@@ -301,7 +304,7 @@ export default function InsumosPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="stock_minimo">Stock Mínimo</Label>
                     <Input
@@ -321,6 +324,17 @@ export default function InsumosPage() {
                       value={form.merma_pct}
                       onChange={(e) => setForm({ ...form, merma_pct: e.target.value })}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rendimiento_pct">Rendimiento (%)</Label>
+                    <Input
+                      id="rendimiento_pct"
+                      type="number"
+                      placeholder="100"
+                      value={form.rendimiento_pct}
+                      onChange={(e) => setForm({ ...form, rendimiento_pct: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">100 = sin cambio, 200 = duplica peso al cocinar</p>
                   </div>
                 </div>
 
@@ -404,6 +418,7 @@ export default function InsumosPage() {
                     <TableHead className="text-right">Costo / Unidad</TableHead>
                     <TableHead className="text-right">Stock Mín.</TableHead>
                     <TableHead className="text-right">Merma %</TableHead>
+                    <TableHead className="text-right">Rendimiento %</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -440,6 +455,9 @@ export default function InsumosPage() {
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {insumo.merma_pct}%
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {insumo.rendimiento_pct}%
                         </TableCell>
                         <TableCell className="text-center">
                           <StatusBadge

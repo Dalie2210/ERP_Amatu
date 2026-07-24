@@ -759,6 +759,7 @@ export type Database = {
           merma_pct: number
           nombre: string
           notas: string | null
+          rendimiento_pct: number
           stock_minimo: number
           tipo: Database["public"]["Enums"]["tipo_insumo"]
           unidad_medida: Database["public"]["Enums"]["unidad_medida"]
@@ -773,6 +774,7 @@ export type Database = {
           merma_pct?: number
           nombre: string
           notas?: string | null
+          rendimiento_pct?: number
           stock_minimo?: number
           tipo: Database["public"]["Enums"]["tipo_insumo"]
           unidad_medida: Database["public"]["Enums"]["unidad_medida"]
@@ -787,6 +789,7 @@ export type Database = {
           merma_pct?: number
           nombre?: string
           notas?: string | null
+          rendimiento_pct?: number
           stock_minimo?: number
           tipo?: Database["public"]["Enums"]["tipo_insumo"]
           unidad_medida?: Database["public"]["Enums"]["unidad_medida"]
@@ -1219,18 +1222,16 @@ export type Database = {
         }
         Relationships: []
       }
-      ordenes_produccion: {
+      orden_produccion_items: {
         Row: {
           cantidad_planificada: number
           cantidad_producida: number | null
           costo_total: number | null
           created_at: string
-          created_by: string | null
           estado: Database["public"]["Enums"]["estado_produccion"]
-          fecha: string
           id: string
-          notas: string | null
-          numero: string | null
+          motivo_parcial: string | null
+          orden_id: string
           producto_id: string
           producto_lote_id: string | null
           receta_id: string | null
@@ -1241,12 +1242,10 @@ export type Database = {
           cantidad_producida?: number | null
           costo_total?: number | null
           created_at?: string
-          created_by?: string | null
           estado?: Database["public"]["Enums"]["estado_produccion"]
-          fecha?: string
           id?: string
-          notas?: string | null
-          numero?: string | null
+          motivo_parcial?: string | null
+          orden_id: string
           producto_id: string
           producto_lote_id?: string | null
           receta_id?: string | null
@@ -1257,12 +1256,10 @@ export type Database = {
           cantidad_producida?: number | null
           costo_total?: number | null
           created_at?: string
-          created_by?: string | null
           estado?: Database["public"]["Enums"]["estado_produccion"]
-          fecha?: string
           id?: string
-          notas?: string | null
-          numero?: string | null
+          motivo_parcial?: string | null
+          orden_id?: string
           producto_id?: string
           producto_lote_id?: string | null
           receta_id?: string | null
@@ -1270,8 +1267,118 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orden_produccion_items_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_produccion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_produccion_items_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_produccion_items_receta_id_fkey"
+            columns: ["receta_id"]
+            isOneToOne: false
+            referencedRelation: "recetas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_produccion_items_variante_id_fkey"
+            columns: ["variante_id"]
+            isOneToOne: false
+            referencedRelation: "producto_variantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_produccion_items_producto_lote_id_fkey"
+            columns: ["producto_lote_id"]
+            isOneToOne: false
+            referencedRelation: "producto_lotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordenes_produccion: {
+        Row: {
+          cantidad_planificada: number | null
+          cantidad_producida: number | null
+          costo_total: number | null
+          created_at: string
+          created_by: string | null
+          estado: Database["public"]["Enums"]["estado_produccion"]
+          fecha: string
+          id: string
+          notas: string | null
+          numero: string | null
+          orden_origen_id: string | null
+          producto_id: string | null
+          producto_lote_id: string | null
+          receta_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+          variante_id: string | null
+        }
+        Insert: {
+          cantidad_planificada?: number | null
+          cantidad_producida?: number | null
+          costo_total?: number | null
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["estado_produccion"]
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero?: string | null
+          orden_origen_id?: string | null
+          producto_id?: string | null
+          producto_lote_id?: string | null
+          receta_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          variante_id?: string | null
+        }
+        Update: {
+          cantidad_planificada?: number | null
+          cantidad_producida?: number | null
+          costo_total?: number | null
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["estado_produccion"]
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero?: string | null
+          orden_origen_id?: string | null
+          producto_id?: string | null
+          producto_lote_id?: string | null
+          receta_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          variante_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordenes_produccion_orden_origen_id_fkey"
+            columns: ["orden_origen_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_produccion"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ordenes_produccion_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordenes_produccion_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1324,6 +1431,194 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_stock_productos"
             referencedColumns: ["variante_id"]
+          },
+        ]
+      }
+      orden_mezcla: {
+        Row: {
+          created_at: string
+          firma_empaco: string | null
+          firma_fecho: string | null
+          firma_mezclo: string | null
+          firma_sello: string | null
+          firma_verifico: string | null
+          id: string
+          num_mezclas: number | null
+          num_mezclas_sugerido: number | null
+          observaciones: string | null
+          orden_id: string
+          orden_index: number
+          porcion_estandar: number
+          producto_id: string
+          total_gramos: number | null
+        }
+        Insert: {
+          created_at?: string
+          firma_empaco?: string | null
+          firma_fecho?: string | null
+          firma_mezclo?: string | null
+          firma_sello?: string | null
+          firma_verifico?: string | null
+          id?: string
+          num_mezclas?: number | null
+          num_mezclas_sugerido?: number | null
+          observaciones?: string | null
+          orden_id: string
+          orden_index?: number
+          porcion_estandar?: number
+          producto_id: string
+          total_gramos?: number | null
+        }
+        Update: {
+          created_at?: string
+          firma_empaco?: string | null
+          firma_fecho?: string | null
+          firma_mezclo?: string | null
+          firma_sello?: string | null
+          firma_verifico?: string | null
+          id?: string
+          num_mezclas?: number | null
+          num_mezclas_sugerido?: number | null
+          observaciones?: string | null
+          orden_id?: string
+          orden_index?: number
+          porcion_estandar?: number
+          producto_id?: string
+          total_gramos?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orden_mezcla_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_produccion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_mezcla_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orden_produccion_actividad: {
+        Row: {
+          created_at: string
+          id: string
+          orden_id: string
+          payload: Json | null
+          tipo: string
+          usuario_id: string | null
+          usuario_nombre: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          orden_id: string
+          payload?: Json | null
+          tipo: string
+          usuario_id?: string | null
+          usuario_nombre?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          orden_id?: string
+          payload?: Json | null
+          tipo?: string
+          usuario_id?: string | null
+          usuario_nombre?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orden_produccion_actividad_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_produccion"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orden_produccion_procesos: {
+        Row: {
+          cant_real_crudo: number | null
+          cant_requerida_crudo: number | null
+          created_at: string
+          empaque_conforme: boolean | null
+          id: string
+          insumo_id: string
+          kilos_antes_molido: number | null
+          kilos_final_molido: number | null
+          liberacion_lote: boolean | null
+          lotes: string | null
+          orden_id: string
+          orden_index: number
+          responsable: string | null
+          responsable_coccion: string | null
+          rotulado: boolean | null
+          temp_descongelacion: number | null
+          temp_final_coccion: number | null
+          tiempo_coccion_horas: number | null
+          tiempo_molienda: number | null
+        }
+        Insert: {
+          cant_real_crudo?: number | null
+          cant_requerida_crudo?: number | null
+          created_at?: string
+          empaque_conforme?: boolean | null
+          id?: string
+          insumo_id: string
+          kilos_antes_molido?: number | null
+          kilos_final_molido?: number | null
+          liberacion_lote?: boolean | null
+          lotes?: string | null
+          orden_id: string
+          orden_index?: number
+          responsable?: string | null
+          responsable_coccion?: string | null
+          rotulado?: boolean | null
+          temp_descongelacion?: number | null
+          temp_final_coccion?: number | null
+          tiempo_coccion_horas?: number | null
+          tiempo_molienda?: number | null
+        }
+        Update: {
+          cant_real_crudo?: number | null
+          cant_requerida_crudo?: number | null
+          created_at?: string
+          empaque_conforme?: boolean | null
+          id?: string
+          insumo_id?: string
+          kilos_antes_molido?: number | null
+          kilos_final_molido?: number | null
+          liberacion_lote?: boolean | null
+          lotes?: string | null
+          orden_id?: string
+          orden_index?: number
+          responsable?: string | null
+          responsable_coccion?: string | null
+          rotulado?: boolean | null
+          temp_descongelacion?: number | null
+          temp_final_coccion?: number | null
+          tiempo_coccion_horas?: number | null
+          tiempo_molienda?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orden_produccion_procesos_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_produccion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_produccion_procesos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1819,6 +2114,7 @@ export type Database = {
           presentacion: string
           producto_id: string
           sku: string
+          stock_minimo: number
         }
         Insert: {
           created_at?: string
@@ -1829,6 +2125,7 @@ export type Database = {
           presentacion: string
           producto_id: string
           sku: string
+          stock_minimo?: number
         }
         Update: {
           created_at?: string
@@ -1839,6 +2136,7 @@ export type Database = {
           presentacion?: string
           producto_id?: string
           sku?: string
+          stock_minimo?: number
         }
         Relationships: [
           {
@@ -2619,6 +2917,7 @@ export type Database = {
           lotes_por_vencer: number | null
           merma_pct: number | null
           nombre: string | null
+          rendimiento_pct: number | null
           stock_disponible: number | null
           stock_minimo: number | null
           tipo: Database["public"]["Enums"]["tipo_insumo"] | null
@@ -2633,6 +2932,7 @@ export type Database = {
           producto_id: string | null
           producto_nombre: string | null
           stock_disponible: number | null
+          stock_minimo: number | null
           variante_id: string | null
           variante_presentacion: string | null
         }
@@ -2740,13 +3040,37 @@ export type Database = {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: number
       }
-      fn_completar_produccion: {
-        Args: { p_cantidad_producida: number; p_orden_id: string }
+      fn_completar_item_produccion: {
+        Args: {
+          p_cantidad_producida: number
+          p_item_id: string
+          p_motivo?: string | null
+        }
         Returns: {
           costo_total: number
           costo_unitario: number
           producto_lote_id: string
         }[]
+      }
+      fn_crear_orden_produccion: {
+        Args: { p_fecha: string; p_items: Json; p_notas: string }
+        Returns: string
+      }
+      fn_generar_orden_faltante: {
+        Args: { p_orden_id: string }
+        Returns: string
+      }
+      fn_get_or_create_procesos_orden: {
+        Args: { p_orden_id: string }
+        Returns: undefined
+      }
+      fn_get_or_create_mezclas_orden: {
+        Args: { p_orden_id: string }
+        Returns: undefined
+      }
+      fn_cancelar_orden_produccion: {
+        Args: { p_orden_id: string }
+        Returns: undefined
       }
       fn_confirmar_venta: {
         Args: { p_confirmar_pago?: boolean; p_pedido_id: string }
@@ -2838,8 +3162,8 @@ export type Database = {
           monto_confirmado: number
         }[]
       }
-      fn_preview_consumo_produccion: {
-        Args: { p_cantidad_producida: number; p_orden_id: string }
+      fn_preview_consumo_item: {
+        Args: { p_cantidad_producida: number; p_item_id: string }
         Returns: {
           cantidad_a_consumir: number
           cocido_requerido: number
@@ -2925,6 +3249,7 @@ export type Database = {
       estado_produccion:
         | "planificada"
         | "en_proceso"
+        | "parcial"
         | "completada"
         | "cancelada"
       estado_pt: "producido" | "empacado" | "despachado"
@@ -2963,7 +3288,7 @@ export type Database = {
       tipo_precio: "fijo" | "por_variante" | "por_gramo" | "escala"
       tipo_promocion: "paga_x_lleva_mas" | "producto_gratis"
       unidad_medida: "g" | "kg" | "ml" | "l" | "unidad"
-      user_role: "admin" | "vendedor" | "logistica" | "contable"
+      user_role: "admin" | "vendedor" | "logistica" | "contable" | "jefe_produccion"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3114,6 +3439,7 @@ export const Constants = {
       estado_produccion: [
         "planificada",
         "en_proceso",
+        "parcial",
         "completada",
         "cancelada",
       ],
@@ -3156,7 +3482,7 @@ export const Constants = {
       tipo_precio: ["fijo", "por_variante", "por_gramo", "escala"],
       tipo_promocion: ["paga_x_lleva_mas", "producto_gratis"],
       unidad_medida: ["g", "kg", "ml", "l", "unidad"],
-      user_role: ["admin", "vendedor", "logistica", "contable"],
+      user_role: ["admin", "vendedor", "logistica", "contable", "jefe_produccion"],
     },
   },
 } as const

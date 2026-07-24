@@ -88,6 +88,7 @@ export const UNIDAD_MEDIDA_LABELS: Record<string, string> = {
 export const ESTADO_PRODUCCION_LABELS: Record<string, string> = {
   planificada: "Planificada",
   en_proceso: "En Proceso",
+  parcial: "Parcial",
   completada: "Completada",
   cancelada: "Cancelada",
 }

@@ -57,6 +57,12 @@ const CONTABLE_ACTIONS: QuickAction[] = [
   { label: "Aliados", href: "/comisiones/aliados", icon: Handshake, description: "Comisiones aliados" },
 ];
 
+const JEFE_PRODUCCION_ACTIONS: QuickAction[] = [
+  { label: "Órdenes de Producción", href: "/inventario/produccion", icon: ClipboardCheck, description: "Documentar y completar" },
+  { label: "Recetas (BOM)", href: "/inventario/recetas", icon: Leaf, description: "Consultar recetas" },
+  { label: "PT / Stock", href: "/inventario/productos", icon: PackageCheck, description: "Producto terminado" },
+];
+
 export function AdminDashboard({ stats }: { stats: DashboardStats }) {
   const valorInventario = stats.valorInventario ?? { value: null, status: "ok" as const };
   const insumosBajoMinimo = stats.insumosBajoMinimo ?? { value: null, status: "ok" as const };
@@ -163,6 +169,17 @@ export function ContableDashboard({ stats }: { stats: DashboardStats }) {
       <QuickActions actions={CONTABLE_ACTIONS} />
 
       <PagoPendienteCard pedidos={stats.pedidosPagoPendienteList ?? []} />
+    </div>
+  );
+}
+
+export function JefeProduccionDashboard() {
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Recibe las órdenes de producción, documenta el proceso por materia prima y márcalas como completadas.
+      </p>
+      <QuickActions actions={JEFE_PRODUCCION_ACTIONS} />
     </div>
   );
 }

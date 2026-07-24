@@ -37,6 +37,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   vendedor: "Vendedor",
   logistica: "Logística",
   contable: "Contable",
+  jefe_produccion: "Jefe de Producción",
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
@@ -44,6 +45,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   vendedor: "border-blue-200 text-blue-700",
   logistica: "border-orange-200 text-orange-700",
   contable: "border-green-200 text-green-700",
+  jefe_produccion: "border-rose-200 text-rose-700",
 }
 
 export default function AdminUsuariosPage() {
@@ -231,6 +233,7 @@ export default function AdminUsuariosPage() {
                   <SelectContent>
                     <SelectItem value="vendedor">Vendedor</SelectItem>
                     <SelectItem value="logistica">Logística</SelectItem>
+                    <SelectItem value="jefe_produccion">Jefe de Producción</SelectItem>
                     <SelectItem value="contable">Contable</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
@@ -291,6 +294,7 @@ export default function AdminUsuariosPage() {
                         <SelectContent>
                           <SelectItem value="vendedor">Vendedor</SelectItem>
                           <SelectItem value="logistica">Logística</SelectItem>
+                          <SelectItem value="jefe_produccion">Jefe de Producción</SelectItem>
                           <SelectItem value="contable">Contable</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>

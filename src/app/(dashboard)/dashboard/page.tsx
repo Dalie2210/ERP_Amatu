@@ -3,6 +3,7 @@ import {
   VendedorDashboard,
   LogisticaDashboard,
   ContableDashboard,
+  JefeProduccionDashboard,
 } from "@/components/dashboard/RoleDashboard";
 import {
   getDashboardStats,
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
       {role === "vendedor"  && <VendedorDashboard stats={stats} />}
       {role === "logistica" && <LogisticaDashboard stats={stats} />}
       {role === "contable"  && <ContableDashboard stats={stats} />}
+      {role === "jefe_produccion" && <JefeProduccionDashboard />}
     </div>
   );
 }

@@ -89,6 +89,7 @@ interface NuevaVariante {
   presentacion: string
   precio_publico: string
   precio_por_gramo: string
+  stock_minimo: string
 }
 
 const emptyVariante = (): NuevaVariante => ({
@@ -96,6 +97,7 @@ const emptyVariante = (): NuevaVariante => ({
   presentacion: "",
   precio_publico: "",
   precio_por_gramo: "",
+  stock_minimo: "",
 })
 
 // ---------- Skeleton Loader ----------
@@ -272,6 +274,7 @@ export default function CatalogoPage() {
       presentacion: v.presentacion.trim(),
       precio_publico: parseFloat(v.precio_publico),
       precio_por_gramo: v.precio_por_gramo ? parseFloat(v.precio_por_gramo) : null,
+      stock_minimo: v.stock_minimo ? parseFloat(v.stock_minimo) : 0,
     }))
 
     const { error: varianteError } = await supabase
@@ -512,19 +515,20 @@ export default function CatalogoPage() {
 
                 {/* Column headers */}
                 <div
-                  className={`grid gap-2 text-xs text-muted-foreground px-1 ${showPrecioPorGramo ? "grid-cols-[1fr_1fr_1fr_1fr_auto]" : "grid-cols-[1fr_1fr_1fr_auto]"}`}
+                  className={`grid gap-2 text-xs text-muted-foreground px-1 ${showPrecioPorGramo ? "grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]" : "grid-cols-[1fr_1fr_1fr_1fr_auto]"}`}
                 >
                   <span>SKU *</span>
                   <span>Presentación *</span>
                   <span>Precio público *</span>
                   {showPrecioPorGramo && <span>Precio/Gramo</span>}
+                  <span>Mín. stock</span>
                   <span className="w-8" />
                 </div>
 
                 {newVariantes.map((v, i) => (
                   <div
                     key={i}
-                    className={`grid gap-2 items-center ${showPrecioPorGramo ? "grid-cols-[1fr_1fr_1fr_1fr_auto]" : "grid-cols-[1fr_1fr_1fr_auto]"}`}
+                    className={`grid gap-2 items-center ${showPrecioPorGramo ? "grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]" : "grid-cols-[1fr_1fr_1fr_1fr_auto]"}`}
                   >
                     <Input
                       placeholder="AMT-RES-300G"
@@ -566,6 +570,14 @@ export default function CatalogoPage() {
                         }
                       />
                     )}
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={v.stock_minimo}
+                      onChange={(e) =>
+                        updateVarianteRow(i, { stock_minimo: e.target.value })
+                      }
+                    />
                     <Button
                       type="button"
                       variant="ghost"

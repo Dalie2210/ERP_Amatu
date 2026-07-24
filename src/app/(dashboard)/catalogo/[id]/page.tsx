@@ -31,12 +31,14 @@ interface Categoria { id: string; nombre: string; slug: string }
 interface Variante {
   id: string; producto_id: string; presentacion: string; sku: string
   precio_publico: number; precio_por_gramo: number | null; is_active: boolean
+  stock_minimo: number
 }
 interface PrecioEscala {
   id: string; producto_id: string; cantidad_minima: number; precio_total: number
 }
 interface NewVariante {
   sku: string; presentacion: string; precio_publico: string; precio_por_gramo: string
+  stock_minimo: string
 }
 
 export default function ProductoDetallePage() {
@@ -63,7 +65,7 @@ export default function ProductoDetallePage() {
   const [showVarianteDialog, setShowVarianteDialog] = useState(false)
   const [editingVarianteId, setEditingVarianteId] = useState<string | null>(null)
   const [newVariante, setNewVariante] = useState<NewVariante>({
-    sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "",
+    sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "", stock_minimo: "",
   })
   const [pesosmagistralescargados, setPesosmagistralescargados] = useState<string[]>([])
 
@@ -144,6 +146,7 @@ export default function ProductoDetallePage() {
         presentacion: newVariante.presentacion,
         precio_publico: parseFloat(newVariante.precio_publico),
         precio_por_gramo: newVariante.precio_por_gramo ? parseFloat(newVariante.precio_por_gramo) : null,
+        stock_minimo: newVariante.stock_minimo ? parseFloat(newVariante.stock_minimo) : 0,
       }).eq("id", editingVarianteId)
       if (!error) {
         toast.success("Variante actualizada ✓")
@@ -155,6 +158,7 @@ export default function ProductoDetallePage() {
         presentacion: newVariante.presentacion,
         precio_publico: parseFloat(newVariante.precio_publico),
         precio_por_gramo: newVariante.precio_por_gramo ? parseFloat(newVariante.precio_por_gramo) : null,
+        stock_minimo: newVariante.stock_minimo ? parseFloat(newVariante.stock_minimo) : 0,
       }])
       if (!error) {
         toast.success("Variante agregada ✓")
@@ -162,7 +166,7 @@ export default function ProductoDetallePage() {
     }
     setShowVarianteDialog(false)
     setEditingVarianteId(null)
-    setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "" })
+    setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "", stock_minimo: "" })
     fetchAll()
   }
 
@@ -173,6 +177,7 @@ export default function ProductoDetallePage() {
       presentacion: variante.presentacion,
       precio_publico: variante.precio_publico.toString(),
       precio_por_gramo: variante.precio_por_gramo ? variante.precio_por_gramo.toString() : "",
+      stock_minimo: variante.stock_minimo != null ? variante.stock_minimo.toString() : "",
     })
     setShowVarianteDialog(true)
   }
@@ -386,7 +391,7 @@ export default function ProductoDetallePage() {
             setShowVarianteDialog(open)
             if (!open) {
               setEditingVarianteId(null)
-              setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "" })
+              setNewVariante({ sku: "", presentacion: "", precio_publico: "", precio_por_gramo: "", stock_minimo: "" })
             }
           }}>
             <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
@@ -450,6 +455,20 @@ export default function ProductoDetallePage() {
                     }
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Mínimo de stock (PT)</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={newVariante.stock_minimo}
+                    onChange={(e) =>
+                      setNewVariante({ ...newVariante, stock_minimo: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Cuánto producto terminado debería haber en stock para esta presentación.
+                  </p>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowVarianteDialog(false)}>
@@ -482,6 +501,7 @@ export default function ProductoDetallePage() {
                   <TableHead>SKU</TableHead>
                   <TableHead className="text-right">Precio Público</TableHead>
                   <TableHead className="text-right">$/Gramo</TableHead>
+                  <TableHead className="text-right">Mín. stock</TableHead>
                   <TableHead className="text-right w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -495,6 +515,9 @@ export default function ProductoDetallePage() {
                     <TableCell className="text-right">{fmt(v.precio_publico)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {v.precio_por_gramo ? `$${v.precio_por_gramo}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {v.stock_minimo?.toLocaleString("es-CO") ?? 0}
                     </TableCell>
                     <TableCell className="text-right flex gap-2 justify-end">
                       <Button

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Database } from "@/types/database.types"
 
-const RoleEnum = z.enum(["admin", "vendedor", "logistica", "contable"])
+const RoleEnum = z.enum(["admin", "vendedor", "logistica", "contable", "jefe_produccion"])
 
 const CreateUsuarioSchema = z.object({
   email: z.string().email(),

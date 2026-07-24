@@ -8,12 +8,15 @@ import type { CartItem, Promocion } from "@/types"
  */
 export function syncPromos(
   realItems: CartItem[],
-  promociones: Promocion[]
+  promociones: Promocion[],
+  disabledPromoIds: string[] = []
 ): CartItem[] {
   const promoItems: CartItem[] = []
   const activePromos = promociones.filter((p) => p.isActive)
 
   for (const promo of activePromos) {
+    if (disabledPromoIds.includes(promo.id)) continue
+
     if (promo.tipo === "paga_x_lleva_mas") {
       if (!promo.productoId || !promo.pagaX || !promo.llevaExtra) continue
 
