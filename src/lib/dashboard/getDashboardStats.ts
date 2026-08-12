@@ -1,9 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   ActiveRouteRow, DashboardCardState, DashboardStats, EstadoPedido, PedidoPagoPendienteRow, RecentPedidoRow,
-  VValorInventario, VStockInsumo, VStockProducto,
 } from "@/types";
 
 const ESTADOS_VENTA_HOY = [
@@ -32,14 +30,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const [
     ventasResult, pendientesResult, enRutaResult, clientesResult, recentPedidosResult, activeRoutesResult,
-    valorInventarioResult, stockInsumosResult, stockProductosResult,
+    inventarioResult,
   ] =
     await Promise.allSettled([
-      supabase
-        .from("pedidos")
-        .select("total")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
-        .gte("created_at", startOfDayIso),
+      // E2: la suma la hace SQL en vez de traer todos los `total` del día.
+      supabase.rpc("fn_ventas_resumen_periodo", {
+        p_desde: startOfDayIso,
+        p_estados: ESTADOS_VENTA_HOY as unknown as string[],
+      }),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
@@ -64,9 +62,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         .eq("estado", "en_preparacion")
         .order("created_at", { ascending: false })
         .limit(5),
-      supabase.from("v_valor_inventario").select("valor_total"),
-      supabase.from("v_stock_insumos").select("bajo_minimo, lotes_por_vencer"),
-      supabase.from("v_stock_productos").select("estado, stock_disponible"),
+      // E2: antes se traían las tres vistas completas para reducirlas en JS.
+      supabase.rpc("fn_inventario_resumen"),
     ]);
 
   const recentPedidos: RecentPedidoRow[] =
@@ -88,39 +85,42 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         }))
       : [];
 
-  const valorInventario: DashboardCardState<number> =
-    valorInventarioResult.status === "fulfilled" && !valorInventarioResult.value.error
-      ? { value: ((valorInventarioResult.value.data ?? []) as VValorInventario[]).reduce((s, r) => s + r.valor_total, 0), status: "ok" }
-      : { value: null, status: "error" };
+  type InventarioResumen = {
+    valor_total: number; insumos_bajo_minimo: number; lotes_por_vencer: number;
+    pt_producido: number; pt_empacado: number; pt_despachado: number;
+  };
+  const inventarioOk =
+    inventarioResult.status === "fulfilled" && !inventarioResult.value.error;
+  const inventario = inventarioOk
+    ? ((inventarioResult.value.data ?? [])[0] as InventarioResumen | undefined)
+    : undefined;
 
-  const insumosBajoMinimo: DashboardCardState<number> =
-    stockInsumosResult.status === "fulfilled" && !stockInsumosResult.value.error
-      ? { value: ((stockInsumosResult.value.data ?? []) as VStockInsumo[]).filter((i) => i.bajo_minimo).length, status: "ok" }
-      : { value: null, status: "error" };
+  const valorInventario: DashboardCardState<number> = inventarioOk
+    ? { value: Number(inventario?.valor_total ?? 0), status: "ok" }
+    : { value: null, status: "error" };
 
-  const lotesPorVencer: DashboardCardState<number> =
-    stockInsumosResult.status === "fulfilled" && !stockInsumosResult.value.error
-      ? { value: ((stockInsumosResult.value.data ?? []) as VStockInsumo[]).reduce((s, i) => s + i.lotes_por_vencer, 0), status: "ok" }
-      : { value: null, status: "error" };
+  const insumosBajoMinimo: DashboardCardState<number> = inventarioOk
+    ? { value: Number(inventario?.insumos_bajo_minimo ?? 0), status: "ok" }
+    : { value: null, status: "error" };
+
+  const lotesPorVencer: DashboardCardState<number> = inventarioOk
+    ? { value: Number(inventario?.lotes_por_vencer ?? 0), status: "ok" }
+    : { value: null, status: "error" };
 
   const ptPorEstado: DashboardCardState<{ producido: number; empacado: number; despachado: number }> =
-    stockProductosResult.status === "fulfilled" && !stockProductosResult.value.error
+    inventarioOk
       ? {
-          value: ((stockProductosResult.value.data ?? []) as VStockProducto[]).reduce(
-            (acc, p) => {
-              if (p.estado === "producido") acc.producido += p.stock_disponible;
-              else if (p.estado === "empacado") acc.empacado += p.stock_disponible;
-              else if (p.estado === "despachado") acc.despachado += p.stock_disponible;
-              return acc;
-            },
-            { producido: 0, empacado: 0, despachado: 0 }
-          ),
+          value: {
+            producido: Number(inventario?.pt_producido ?? 0),
+            empacado: Number(inventario?.pt_empacado ?? 0),
+            despachado: Number(inventario?.pt_despachado ?? 0),
+          },
           status: "ok",
         }
       : { value: null, status: "error" };
 
   return {
-    ventasHoy: toSumCard(ventasResult, "total"),
+    ventasHoy: toSumCard(ventasResult, "revenue"),
     pedidosPendientes: toCountCard(pendientesResult),
     enviosEnRuta: toCountCard(enRutaResult),
     nuevosClientes: toCountCard(clientesResult),
@@ -192,11 +192,10 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
 
   const [ventasResult, pendientesResult, comisionResult, clientesResult, pedidosResult] =
     await Promise.allSettled([
-      supabase
-        .from("pedidos")
-        .select("total")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
-        .gte("created_at", startOfDayIso),
+      supabase.rpc("fn_ventas_resumen_periodo", {
+        p_desde: startOfDayIso,
+        p_estados: ESTADOS_VENTA_HOY as unknown as string[],
+      }),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
@@ -231,7 +230,7 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
     nuevosClientes: EMPTY_CARD,
     recentPedidos: [],
     activeRoutes: [],
-    misVentasHoy: toSumCard(ventasResult, "total"),
+    misVentasHoy: toSumCard(ventasResult, "revenue"),
     misPedidosPendientes: toCountCard(pendientesResult),
     comisionEstimada: toSumCard(comisionResult, "monto_comision"),
     misClientes: toCountCard(clientesResult),
@@ -240,7 +239,11 @@ export async function getVendedorDashboardStats(): Promise<DashboardStats> {
 }
 
 export async function getLogisticaDashboardStats(): Promise<DashboardStats> {
-  const supabase = createAdminClient();
+  // S7: se usa el cliente de sesión, no el service-role. Las políticas RLS ya
+  // dejan a logística leer los pedidos confirmados y las rutas; el bypass total
+  // era un patrón frágil (cualquier refactor que expusiera esta función por otra
+  // vía filtraba datos globales).
+  const supabase = await createClient();
 
   const [listosResult, enRutaResult, rutasResult, preparacionResult, activeRoutesResult] =
     await Promise.allSettled([
@@ -297,7 +300,9 @@ export async function getLogisticaDashboardStats(): Promise<DashboardStats> {
 }
 
 export async function getContableDashboardStats(): Promise<DashboardStats> {
-  const supabase = createAdminClient();
+  // S7: cliente de sesión. Las políticas RLS ya dan a contable acceso completo
+  // a pedidos y comisiones; no hace falta el service-role.
+  const supabase = await createClient();
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -305,21 +310,20 @@ export async function getContableDashboardStats(): Promise<DashboardStats> {
 
   const [ventasResult, pagosPendResult, comisionesResult, enRutaResult, pagoPendListResult] =
     await Promise.allSettled([
-      supabase
-        .from("pedidos")
-        .select("total")
-        .in("estado", ESTADOS_VENTA_HOY as unknown as EstadoPedido[])
-        .gte("created_at", startOfDayIso),
+      supabase.rpc("fn_ventas_resumen_periodo", {
+        p_desde: startOfDayIso,
+        p_estados: ESTADOS_VENTA_HOY as unknown as string[],
+      }),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
         .neq("estado_pago", "confirmado")
         .not("estado", "in", '("devolucion","cambio")'),
-      supabase
-        .from("comisiones_detalle")
-        .select("monto_comision")
-        .is("liquidacion_id", null)
-        .eq("aplica_comision", true),
+      // E2: la suma la hace SQL en vez de traer todas las comisiones sin liquidar.
+      supabase.rpc("fn_comisiones_resumen", {
+        p_solo_sin_liquidar: true,
+        p_solo_aplica: true,
+      }),
       supabase
         .from("pedidos")
         .select("id", { count: "exact", head: true })
@@ -344,10 +348,10 @@ export async function getContableDashboardStats(): Promise<DashboardStats> {
     nuevosClientes: EMPTY_CARD,
     recentPedidos: [],
     activeRoutes: [],
-    ventasHoy: toSumCard(ventasResult, "total"),
+    ventasHoy: toSumCard(ventasResult, "revenue"),
     enviosEnRuta: toCountCard(enRutaResult),
     pagosPendientesCount: toCountCard(pagosPendResult),
-    comisionesPorLiquidar: toSumCard(comisionesResult, "monto_comision"),
+    comisionesPorLiquidar: toSumCard(comisionesResult, "monto_total"),
     pedidosPagoPendienteList,
   };
 }

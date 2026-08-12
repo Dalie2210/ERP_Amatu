@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Save, Blend } from "lucide-react"
+import { Save, Blend, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
-import type { OrdenProduccionItemExpanded, OrdenMezclaExpanded } from "@/types"
-import { PORCION_ESTANDAR_G, formatGramaje } from "@/lib/inventario/mezcla"
+import type { OrdenProduccionItemExpanded, OrdenMezclaExpanded, DesglosePresentacion } from "@/types"
+import type { Json } from "@/types/database.types"
+import { PORCION_ESTANDAR_G, formatGramaje, sugerirDesglose, sumaKgDesglose } from "@/lib/inventario/mezcla"
 
 // Firmas de trazabilidad exigidas por control de calidad (una por dieta).
 const FIRMAS = [
@@ -45,6 +45,12 @@ interface CambioMezcla {
   nuevo: string | number | null
 }
 
+// Resume un desglose como "300g×10, 500g×5" para el historial (legible, no JSON).
+function resumirDesglose(desglose: DesglosePresentacion[] | null): string | null {
+  if (!desglose || desglose.length === 0) return null
+  return desglose.map((d) => `${d.presentacion}×${d.unidades}`).join(", ")
+}
+
 // Compara la hoja de mezcla original (tal como se cargó) contra la actual y
 // arma la lista de cambios campo por campo, para el historial detallado
 // (misma estructura que diffProcesos en el detalle de la orden).
@@ -69,6 +75,17 @@ function diffMezclas(
         })
       }
     }
+    const antesDesglose = resumirDesglose(orig.desglose_presentaciones)
+    const despuesDesglose = resumirDesglose(r.desglose_presentaciones)
+    if (antesDesglose !== despuesDesglose) {
+      cambios.push({
+        entidad: r.producto?.nombre ?? "—",
+        campo: "desglose_presentaciones",
+        campo_label: "Desglose de presentaciones",
+        anterior: antesDesglose,
+        nuevo: despuesDesglose,
+      })
+    }
   }
   return cambios
 }
@@ -88,24 +105,6 @@ export function MezclaPanel({
   ordenId, items, mezclas, canEdit, bloqueado, onLog, onSaved,
 }: MezclaPanelProps) {
   const supabase = useMemo(() => createClient(), [])
-  const [rows, setRows] = useState<OrdenMezclaExpanded[]>(mezclas)
-  // Snapshot de la hoja de mezcla tal como se cargó, para poder calcular el
-  // diff (qué cambió, valor anterior/nuevo) al guardar.
-  const [original, setOriginal] = useState<OrdenMezclaExpanded[]>(mezclas)
-  const [dirty, setDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
-  // Referencia de la última prop `mezclas` procesada, para detectar cuándo el
-  // padre recargó datos frescos (carga inicial y tras guardar) y resincronizar
-  // durante el render, sin pisar ediciones locales en curso.
-  const [prevMezclas, setPrevMezclas] = useState(mezclas)
-  if (mezclas !== prevMezclas) {
-    setPrevMezclas(mezclas)
-    setRows(mezclas)
-    setOriginal(mezclas)
-    setDirty(false)
-  }
-
-  const editable = canEdit && !bloqueado
 
   // Desglose de porciones por dieta → presentación (calculado desde los ítems,
   // no se persiste). Ej.: { [productoId]: [{ presentacion: "1200g", cantidad: 10 }] }
@@ -122,9 +121,87 @@ export function MezclaPanel({
     return map
   }, [items])
 
+  // Rellena el desglose por presentación si aún no se ha guardado uno (fila
+  // recién generada): lo sugiere escalando el mix planificado al nº de
+  // mezclas ya fijado (o sugerido, si el final aún no se ha diligenciado).
+  function hidratar(lista: OrdenMezclaExpanded[]): OrdenMezclaExpanded[] {
+    return lista.map((m) => {
+      if (m.desglose_presentaciones && m.desglose_presentaciones.length > 0) return m
+      const porciones = porcionesPorDieta.get(m.producto_id) ?? []
+      return {
+        ...m,
+        desglose_presentaciones: sugerirDesglose(porciones, m.num_mezclas ?? m.num_mezclas_sugerido),
+      }
+    })
+  }
+
+  const [rows, setRows] = useState<OrdenMezclaExpanded[]>(() => hidratar(mezclas))
+  // Snapshot de la hoja de mezcla tal como se cargó, para poder calcular el
+  // diff (qué cambió, valor anterior/nuevo) al guardar.
+  const [original, setOriginal] = useState<OrdenMezclaExpanded[]>(() => hidratar(mezclas))
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  // Referencia de la última prop `mezclas` procesada, para detectar cuándo el
+  // padre recargó datos frescos (carga inicial y tras guardar) y resincronizar
+  // durante el render, sin pisar ediciones locales en curso.
+  const [prevMezclas, setPrevMezclas] = useState(mezclas)
+  if (mezclas !== prevMezclas) {
+    setPrevMezclas(mezclas)
+    const hidratadas = hidratar(mezclas)
+    setRows(hidratadas)
+    setOriginal(hidratadas)
+    setDirty(false)
+  }
+
+  const editable = canEdit && !bloqueado
+
+  // Al fijar/ajustar el nº de mezclas final, re-sugiere el desglose por
+  // presentación escalando proporcionalmente el mix planificado (pisa
+  // cualquier ajuste manual previo en esa fila; ver `resetDesglose` para
+  // volver a pedirlo explícitamente y el input de unidades para editar a mano
+  // sin volver a tocar el nº de mezclas).
   function updateNumMezclas(id: string, valor: string) {
     const num = valor.trim() === "" ? null : Number(valor)
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, num_mezclas: num } : r)))
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r
+        const porciones = porcionesPorDieta.get(r.producto_id) ?? []
+        return { ...r, num_mezclas: num, desglose_presentaciones: sugerirDesglose(porciones, num) }
+      })
+    )
+    setDirty(true)
+  }
+  // Edición manual de las unidades de una presentación puntual del desglose.
+  function updateUnidadDesglose(id: string, presentacion: string, valor: string) {
+    const unidades = valor.trim() === "" ? 0 : Number(valor)
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id || !r.desglose_presentaciones) return r
+        return {
+          ...r,
+          desglose_presentaciones: r.desglose_presentaciones.map((d) =>
+            d.presentacion === presentacion
+              ? { ...d, unidades: Number.isFinite(unidades) ? unidades : 0 }
+              : d
+          ),
+        }
+      })
+    )
+    setDirty(true)
+  }
+  // Descarta ajustes manuales y vuelve a pedir la sugerencia automática
+  // (escalado proporcional del mix planificado al nº de mezclas actual).
+  function resetDesglose(id: string) {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r
+        const porciones = porcionesPorDieta.get(r.producto_id) ?? []
+        return {
+          ...r,
+          desglose_presentaciones: sugerirDesglose(porciones, r.num_mezclas ?? r.num_mezclas_sugerido),
+        }
+      })
+    )
     setDirty(true)
   }
   function updateFirma(id: string, campo: FirmaCampo, valor: string) {
@@ -148,6 +225,7 @@ export function MezclaPanel({
       num_mezclas_sugerido: r.num_mezclas_sugerido,
       num_mezclas: r.num_mezclas,
       porcion_estandar: r.porcion_estandar,
+      desglose_presentaciones: r.desglose_presentaciones as unknown as Json,
       firma_mezclo: r.firma_mezclo,
       firma_empaco: r.firma_empaco,
       firma_fecho: r.firma_fecho,
@@ -189,8 +267,9 @@ export function MezclaPanel({
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Nº de mezclas por dieta = total requerido ÷ {PORCION_ESTANDAR_G.toLocaleString("es-CO")} g.
-          Ajusta el número final (redondeo a múltiplo de 12 y división en lotes según la mezcladora)
-          y registra las firmas de trazabilidad.
+          Ajusta el número final (redondeo a múltiplo de 12 y división en lotes según la mezcladora);
+          las unidades por presentación se re-sugieren solas y puedes editarlas a mano. Registra
+          las firmas de trazabilidad.
         </p>
         {editable && (
           <Button onClick={handleGuardar} disabled={saving || !dirty} className="gap-2 shrink-0">
@@ -202,7 +281,11 @@ export function MezclaPanel({
 
       <div className="grid gap-4">
         {rows.map((r) => {
-          const porciones = porcionesPorDieta.get(r.producto_id) ?? []
+          const desglose = r.desglose_presentaciones ?? []
+          const targetKg = r.num_mezclas != null ? (r.num_mezclas * r.porcion_estandar) / 1000 : null
+          const actualKg = sumaKgDesglose(desglose)
+          const deltaKg = targetKg != null ? actualKg - targetKg : null
+          const deltaSignificativo = deltaKg != null && Math.abs(deltaKg) > 0.5
           return (
             <div key={r.id} className="border rounded-lg bg-white p-4 space-y-4">
               {/* Encabezado de la dieta */}
@@ -213,17 +296,6 @@ export function MezclaPanel({
                   <span className="font-medium text-foreground">{formatGramaje(r.total_gramos)}</span>
                 </div>
               </div>
-
-              {/* Porciones por presentación */}
-              {porciones.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {porciones.map((p) => (
-                    <Badge key={p.presentacion} variant="secondary" className="font-normal">
-                      {p.presentacion} × {p.cantidad.toLocaleString("es-CO")}
-                    </Badge>
-                  ))}
-                </div>
-              )}
 
               {/* Nº de mezclas */}
               <div className="flex flex-wrap items-end gap-4">
@@ -250,6 +322,65 @@ export function MezclaPanel({
                   />
                 </div>
               </div>
+
+              {/* Desglose de unidades por presentación */}
+              {desglose.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs text-muted-foreground">
+                      Unidades a empacar por presentación
+                    </Label>
+                    {editable && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 text-xs text-muted-foreground"
+                        onClick={() => resetDesglose(r.id)}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Restablecer sugerido
+                      </Button>
+                    )}
+                  </div>
+                  <div className="mt-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {desglose.map((d) => (
+                      <div key={d.presentacion}>
+                        <Label htmlFor={`ud-${r.id}-${d.presentacion}`} className="text-[11px] text-muted-foreground">
+                          {d.presentacion} (plan.: {d.unidades_planificadas.toLocaleString("es-CO")})
+                        </Label>
+                        {/*
+                          Input nativo (no el wrapper de Field.Control): ese wrapper decide si
+                          el campo es controlado en su PRIMER render y lo deja fijo para
+                          siempre (useControlled con useRef). Con un array dinámico como este,
+                          una instancia que alguna vez montó sin `value` definido queda pegada en
+                          modo no controlado y ya no vuelve a reflejar cambios de estado. Un
+                          <input> nativo controlado evita ese riesgo por completo.
+                        */}
+                        <input
+                          id={`ud-${r.id}-${d.presentacion}`}
+                          type="number"
+                          className="mt-0.5 h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                          value={d.unidades}
+                          disabled={!editable}
+                          onChange={(e) => updateUnidadDesglose(r.id, d.presentacion, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`mt-1.5 text-xs ${deltaSignificativo ? "text-amber-600" : "text-muted-foreground"}`}>
+                    Total empacado: {actualKg.toLocaleString("es-CO", { maximumFractionDigits: 2 })} kg
+                    {targetKg != null && (
+                      <>
+                        {" "}vs. {targetKg.toLocaleString("es-CO", { maximumFractionDigits: 2 })} kg de mezclas fijadas
+                        {deltaSignificativo && (
+                          <> (diferencia de {deltaKg!.toLocaleString("es-CO", { maximumFractionDigits: 2 })} kg)</>
+                        )}
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
 
               {/* Firmas de trazabilidad */}
               <div>

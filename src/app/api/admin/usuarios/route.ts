@@ -136,5 +136,21 @@ export async function PATCH(req: NextRequest) {
   const { error } = await supabase.from("users").update(update).eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ success: true })
+  // S4: desactivar debe desconectar de verdad. Sin esto el usuario conserva su
+  // refresh token y sigue renovando la sesión indefinidamente. fn_get_user_role()
+  // ya devuelve NULL (RLS deniega) y el middleware lo expulsa, pero además se
+  // revocan sus sesiones para que el refresh token deje de servir.
+  let sesionRevocada = false
+  if (is_active === false) {
+    const { data: revocada, error: revErr } = await supabase.rpc("fn_revocar_sesiones_usuario", {
+      p_user_id: id,
+    })
+    if (revErr) {
+      console.error("No se pudieron revocar las sesiones del usuario:", revErr.message)
+    } else {
+      sesionRevocada = revocada === true
+    }
+  }
+
+  return NextResponse.json({ success: true, sesionRevocada })
 }

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +23,19 @@ function getFriendlyError(raw: string): string {
     if (raw.toLowerCase().includes(key.toLowerCase())) return friendly
   }
   return "Ocurrió un error al iniciar sesión. Intenta de nuevo."
+}
+
+// El middleware y requireRole expulsan aquí a los usuarios desactivados (S4)
+// con ?motivo=inactivo. Va en su propio componente porque useSearchParams
+// exige un límite de Suspense para no forzar el render cliente de toda la página.
+function MotivoSalidaBanner() {
+  const searchParams = useSearchParams()
+  if (searchParams.get("motivo") !== "inactivo") return null
+  return (
+    <div className="p-3 text-sm rounded-md border border-warning/40 bg-warning/10">
+      Tu cuenta fue desactivada. Contacta al administrador.
+    </div>
+  )
 }
 
 export default function LoginPage() {
@@ -146,6 +159,12 @@ export default function LoginPage() {
                   </Button>
                 </div>
               </div>
+
+              {!error && (
+                <Suspense fallback={null}>
+                  <MotivoSalidaBanner />
+                </Suspense>
+              )}
 
               {error && (
                 <div className="p-3 text-sm text-destructive-foreground bg-destructive/90 rounded-md">

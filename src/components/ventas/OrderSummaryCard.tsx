@@ -105,13 +105,11 @@ export function OrderSummaryCard() {
     setIsSaving(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("No hay sesión activa")
-
+      // El vendedor, los importes y los descuentos los resuelve fn_crear_pedido
+      // en el servidor; aquí solo viajan los datos del pedido y sus líneas.
       const result = await createOrder(supabase, {
         clienteId: clienteId!,
         mascotaIds,
-        vendedorId: user.id,
         items,
         fuente,
         fuenteSubtipo,
@@ -119,17 +117,12 @@ export function OrderSummaryCard() {
         franjaHoraria,
         fechaTentativaEntrega: fechaTentativa,
         notasVentas,
-        esDistribuidor,
-        pctDescuentoDistribuidor,
-        tarifaEnvioBase,
-        reglas,
         aliadoId,
         usaDireccionAlterna,
         direccionAlterna,
         complementoAlterna,
         barrioAlterna,
         zonaAlternaId,
-        descuentoReferidoVet,
       })
 
       clearCart()

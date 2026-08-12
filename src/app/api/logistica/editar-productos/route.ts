@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { z } from "zod";
-import { calcularDescuentos } from "@/lib/calculators/discounts";
-import type { ReglaDescuento } from "@/types";
+import { createClient } from "@/lib/supabase/server";
 
 const LineaSchema = z.object({
   producto_id: z.string().uuid().nullable(),
@@ -23,41 +20,30 @@ const LineaSchema = z.object({
 const EditarProductosSchema = z.object({
   pedido_id: z.string().uuid(),
   lineas: z.array(LineaSchema).min(1),
+  // Bloqueo optimista (I2): el `updated_at` que el editor tenía en pantalla.
+  // Si el pedido cambió entre medias, la RPC responde PT409 y aquí se traduce
+  // a HTTP 409 para que la UI pida recargar en vez de pisar el cambio ajeno.
+  updated_at_esperado: z.string().datetime({ offset: true }).nullish(),
 });
 
-const ESTADOS_BLOQUEADOS = ["listo_despacho", "despachado", "devolucion", "parcial"];
+type TotalesRpc = {
+  subtotal_alimento: number;
+  subtotal_snacks: number;
+  subtotal_otros: number;
+  pct_descuento_compra: number;
+  monto_descuento_compra: number;
+  descuento_envio: number;
+  total_envio_cobrado: number;
+  total: number;
+  updated_at: string;
+};
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(toSet) {
-          try { toSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); }
-          catch {}
-        },
-      },
-    }
-  );
+  const supabase = await createClient();
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  }
-
-  // Verify role
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role, full_name")
-    .eq("id", user.id)
-    .single();
-
-  const allowedRoles = ["admin", "logistica", "vendedor"];
-  if (!userData || !allowedRoles.includes(userData.role)) {
-    return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
   }
 
   const body = await req.json();
@@ -65,178 +51,43 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
-  const { pedido_id, lineas } = parsed.data;
+  const { pedido_id, lineas, updated_at_esperado } = parsed.data;
 
-  // Fetch current pedido
-  const { data: pedido, error: pedidoError } = await supabase
-    .from("pedidos")
-    .select("id, estado, vendedor_id, tarifa_envio_cliente, detalle_pedido(*)")
-    .eq("id", pedido_id)
-    .single();
-
-  if (pedidoError || !pedido) {
-    return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
-  }
-
-  if (userData.role === "vendedor" && pedido.vendedor_id !== user.id) {
-    return NextResponse.json({ error: "No puedes editar pedidos de otro vendedor" }, { status: 403 });
-  }
-
-  if (ESTADOS_BLOQUEADOS.includes(pedido.estado)) {
-    return NextResponse.json(
-      { error: `No se puede editar un pedido en estado '${pedido.estado}'` },
-      { status: 400 }
-    );
-  }
-
-  // Fetch discount rules
-  const { data: reglasRaw } = await supabase
-    .from("reglas_descuento")
-    .select("id, monto_minimo, pct_descuento_compra, descuento_envio_fijo");
-
-  const reglas: ReglaDescuento[] = (reglasRaw ?? []).map((r) => ({
-    id: r.id,
-    montoMinimo: r.monto_minimo,
-    pctDescuentoCompra: r.pct_descuento_compra,
-    descuentoEnvioFijo: r.descuento_envio_fijo,
-  }));
-
-  // Resolver la categoría real de cada producto para clasificar igual que
-  // createOrder (evita el bug de meter todo lo no-magistral en "snacks").
-  const productoIds = [...new Set(lineas.map((l) => l.producto_id).filter(Boolean))] as string[];
-  const categoriaPorProducto = new Map<string, string>();
-  if (productoIds.length > 0) {
-    const { data: prods } = await supabase
-      .from("productos")
-      .select("id, categorias_producto(slug)")
-      .in("id", productoIds);
-    type ProdRow = { id: string; categorias_producto: { slug: string } | { slug: string }[] | null };
-    for (const p of (prods ?? []) as unknown as ProdRow[]) {
-      const cat = Array.isArray(p.categorias_producto) ? p.categorias_producto[0] : p.categorias_producto;
-      if (cat?.slug) categoriaPorProducto.set(p.id, cat.slug);
-    }
-  }
-
-  // Compute new subtotals (mismo criterio que createOrder.ts:45-55):
-  //  - alimento = líneas con aplica_descuento
-  //  - snacks   = líneas de categoría 'snacks'
-  //  - otros    = el resto (incluye magistrales)
-  let subtotalAlimento = 0;
-  let subtotalSnacks = 0;
-  let subtotalOtros = 0;
-
-  for (const linea of lineas) {
-    const sub = linea.cantidad * linea.precio_unitario_snapshot;
-    const categoria = linea.producto_id ? categoriaPorProducto.get(linea.producto_id) : undefined;
-    if (linea.aplica_descuento) {
-      subtotalAlimento += sub;
-    } else if (categoria === "snacks") {
-      subtotalSnacks += sub;
-    } else {
-      subtotalOtros += sub;
-    }
-  }
-
-  const calculo = calcularDescuentos(
-    subtotalAlimento,
-    subtotalSnacks,
-    subtotalOtros,
-    pedido.tarifa_envio_cliente ?? 0,
-    reglas
-  );
-
-  // Snapshot of old items for activity log
-  const itemsAntes = (pedido.detalle_pedido ?? []).map((d: Record<string, unknown>) => ({
-    nombre: d.nombre_snapshot,
-    cantidad: d.cantidad,
-    precio: d.precio_unitario_snapshot,
-  }));
-
-  const itemsDespues = lineas.map((l) => ({
-    nombre: l.nombre_snapshot,
-    cantidad: l.cantidad,
-    precio: l.precio_unitario_snapshot,
-  }));
-
-  // Delete old line items
-  const { error: deleteError } = await supabase
-    .from("detalle_pedido")
-    .delete()
-    .eq("pedido_id", pedido_id);
-
-  if (deleteError) {
-    return NextResponse.json({ error: "Error al eliminar líneas anteriores" }, { status: 500 });
-  }
-
-  // Insert new line items
-  const newLineas = lineas.map((l) => ({
-    pedido_id,
-    producto_id: l.producto_id,
-    variante_id: l.variante_id,
-    nombre_snapshot: l.nombre_snapshot,
-    cantidad: l.cantidad,
-    precio_unitario_snapshot: l.precio_unitario_snapshot,
-    subtotal: Math.round(l.cantidad * l.precio_unitario_snapshot),
-    aplica_descuento: l.aplica_descuento,
-    es_magistral: l.es_magistral,
-    gramaje_magistral: l.gramaje_magistral,
-    notas_magistral: l.notas_magistral,
-    justificacion_precio: l.justificacion_precio,
-    es_promo: l.es_promo,
-    promo_id: l.promo_id,
-  }));
-
-  const { error: insertError } = await supabase.from("detalle_pedido").insert(newLineas);
-  if (insertError) {
-    return NextResponse.json({ error: "Error al insertar nuevas líneas" }, { status: 500 });
-  }
-
-  // Update pedido totals
-  const { error: updatePedidoError } = await supabase
-    .from("pedidos")
-    .update({
-      subtotal_alimento: calculo.subtotalAlimento,
-      subtotal_snacks: calculo.subtotalSnacks,
-      subtotal_otros: calculo.subtotalOtros,
-      monto_descuento_compra: calculo.montoDescuentoCompra,
-      pct_descuento_compra: calculo.pctDescuentoCompra,
-      descuento_envio: calculo.descuentoEnvio,
-      total_envio_cobrado: calculo.totalEnvioCobrado,
-      total: calculo.total,
-      fue_editado: true,
-      editado_por_id: user.id,
-      editado_en: new Date().toISOString(),
-    })
-    .eq("id", pedido_id);
-
-  if (updatePedidoError) {
-    return NextResponse.json({ error: "Error al actualizar totales del pedido" }, { status: 500 });
-  }
-
-  // Update comisiones_detalle (recalculate amounts, keep pct_comision)
-  const { data: comision } = await supabase
-    .from("comisiones_detalle")
-    .select("id, pct_comision")
-    .eq("pedido_id", pedido_id)
-    .single();
-
-  if (comision) {
-    const baseCalculo = Math.round((calculo.total - calculo.totalEnvioCobrado) * 0.95);
-    const montoComision = Math.round(baseCalculo * (comision.pct_comision / 100));
-    await supabase
-      .from("comisiones_detalle")
-      .update({ base_calculo: baseCalculo, monto_comision: montoComision, is_provisional: true })
-      .eq("id", comision.id);
-  }
-
-  // Log activity
-  await supabase.from("pedido_actividad").insert({
-    pedido_id,
-    tipo: "productos_editados",
-    usuario_id: user.id,
-    usuario_nombre: userData.full_name,
-    payload: { items_antes: itemsAntes, items_despues: itemsDespues },
+  // Toda la operación (validaciones de rol/estado, borrado y reinserción de
+  // líneas, recálculo de totales, comisión y bitácora) ocurre dentro de
+  // fn_editar_lineas_pedido, en una sola transacción y con la fila de `pedidos`
+  // bloqueada con FOR UPDATE.
+  const { data, error } = await supabase.rpc("fn_editar_lineas_pedido", {
+    p_pedido_id: pedido_id,
+    p_lineas: lineas.map((l) => ({
+      producto_id: l.producto_id,
+      variante_id: l.variante_id,
+      nombre_snapshot: l.nombre_snapshot,
+      cantidad: l.cantidad,
+      precio_unitario: l.precio_unitario_snapshot,
+      aplica_descuento: l.aplica_descuento,
+      es_magistral: l.es_magistral,
+      gramaje_magistral: l.gramaje_magistral,
+      notas_magistral: l.notas_magistral,
+      justificacion_precio: l.justificacion_precio,
+      es_promo: l.es_promo,
+      promo_id: l.promo_id,
+    })),
+    p_updated_at_esperado: updated_at_esperado ?? null,
   });
 
-  return NextResponse.json({ success: true, totales: calculo });
+  if (error) {
+    const status = ERROR_STATUS[error.code ?? ""] ?? 500;
+    return NextResponse.json({ error: error.message }, { status });
+  }
+
+  const totales = data as TotalesRpc | null;
+  return NextResponse.json({ success: true, totales });
 }
+
+const ERROR_STATUS: Record<string, number> = {
+  PT409: 409, // el pedido cambió mientras se editaba
+  "42501": 403, // sin permisos
+  "23514": 400, // estado bloqueado / payload inválido
+  "23503": 404, // pedido no encontrado
+};

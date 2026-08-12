@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+const DESPACHO_ERROR_STATUS: Record<string, number> = {
+  PT409: 409, // la ruta ya fue despachada por otro usuario
+  "42501": 403, // sin permisos
+  "23514": 400, // la ruta no tiene pedidos
+  "23503": 404, // ruta no encontrada
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
 
@@ -22,19 +29,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "rutaId requerido" }, { status: 400 })
   }
 
-  // Verify route exists and is not already dispatched
+  // I3: la comprobación "¿ya está despachada?" NO se hace aquí. Validarla en TS
+  // antes de llamar a la RPC dejaba una ventana entre la lectura y la escritura:
+  // dos clics simultáneos la pasaban ambos y descontaban el stock dos veces.
+  // fn_despachar_ruta bloquea la fila con FOR UPDATE y revalida dentro de la
+  // transacción, devolviendo PT409 si otra ya la despachó.
   const { data: ruta, error: rutaErr } = await supabase
     .from("rutas")
-    .select("id, estado")
+    .select("id")
     .eq("id", rutaId)
     .single()
 
   if (rutaErr || !ruta) {
     return NextResponse.json({ error: "Ruta no encontrada" }, { status: 404 })
-  }
-
-  if (ruta.estado === "despachada") {
-    return NextResponse.json({ error: "La ruta ya fue despachada" }, { status: 409 })
   }
 
   // Get order IDs in this route and validate dispatch readiness
@@ -82,7 +89,11 @@ export async function POST(req: NextRequest) {
     p_ruta_id: rutaId,
   })
   if (despErr) {
-    return NextResponse.json({ error: `Error al despachar: ${despErr.message}` }, { status: 500 })
+    const status = DESPACHO_ERROR_STATUS[despErr.code ?? ""] ?? 500
+    return NextResponse.json(
+      { error: status === 500 ? `Error al despachar: ${despErr.message}` : despErr.message },
+      { status }
+    )
   }
 
   type WarnRow = { numero_pedido: string; producto_nombre: string | null; mensaje: string | null }

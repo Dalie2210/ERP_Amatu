@@ -32,9 +32,6 @@ export async function updateOrder(
   if (input.notasVentas !== undefined) {
     updateData.notas_ventas = input.notasVentas
   }
-  if (input.estadoPago !== undefined) {
-    updateData.estado_pago = input.estadoPago
-  }
   if (input.metodoPago !== undefined) {
     updateData.metodo_pago = input.metodoPago
   }
@@ -45,6 +42,18 @@ export async function updateOrder(
     .eq("id", input.pedidoId)
 
   if (error) throw error
+
+  // S1: `estado_pago` ya no es escribible por PostgREST (era el vector directo
+  // de fraude de comisiones: confirmarse el pago a sí mismo desbloquea el monto
+  // ganado). La confirmación pasa por una RPC que autoriza, sella la fecha y
+  // deja rastro en pedido_actividad. Es de un solo sentido: no se des-confirma.
+  if (input.estadoPago === "confirmado") {
+    const { error: pagoErr } = await supabase.rpc("fn_confirmar_pago_pedido", {
+      p_pedido_id: input.pedidoId,
+      p_metodo_pago: input.metodoPago ?? null,
+    })
+    if (pagoErr) throw pagoErr
+  }
 
   // Bitácora unificada en pedido_actividad (misma que usa logística). No es
   // fatal si falla, pero se registra el error para no perderlo en silencio.

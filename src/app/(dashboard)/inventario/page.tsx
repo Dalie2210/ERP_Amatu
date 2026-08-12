@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Boxes, ArrowLeftRight, Scale, ScanBarcode, ShoppingCart } from "lucide-react"
+import { ExportarValorizadoDialog } from "@/components/inventario/ExportarValorizadoDialog"
 
 // Deferred so Recharts and each tab's data fetching only load when the tab is opened.
 const loading = () => <Skeleton className="h-64 w-full" />
@@ -41,11 +42,14 @@ function InventarioDashboard() {
 
   return (
     <div className="space-y-6 max-w-[1440px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold font-heading tracking-tight">Inventario</h1>
-        <p className="text-muted-foreground mt-1">
-          Reportes, movimientos, balance y trazabilidad del inventario en un solo lugar.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold font-heading tracking-tight">Inventario</h1>
+          <p className="text-muted-foreground mt-1">
+            Reportes, movimientos, balance y trazabilidad del inventario en un solo lugar.
+          </p>
+        </div>
+        <ExportarValorizadoDialog />
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange}>

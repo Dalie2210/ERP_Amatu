@@ -554,6 +554,7 @@ export interface InsumoLote {
   fecha_ingreso: string;
   fecha_vencimiento: string | null;
   created_at: string;
+  ingreso_item_id: string | null;
 }
 
 export interface ProductoLote {
@@ -585,6 +586,10 @@ export interface Ingreso {
   notas: string | null;
   created_by: string | null;
   created_at: string;
+  anulado: boolean;
+  anulado_motivo: string | null;
+  anulado_at: string | null;
+  anulado_por: string | null;
 }
 
 export interface IngresoItem {
@@ -647,6 +652,17 @@ export interface OrdenProduccionProceso {
 // Hoja de mezcla por dieta (una fila por producto por orden). El ERP calcula el
 // nº de mezclas sugerido (total gramos / 1200); el nº final y las firmas de
 // trazabilidad los diligencia el equipo de producción.
+// Unidades sugeridas/ajustadas de una presentación (300/500/1200g) dentro del
+// desglose de una dieta. `unidades_planificadas` es el mix original (de los
+// ítems de la orden); `unidades` es el valor sugerido (escalado por
+// num_mezclas) o editado a mano por el equipo de producción.
+export interface DesglosePresentacion {
+  presentacion: string;
+  gramaje: number;
+  unidades_planificadas: number;
+  unidades: number;
+}
+
 export interface OrdenMezcla {
   id: string;
   orden_id: string;
@@ -655,6 +671,7 @@ export interface OrdenMezcla {
   num_mezclas_sugerido: number | null;
   num_mezclas: number | null;
   porcion_estandar: number;
+  desglose_presentaciones: DesglosePresentacion[] | null;
   firma_mezclo: string | null;
   firma_empaco: string | null;
   firma_fecho: string | null;
@@ -696,7 +713,7 @@ export interface OrdenProduccionItem {
   estado: EstadoProduccion;
   created_at: string;
   // Motivo obligatorio cuando estado === "parcial".
-  motivo_parcial: string | null;
+  motivo_diferencia: string | null;
 }
 
 export interface ProduccionConsumo {

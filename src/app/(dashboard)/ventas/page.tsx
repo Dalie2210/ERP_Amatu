@@ -21,6 +21,7 @@ import {
   ESTADO_LOGISTICA_LABELS,
   ESTADO_LOGISTICA_STYLES,
 } from "@/lib/logistica/estadoLabels"
+import { getPeriodoMes } from "@/lib/calculators/commissions"
 
 const estadoLabels: Record<string, string> = ESTADO_LOGISTICA_LABELS
 const estadoColors: Record<string, string> = ESTADO_LOGISTICA_STYLES
@@ -107,55 +108,42 @@ export default function VentasPage() {
       setIsLoading(true)
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      const periodoMes = getPeriodoMes()
 
+      // E2: todo lo que antes se traía completo y se reducía en JS ahora se
+      // agrega en SQL (RPC SECURITY INVOKER, así que RLS sigue aislando por
+      // vendedor). El desglose por aliado, además, era O(n²) en el cliente.
       const [
-        { data: pedidosMes },
+        { data: resumenMesRows },
         { data: estadoCountsRows },
         { data: fuenteCountsRows },
-        { data: comisiones },
-        { count: leadsCount },
-        { count: closuresCount },
+        { data: comisionesRows },
+        { data: metaAdsRows },
         { data: topProductosRows },
         { data: recentOrders },
-        { data: aliadoPedidos },
+        { data: aliadoRows },
       ] = await Promise.all([
-        supabase
-          .from("pedidos")
-          .select("total, estado")
-          .gte("created_at", monthStart),
-        supabase.rpc("fn_pedidos_estado_counts"),
-        supabase.rpc("fn_pedidos_fuente_counts"),
-        supabase
-          .from("comisiones_detalle")
-          .select("monto_comision")
-          .gte("created_at", monthStart),
-        supabase
-          .from("leads_meta_ads")
-          .select("*", { count: "exact", head: true }),
-        supabase
-          .from("pedidos")
-          .select("*", { count: "exact", head: true })
-          .eq("fuente", "meta_ads")
-          .eq("numero_venta_cliente", 1),
+        supabase.rpc("fn_ventas_resumen_periodo", {
+          p_desde: monthStart,
+          p_excluir_estados: ["devolucion"],
+        }),
+        supabase.rpc("fn_pedidos_estado_counts", {}),
+        supabase.rpc("fn_pedidos_fuente_counts", {}),
+        supabase.rpc("fn_comisiones_resumen", { p_desde: monthStart }),
+        supabase.rpc("fn_meta_ads_resumen", { p_periodo_mes: periodoMes }),
         supabase.rpc("fn_top_productos_vendidos", { p_limit: 5 }),
         supabase
           .from("pedidos")
           .select("id, numero_pedido, estado, estado_pago, total, created_at, fue_editado, clientes(nombre_completo)")
           .order("created_at", { ascending: false })
           .limit(5),
-        supabase
-          .from("pedidos")
-          .select("fuente, total, aliado_id, aliados(nombre)")
-          .in("fuente", ["referido_veterinario", "referido_entrenador"])
-          .not("aliado_id", "is", null),
+        supabase.rpc("fn_ventas_aliado_breakdown", {}),
       ])
 
-      const revenueThisMonth = (pedidosMes ?? [])
-        .filter((p: { estado: string; total: number | null }) => p.estado !== "devolucion")
-        .reduce((acc: number, p: { estado: string; total: number | null }) => acc + (p.total ?? 0), 0)
-
-      const commissionThisMonth = (comisiones ?? [])
-        .reduce((acc: number, c: { monto_comision: number | null }) => acc + (c.monto_comision ?? 0), 0)
+      const revenueThisMonth = Number(resumenMesRows?.[0]?.revenue ?? 0)
+      const commissionThisMonth = Number(comisionesRows?.[0]?.monto_total ?? 0)
+      const leadsCount = Number(metaAdsRows?.[0]?.total_leads ?? 0)
+      const closuresCount = Number(metaAdsRows?.[0]?.total_cierres ?? 0)
 
       const estadoCounts: Record<string, number> = {}
       for (const row of estadoCountsRows ?? []) {
@@ -177,32 +165,24 @@ export default function VentasPage() {
         revenue: Number(r.revenue),
       }))
 
-      // Build aliado breakdown per fuente
-      type AliadoPedidoRow = {
-        fuente: string
-        total: number
-        aliado_id: string | null
-        aliados: { nombre: string } | null
-      }
+      // El agrupado ya viene resuelto por fuente/aliado desde SQL.
       const aliadoBreakdowns: Record<string, AliadoBreakdown[]> = {}
-      for (const p of (aliadoPedidos as AliadoPedidoRow[] | null) ?? []) {
-        if (!p.aliado_id || !p.aliados) continue
-        if (!aliadoBreakdowns[p.fuente]) aliadoBreakdowns[p.fuente] = []
-        const existing = aliadoBreakdowns[p.fuente].find((a) => a.nombre === p.aliados!.nombre)
-        if (existing) {
-          existing.count++
-          existing.total += p.total ?? 0
-        } else {
-          aliadoBreakdowns[p.fuente].push({ nombre: p.aliados.nombre, count: 1, total: p.total ?? 0 })
-        }
+      for (const row of aliadoRows ?? []) {
+        if (!row.fuente) continue
+        if (!aliadoBreakdowns[row.fuente]) aliadoBreakdowns[row.fuente] = []
+        aliadoBreakdowns[row.fuente].push({
+          nombre: row.aliado_nombre,
+          count: Number(row.pedidos_count),
+          total: Number(row.total),
+        })
       }
 
       setData({
         revenueThisMonth,
         activeOrders,
         commissionThisMonth,
-        leadsCount: leadsCount ?? 0,
-        closuresCount: closuresCount ?? 0,
+        leadsCount,
+        closuresCount,
         devolucionCount: estadoCounts["devolucion"] ?? 0,
         cambioCount: estadoCounts["cambio"] ?? 0,
         estadoCounts,

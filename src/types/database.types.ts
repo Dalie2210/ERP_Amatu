@@ -647,6 +647,10 @@ export type Database = {
       }
       ingresos: {
         Row: {
+          anulado: boolean
+          anulado_at: string | null
+          anulado_motivo: string | null
+          anulado_por: string | null
           created_at: string
           created_by: string | null
           fecha: string
@@ -660,6 +664,10 @@ export type Database = {
           total_costo: number
         }
         Insert: {
+          anulado?: boolean
+          anulado_at?: string | null
+          anulado_motivo?: string | null
+          anulado_por?: string | null
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -673,6 +681,10 @@ export type Database = {
           total_costo?: number
         }
         Update: {
+          anulado?: boolean
+          anulado_at?: string | null
+          anulado_motivo?: string | null
+          anulado_por?: string | null
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -686,6 +698,13 @@ export type Database = {
           total_costo?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "ingresos_anulado_por_fkey"
+            columns: ["anulado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ingresos_created_by_fkey"
             columns: ["created_by"]
@@ -705,6 +724,7 @@ export type Database = {
           fecha_ingreso: string
           fecha_vencimiento: string | null
           id: string
+          ingreso_item_id: string | null
           insumo_id: string
           proveedor: string | null
         }
@@ -717,6 +737,7 @@ export type Database = {
           fecha_ingreso?: string
           fecha_vencimiento?: string | null
           id?: string
+          ingreso_item_id?: string | null
           insumo_id: string
           proveedor?: string | null
         }
@@ -729,10 +750,18 @@ export type Database = {
           fecha_ingreso?: string
           fecha_vencimiento?: string | null
           id?: string
+          ingreso_item_id?: string | null
           insumo_id?: string
           proveedor?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "insumo_lotes_ingreso_item_id_fkey"
+            columns: ["ingreso_item_id"]
+            isOneToOne: false
+            referencedRelation: "ingreso_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "insumo_lotes_insumo_id_fkey"
             columns: ["insumo_id"]
@@ -1230,7 +1259,7 @@ export type Database = {
           created_at: string
           estado: Database["public"]["Enums"]["estado_produccion"]
           id: string
-          motivo_parcial: string | null
+          motivo_diferencia: string | null
           orden_id: string
           producto_id: string
           producto_lote_id: string | null
@@ -1244,7 +1273,7 @@ export type Database = {
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_produccion"]
           id?: string
-          motivo_parcial?: string | null
+          motivo_diferencia?: string | null
           orden_id: string
           producto_id: string
           producto_lote_id?: string | null
@@ -1258,7 +1287,7 @@ export type Database = {
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_produccion"]
           id?: string
-          motivo_parcial?: string | null
+          motivo_diferencia?: string | null
           orden_id?: string
           producto_id?: string
           producto_lote_id?: string | null
@@ -1437,6 +1466,7 @@ export type Database = {
       orden_mezcla: {
         Row: {
           created_at: string
+          desglose_presentaciones: Json | null
           firma_empaco: string | null
           firma_fecho: string | null
           firma_mezclo: string | null
@@ -1454,6 +1484,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          desglose_presentaciones?: Json | null
           firma_empaco?: string | null
           firma_fecho?: string | null
           firma_mezclo?: string | null
@@ -1471,6 +1502,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          desglose_presentaciones?: Json | null
           firma_empaco?: string | null
           firma_fecho?: string | null
           firma_mezclo?: string | null
@@ -3036,6 +3068,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      fn_ajustar_lote_pt: {
+        Args: {
+          p_cantidad: number
+          p_lote_id: string
+          p_motivo: string
+          p_referencia_tipo?: string
+        }
+        Returns: undefined
+      }
+      fn_anular_ingreso: {
+        Args: { p_ingreso_id: string; p_motivo: string }
+        Returns: undefined
+      }
       fn_calcular_pct_cierre_meta: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: number
@@ -3090,7 +3135,11 @@ export type Database = {
         }[]
       }
       fn_empacar_lote: {
-        Args: { p_cantidad: number; p_lote_id: string }
+        Args: {
+          p_cantidad: number
+          p_lote_id: string
+          p_motivo_sobrante?: string | null
+        }
         Returns: { nuevo_lote_id: string }[]
       }
       fn_estimar_comisiones_periodo: {
@@ -3141,18 +3190,81 @@ export type Database = {
         | { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
         | { Args: { user_id: string }; Returns: string }
       fn_pedidos_estado_counts: {
-        Args: never
+        Args: { p_desde?: string | null; p_hasta?: string | null }
         Returns: {
           estado: Database["public"]["Enums"]["estado_pedido"]
           total: number
         }[]
       }
       fn_pedidos_fuente_counts: {
-        Args: never
+        Args: { p_desde?: string | null; p_hasta?: string | null }
         Returns: {
           fuente: Database["public"]["Enums"]["fuente_cliente"]
           total: number
         }[]
+      }
+      fn_ventas_resumen_periodo: {
+        Args: {
+          p_desde?: string | null
+          p_hasta?: string | null
+          p_estados?: string[] | null
+          p_excluir_estados?: string[] | null
+        }
+        Returns: { revenue: number; pedidos_count: number }[]
+      }
+      fn_comisiones_resumen: {
+        Args: {
+          p_desde?: string | null
+          p_hasta?: string | null
+          p_solo_sin_liquidar?: boolean
+          p_solo_aplica?: boolean
+        }
+        Returns: { monto_total: number; comisiones_count: number }[]
+      }
+      fn_meta_ads_resumen: {
+        Args: { p_periodo_mes: string }
+        Returns: { total_leads: number; total_cierres: number }[]
+      }
+      fn_ventas_aliado_breakdown: {
+        Args: { p_desde?: string | null; p_hasta?: string | null }
+        Returns: {
+          fuente: Database["public"]["Enums"]["fuente_cliente"]
+          aliado_id: string
+          aliado_nombre: string
+          pedidos_count: number
+          total: number
+        }[]
+      }
+      fn_inventario_resumen: {
+        Args: never
+        Returns: {
+          valor_total: number
+          insumos_bajo_minimo: number
+          lotes_por_vencer: number
+          pt_producido: number
+          pt_empacado: number
+          pt_despachado: number
+        }[]
+      }
+      fn_crear_pedido: {
+        Args: { p_cabecera: Json; p_items: Json; p_mascotas?: string[] }
+        Returns: Json
+      }
+      fn_editar_lineas_pedido: {
+        Args: {
+          p_pedido_id: string
+          p_lineas: Json
+          p_updated_at_esperado?: string | null
+        }
+        Returns: Json
+      }
+      fn_confirmar_pago_pedido: {
+        Args: { p_pedido_id: string; p_metodo_pago?: string | null }
+        Returns: undefined
+      }
+      fn_revocar_sesiones_usuario: {
+        Args: { p_user_id: string }
+        Returns: boolean
       }
       fn_liquidar_periodo_mensual: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
@@ -3192,6 +3304,10 @@ export type Database = {
           total_leads: number
         }[]
       }
+      fn_editar_ingreso: {
+        Args: { p_cabecera: Json; p_ingreso_id: string; p_items: Json }
+        Returns: { ingreso_id: string; numero: string }[]
+      }
       fn_registrar_ingreso: {
         Args: { p_cabecera: Json; p_items: Json }
         Returns: { ingreso_id: string; numero: string }[]
@@ -3212,7 +3328,7 @@ export type Database = {
         }[]
       }
       fn_top_productos_vendidos: {
-        Args: { p_limit?: number }
+        Args: { p_limit?: number; p_desde?: string | null; p_hasta?: string | null }
         Returns: {
           nombre: string
           revenue: number

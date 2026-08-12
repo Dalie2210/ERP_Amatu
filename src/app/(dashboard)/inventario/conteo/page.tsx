@@ -15,6 +15,7 @@ import { ClipboardCheck, Sliders } from "lucide-react"
 import type { CategoriaConteo } from "@/types"
 import { CATEGORIA_CONTEO_LABELS } from "@/lib/constants/labels"
 import { AjusteRapidoDialog, type AjustePreset } from "@/components/inventario/AjusteRapidoDialog"
+import { DescargarConteoButton } from "@/components/inventario/DescargarConteoButton"
 
 interface ConteoItemRow {
   key: string
@@ -96,12 +97,15 @@ export default function ConteoPage() {
 
   return (
     <div className="space-y-8 max-w-[1440px] mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold font-heading tracking-tight">Conteo</h1>
-        <p className="text-muted-foreground mt-1">
-          Consulta el stock del sistema por categoría y ajusta un ítem puntual. El historial de cada
-          ajuste queda registrado en Movimientos.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold font-heading tracking-tight">Conteo</h1>
+          <p className="text-muted-foreground mt-1">
+            Consulta el stock del sistema por categoría y ajusta un ítem puntual. El historial de cada
+            ajuste queda registrado en Movimientos.
+          </p>
+        </div>
+        <DescargarConteoButton />
       </div>
 
       <Card className="border-none shadow-sm">

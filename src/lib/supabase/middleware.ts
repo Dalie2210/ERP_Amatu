@@ -46,6 +46,26 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // S4: un usuario desactivado conserva su JWT hasta que expire. Se comprueba
+  // is_active en cada navegación y se termina la sesión si ya no está activo.
+  // (La política RLS users_select_own deja al usuario leer su propia fila
+  // aunque fn_get_user_role() devuelva NULL por estar inactivo.)
+  if (user && !request.nextUrl.pathname.startsWith("/login")) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_active")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.is_active === false) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "?motivo=inactivo";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Redirect authenticated users away from login
   if (user && request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();

@@ -15,10 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, ArrowDownToLine, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, ArrowDownToLine, ChevronLeft, ChevronRight, Eye, Pencil, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { Ingreso } from "@/types"
 import { TIPO_INSUMO_LABELS } from "@/lib/constants/labels"
+import { AnularIngresoDialog } from "@/components/inventario/AnularIngresoDialog"
 
 const PAGE_SIZE = 20
 
@@ -112,12 +113,18 @@ export default function IngresosPage() {
                     <TableHead>Proveedor</TableHead>
                     <TableHead className="text-center"># Ítems</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {ingresos.map((ing) => (
-                    <TableRow key={ing.id}>
-                      <TableCell className="font-mono text-sm font-medium">{ing.numero ?? "—"}</TableCell>
+                    <TableRow key={ing.id} className={ing.anulado ? "opacity-60" : ""}>
+                      <TableCell className="font-mono text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          {ing.numero ?? "—"}
+                          {ing.anulado && <Badge variant="destructive" className="font-normal">Anulado</Badge>}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(ing.fecha).toLocaleDateString("es-CO")}
                       </TableCell>
@@ -130,6 +137,39 @@ export default function IngresosPage() {
                       <TableCell className="text-center">{ing.ingreso_items?.length ?? 0}</TableCell>
                       <TableCell className="text-right font-medium">
                         ${ing.total_costo.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Link href={`/inventario/ingresos/${ing.id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver detalle">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
+                          {canWrite && !ing.anulado && (
+                            <>
+                              <Link href={`/inventario/ingresos/${ing.id}/editar`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar">
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              </Link>
+                              <AnularIngresoDialog
+                                ingresoId={ing.id}
+                                numero={ing.numero}
+                                onAnulado={fetchIngresos}
+                                trigger={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    title="Anular / Eliminar"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                }
+                              />
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

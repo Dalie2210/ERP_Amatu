@@ -67,15 +67,18 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
   const titulo = `${item.producto?.nombre ?? "—"} — ${item.variante?.presentacion ?? "Todas"}`
 
   const cantidadNum = parseFloat(cantidad)
-  const esProduccionParcial = !isNaN(cantidadNum) && cantidadNum > 0 && cantidadNum < item.cantidad_planificada
-  const motivoFaltante = esProduccionParcial && motivo.trim() === ""
+  const cantidadValida = !isNaN(cantidadNum) && cantidadNum > 0
+  const esProduccionParcial = cantidadValida && cantidadNum < item.cantidad_planificada
+  const esSobreproduccion = cantidadValida && cantidadNum > item.cantidad_planificada
+  const hayDiferencia = esProduccionParcial || esSobreproduccion
+  const motivoFaltante = hayDiferencia && motivo.trim() === ""
 
   async function handleConfirmar() {
     const cant = parseFloat(cantidad)
     if (isNaN(cant) || cant <= 0) { setError("La cantidad debe ser mayor a cero."); return }
     if (hayFaltantes) { setError("No hay stock suficiente de uno o más insumos."); return }
-    if (cant < item.cantidad_planificada && motivo.trim() === "") {
-      setError("Indica el motivo por el cual se produjo menos de lo planificado.")
+    if (cant !== item.cantidad_planificada && motivo.trim() === "") {
+      setError("Indica el motivo por el cual se produjo una cantidad distinta a la planificada.")
       return
     }
 
@@ -83,7 +86,7 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
     const { error: rpcError } = await supabase.rpc("fn_completar_item_produccion", {
       p_item_id: item.id,
       p_cantidad_producida: cant,
-      p_motivo: cant < item.cantidad_planificada ? motivo.trim() : null,
+      p_motivo: cant !== item.cantidad_planificada ? motivo.trim() : null,
     })
     setConfirming(false)
     if (rpcError) { setError(rpcError.message); return }
@@ -92,7 +95,9 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
     toast.success(
       parcial
         ? `Producción cerrada como parcial: ${titulo}.`
-        : `Producción completada: ${titulo}.`
+        : cant > item.cantidad_planificada
+          ? `Producción completada con excedente: ${titulo}.`
+          : `Producción completada: ${titulo}.`
     )
     onCompleted?.({ cantidad: cant, parcial })
     onDone()
@@ -101,6 +106,7 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
   if (yaCompletado) {
     const parcial = item.estado === "parcial"
     const sinProducir = bloqueado && (item.estado === "planificada" || item.estado === "en_proceso")
+    const conExcedente = !parcial && (item.cantidad_producida ?? 0) > item.cantidad_planificada
     return (
       <div className="rounded-lg border p-4 space-y-1 bg-muted/30">
         <div className="flex items-center justify-between">
@@ -113,6 +119,10 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
             <Badge variant="outline" className="gap-1 border-amber-500 text-amber-600">
               <AlertTriangle className="h-3 w-3" /> Parcial
             </Badge>
+          ) : conExcedente ? (
+            <Badge variant="outline" className="gap-1 border-amber-500 text-amber-600">
+              <AlertTriangle className="h-3 w-3" /> Con excedente
+            </Badge>
           ) : (
             <Badge variant="default" className="gap-1">
               <CheckCircle2 className="h-3 w-3" /> Completado
@@ -123,8 +133,8 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
           Producido: {(item.cantidad_producida ?? 0).toLocaleString("es-CO")} / Planificado: {item.cantidad_planificada.toLocaleString("es-CO")}
           {item.costo_total != null && ` · Costo: $${item.costo_total.toLocaleString("es-CO", { maximumFractionDigits: 2 })}`}
         </p>
-        {parcial && item.motivo_parcial && (
-          <p className="text-sm text-muted-foreground">Motivo: {item.motivo_parcial}</p>
+        {(parcial || conExcedente) && item.motivo_diferencia && (
+          <p className="text-sm text-muted-foreground">Motivo: {item.motivo_diferencia}</p>
         )}
       </div>
     )
@@ -143,19 +153,39 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
         <p className="text-xs text-muted-foreground">Planificada: {item.cantidad_planificada}</p>
       </div>
 
-      {esProduccionParcial && (
+      {hayDiferencia && (
         <div className="space-y-2">
-          <Label>Motivo del faltante</Label>
+          <Label>{esProduccionParcial ? "Motivo del faltante" : "Motivo del excedente"}</Label>
           <Textarea
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Ej: faltó insumo X, merma más alta de lo esperado..."
+            placeholder={
+              esProduccionParcial
+                ? "Ej: faltó insumo X, merma más alta de lo esperado..."
+                : "Ej: se preparó un lote más grande con insumo adicional"
+            }
             rows={2}
           />
-          <p className="text-xs text-muted-foreground">
-            Se produjeron {cantidadNum.toLocaleString("es-CO")} de {item.cantidad_planificada.toLocaleString("es-CO")} planificadas.
-            El ítem quedará en estado &quot;Parcial&quot; y podrás generar una orden de reposición por el faltante.
-          </p>
+          {esProduccionParcial ? (
+            <p className="text-xs text-muted-foreground">
+              Se produjeron {cantidadNum.toLocaleString("es-CO")} de {item.cantidad_planificada.toLocaleString("es-CO")} planificadas.
+              El ítem quedará en estado &quot;Parcial&quot; y podrás generar una orden de reposición por el faltante.
+            </p>
+          ) : (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+              <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-500">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Se produjeron {cantidadNum.toLocaleString("es-CO")} de{" "}
+                  {item.cantidad_planificada.toLocaleString("es-CO")} planificadas. Esto{" "}
+                  <strong>consumirá insumos proporcionalmente para {cantidadNum.toLocaleString("es-CO")}</strong>.
+                  Si en realidad usaste los insumos de {item.cantidad_planificada.toLocaleString("es-CO")} y
+                  salieron unidades de más, cierra en {item.cantidad_planificada.toLocaleString("es-CO")} y
+                  registra el sobrante al empacar en PT/Stock.
+                </span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -230,7 +260,13 @@ export function CompletarItemCard({ item, bloqueado, onDone, onCompleted }: Prop
           onClick={handleConfirmar}
           disabled={confirming || loadingPreview || preview.length === 0 || hayFaltantes || motivoFaltante}
         >
-          {confirming ? "Completando..." : esProduccionParcial ? "Cerrar como parcial" : "Completar producto"}
+          {confirming
+            ? "Completando..."
+            : esProduccionParcial
+              ? "Cerrar como parcial"
+              : esSobreproduccion
+                ? "Completar con excedente"
+                : "Completar producto"}
         </Button>
       </div>
     </div>

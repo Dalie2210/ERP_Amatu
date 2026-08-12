@@ -81,10 +81,25 @@ export function EditProductosDialog({
   const [productos, setProductos] = useState<ProductoOpcion[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [saving, setSaving] = useState(false);
+  // Bloqueo optimista (I2): `updated_at` del pedido tal como estaba al abrir el
+  // editor. Si otro usuario guarda antes, el POST responde 409 en vez de pisar
+  // silenciosamente su trabajo.
+  const [updatedAtEsperado, setUpdatedAtEsperado] = useState<string | null>(null);
+
+  async function loadUpdatedAt() {
+    const { data } = await supabase
+      .from("pedidos")
+      .select("updated_at")
+      .eq("id", pedidoId)
+      .single();
+    setUpdatedAtEsperado((data?.updated_at as string | undefined) ?? null);
+  }
 
   useEffect(() => {
     if (open) {
       setStep("warning");
+      setUpdatedAtEsperado(null);
+      void loadUpdatedAt();
       setLineas(
         detallesActuales.map((d, i) => ({
           key: `existing-${i}`,
@@ -201,9 +216,16 @@ export function EditProductosDialog({
             es_promo: l.es_promo,
             promo_id: l.promo_id,
           })),
+          updated_at_esperado: updatedAtEsperado,
         }),
       });
       const json = await res.json();
+      if (res.status === 409) {
+        toast.error(
+          "Otro usuario modificó este pedido mientras lo editabas. Recarga la página para no perder su cambio."
+        );
+        return;
+      }
       if (!res.ok) {
         toast.error(json.error ?? "Error al guardar");
         return;

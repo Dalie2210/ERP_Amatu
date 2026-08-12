@@ -156,7 +156,11 @@ export function OrderEditDialog({
           ) : (
             <div className="grid gap-2">
               <Label htmlFor="estado-pago">Estado de Pago</Label>
-              <Select value={estadoPago} onValueChange={(v) => setEstadoPago(v ?? currentEstadoPago)}>
+              <Select
+                value={estadoPago}
+                onValueChange={(v) => setEstadoPago(v ?? currentEstadoPago)}
+                disabled={currentEstadoPago === "confirmado"}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar...">
                     {estadoPago ? (ESTADO_PAGO_LABELS[estadoPago] ?? estadoPago) : null}
@@ -167,6 +171,14 @@ export function OrderEditDialog({
                   <SelectItem value="confirmado">Confirmado</SelectItem>
                 </SelectContent>
               </Select>
+              {/* Confirmar el pago es irreversible desde la app (S1): es lo que
+                  desbloquea el monto ganado de la comisión. Revertirlo requiere
+                  a un admin en base de datos. */}
+              <p className="text-xs text-muted-foreground">
+                {currentEstadoPago === "confirmado"
+                  ? "El pago ya está confirmado y no puede revertirse desde aquí."
+                  : "Confirmar el pago no se puede deshacer: desbloquea la comisión del pedido."}
+              </p>
             </div>
           )}
 
