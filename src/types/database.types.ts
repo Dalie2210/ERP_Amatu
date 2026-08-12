@@ -3308,6 +3308,14 @@ export type Database = {
         Args: { p_cabecera: Json; p_ingreso_id: string; p_items: Json }
         Returns: { ingreso_id: string; numero: string }[]
       }
+      fn_registrar_conteo: {
+        Args: {
+          p_categoria: Database["public"]["Enums"]["categoria_conteo"]
+          p_items: Json
+          p_motivo: string
+        }
+        Returns: string
+      }
       fn_registrar_ingreso: {
         Args: { p_cabecera: Json; p_items: Json }
         Returns: { ingreso_id: string; numero: string }[]
