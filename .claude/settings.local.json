@@ -33,7 +33,8 @@
       "Read(//tmp/**)",
       "Bash(npx eslint *)",
       "Bash(cd \"c:\\\\Users\\\\danie\\\\OneDrive\\\\Desktop\\\\Amatu\\\\ERP\" && grep -A12 \"ventas.\\\\[id\\\\].page.tsx$\" /tmp/finallint.txt | head -20)",
-      "Bash(echo \"TSC exit: $?\")"
+      "Bash(echo \"TSC exit: $?\")",
+      "Bash(npx supabase *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\danie\\OneDrive\\Desktop\\Amatu\\ERP\\src\\app\\api\\comisiones\\liquidacion\\[id]"

@@ -4,9 +4,14 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/useAuth"
+import { useConteoNotifications } from "@/hooks/useConteoNotifications"
+import { useDonacionNotifications } from "@/hooks/useDonacionNotifications"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Bell, HeartHandshake } from "lucide-react"
 
 export default function DashboardLayout({
   children,
@@ -15,6 +20,8 @@ export default function DashboardLayout({
 }) {
   const { user, isLoading, role } = useAuth()
   const router = useRouter()
+  const { pendientes } = useConteoNotifications(role === "admin")
+  const { pendientes: donacionesPendientes } = useDonacionNotifications(role === "admin")
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -44,6 +51,30 @@ export default function DashboardLayout({
           </div>
           
           <div className="flex items-center gap-4">
+            {role === "admin" && (
+              <>
+                <Link href="/inventario/conteo?tab=aprobaciones" title="Conteos pendientes">
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {pendientes > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                        {pendientes}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+                <Link href="/admin/donaciones?tab=pendientes" title="Donaciones pendientes">
+                  <Button variant="ghost" size="icon" className="relative">
+                    <HeartHandshake className="h-5 w-5" />
+                    {donacionesPendientes > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                        {donacionesPendientes}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+              </>
+            )}
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium leading-none">{user?.email}</p>
               <p className="text-xs text-muted-foreground mt-1 capitalize">{role || 'Usuario'}</p>

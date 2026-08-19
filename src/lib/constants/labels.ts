@@ -106,6 +106,69 @@ export const CATEGORIA_CONTEO_LABELS: Record<string, string> = {
   producto_terminado: "Producto Terminado",
 }
 
+export const ESTADO_CONTEO_LABELS: Record<string, string> = {
+  pendiente: "Pendiente",
+  aplicado: "Aplicado",
+  rechazado: "Rechazado",
+}
+
+// Clasificador del reporte de desperdicio (ERP-DESP-01). El texto libre de
+// "razones por qué se dañó" se conserva aparte; esto solo agrupa el dashboard.
+export const MOTIVO_DESPERDICIO_LABELS: Record<string, string> = {
+  vencimiento: "Vencimiento",
+  quemado: "Se quemó",
+  cambio_temperatura: "Cambio brusco de temperatura",
+  nevera_danada: "Nevera dañada",
+  bolsa_rota: "Bolsa rota",
+  contaminacion: "Contaminación",
+  otro: "Otro",
+}
+
+export const ESTADO_CONTEO_STYLES: Record<string, string> = {
+  pendiente: "bg-amber-100 text-amber-800 border-amber-200",
+  aplicado: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  rechazado: "bg-red-100 text-red-800 border-red-200",
+}
+
+// Secciones configurables para el rol 'personalizado' (ERP-ADM-01), agrupadas
+// por dominio para la UI de permisos.
+export const SECCION_LABELS: Record<string, string> = {
+  ventas: "Ventas",
+  catalogo: "Catálogo",
+  clientes: "Clientes",
+  comisiones: "Comisiones",
+  aliados: "Aliados",
+  logistica_tablero: "Logística — Tablero",
+  logistica_rutas: "Logística — Rutas",
+  logistica_mensajeros: "Logística — Mensajeros",
+  logistica_liquidacion: "Logística — Liquidación Mensajero",
+  inventario_dashboard: "Inventario — Dashboard",
+  inventario_explosion: "Inventario — Explosión MP",
+  inventario_ingresos: "Inventario — Ingresos",
+  inventario_insumos: "Inventario — Insumos",
+  inventario_recetas: "Inventario — Recetas (BOM)",
+  inventario_produccion: "Inventario — Producción",
+  inventario_productos: "Inventario — PT / Stock",
+  inventario_remisiones: "Inventario — Remisiones",
+  inventario_conteo: "Inventario — Conteo",
+  inventario_desperdicio: "Inventario — Desperdicio",
+  admin: "Administración",
+}
+
+export const SECCION_GRUPOS: { label: string; secciones: string[] }[] = [
+  { label: "Comercial", secciones: ["ventas", "catalogo", "clientes", "comisiones", "aliados"] },
+  { label: "Logística", secciones: ["logistica_tablero", "logistica_rutas", "logistica_mensajeros", "logistica_liquidacion"] },
+  {
+    label: "Inventario",
+    secciones: [
+      "inventario_dashboard", "inventario_explosion", "inventario_ingresos", "inventario_insumos",
+      "inventario_recetas", "inventario_produccion", "inventario_productos", "inventario_remisiones",
+      "inventario_conteo", "inventario_desperdicio",
+    ],
+  },
+  { label: "Administración", secciones: ["admin"] },
+]
+
 export const TIPO_MOVIMIENTO_LABELS: Record<string, string> = {
   ingreso_compra: "Ingreso / Compra",
   consumo_produccion: "Consumo Producción",
@@ -116,4 +179,23 @@ export const TIPO_MOVIMIENTO_LABELS: Record<string, string> = {
   ajuste_negativo: "Ajuste Negativo",
   merma: "Merma",
   devolucion: "Devolución",
+  donacion: "Donación",
+}
+
+// Estado de aprobación de una donación (ERP-DON-03).
+export const ESTADO_DONACION_LABELS: Record<string, string> = {
+  pendiente: "Pendiente",
+  aprobada: "Aprobada",
+  rechazada: "Rechazada",
+}
+
+export const ESTADO_DONACION_STYLES: Record<string, string> = {
+  pendiente: "bg-amber-100 text-amber-800 border-amber-200",
+  aprobada: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  rechazada: "bg-red-100 text-red-800 border-red-200",
+}
+
+export const ORIGEN_DONACION_LABELS: Record<string, string> = {
+  pedido: "Orden de venta",
+  lote_pt: "Lote de stock",
 }

@@ -4,7 +4,7 @@ import {
   Home, Package, Users, Truck, DollarSign, LogOut, Leaf, ShoppingBag,
   Handshake, Shield, Bike, Boxes, ClipboardList, FlaskConical,
   ArrowDownToLine, Warehouse, Settings2, Calculator,
-  PlusCircle, ListOrdered, Route, Wallet,
+  PlusCircle, ListOrdered, Route, Wallet, Trash2, HeartHandshake,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
@@ -23,6 +23,8 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
+import { useSeccionPermisos } from "@/hooks/useSeccionPermisos"
+import { SECCION_BY_URL } from "@/lib/permisos/secciones"
 import type { UserRole } from "@/types"
 
 interface NavItem {
@@ -75,6 +77,8 @@ export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { role, isLoading } = useAuth()
+  const { puedeVer } = useSeccionPermisos()
+  const esPersonalizado = role === "personalizado"
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -88,17 +92,29 @@ export function AppSidebar() {
       ...group,
       items: isLoading
         ? group.items
-        : group.items.filter((item) => role && item.roles.includes(role)),
+        : group.items.filter((item) =>
+            esPersonalizado
+              ? puedeVer(SECCION_BY_URL[item.url])
+              : role && item.roles.includes(role)
+          ),
     }))
     .filter((group) => group.items.length > 0)
 
   const isItemActive = (item: NavItem) =>
     item.exact ? pathname === item.url : pathname.startsWith(item.url)
 
-  const showAdmin = !isLoading && role === "admin"
-  const showInventario = !isLoading && (role === "admin" || role === "logistica" || role === "jefe_produccion")
-  // El jefe de producción solo ve Producción (+ Recetas y PT/Stock en lectura).
-  const inventarioRolesJefe = ["/inventario/produccion", "/inventario/recetas", "/inventario/productos"]
+  const showAdmin = !isLoading && (role === "admin" || (esPersonalizado && puedeVer("admin")))
+  const showInventario = !isLoading && (
+    role === "admin" || role === "logistica" || role === "jefe_produccion" ||
+    (esPersonalizado && ["/inventario", "/inventario/explosion", "/inventario/ingresos", "/inventario/insumos",
+      "/inventario/recetas", "/inventario/produccion", "/inventario/productos", "/inventario/remisiones",
+      "/inventario/conteo", "/inventario/desperdicio"].some((url) => puedeVer(SECCION_BY_URL[url])))
+  )
+  // El jefe de producción solo ve Producción (+ Recetas y PT/Stock en lectura), y
+  // el reporte de desperdicio, que es él quien lo diligencia (ERP-DESP-01).
+  const inventarioRolesJefe = [
+    "/inventario/produccion", "/inventario/recetas", "/inventario/productos", "/inventario/desperdicio",
+  ]
 
   return (
     <Sidebar className="border-r-0 bg-sidebar">
@@ -165,7 +181,11 @@ export function AppSidebar() {
                   { title: "PT / Stock",     url: "/inventario/productos",          icon: Package },
                   { title: "Remisiones",     url: "/inventario/remisiones",         icon: Truck },
                   { title: "Conteo",         url: "/inventario/conteo",             icon: Settings2 },
-                ].filter((item) => role !== "jefe_produccion" || inventarioRolesJefe.includes(item.url))
+                  { title: "Desperdicio",    url: "/inventario/desperdicio",        icon: Trash2 },
+                ].filter((item) => {
+                  if (esPersonalizado) return puedeVer(SECCION_BY_URL[item.url])
+                  return role !== "jefe_produccion" || inventarioRolesJefe.includes(item.url)
+                })
                   .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -204,6 +224,20 @@ export function AppSidebar() {
                     <span className="font-medium">Panel Admin</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {/* Donaciones (ERP-DON-04): vive bajo Administración porque
+                    tanto aprobar como auditar son atribuciones de admin. */}
+                {role === "admin" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      render={<Link href="/admin/donaciones" />}
+                      isActive={pathname.startsWith("/admin/donaciones")}
+                      className="rounded-md px-4 py-3"
+                    >
+                      <HeartHandshake className="w-5 h-5" />
+                      <span className="font-medium">Donaciones</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

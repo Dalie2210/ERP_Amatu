@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Receipt, CheckCircle } from "lucide-react"
+import { Receipt, CheckCircle, HeartHandshake } from "lucide-react"
+import { usePermissions } from "@/hooks/usePermissions"
 
 const formatCOP = (n: number) => `$${n.toLocaleString("es-CO")}`
 
@@ -47,6 +48,15 @@ export function OrderSummaryCard() {
   const complementoAlterna = useCartStore((s) => s.complementoAlterna)
   const barrioAlterna = useCartStore((s) => s.barrioAlterna)
   const zonaAlternaId = useCartStore((s) => s.zonaAlternaId)
+  const esDonacionRaw = useCartStore((s) => s.esDonacion)
+  const donacionDestinatario = useCartStore((s) => s.donacionDestinatario)
+  const donacionMotivo = useCartStore((s) => s.donacionMotivo)
+
+  // El carrito se persiste en sessionStorage: si la bandera quedó de una
+  // sesión de admin, un vendedor no debe poder enviarla. El servidor también
+  // la rechaza (fn_crear_pedido), esto solo evita el error innecesario.
+  const { isAdmin } = usePermissions()
+  const esDonacion = isAdmin && esDonacionRaw
 
   const [reglas, setReglas] = useState<ReglaDescuento[]>([])
   const [reglasError, setReglasError] = useState(false)
@@ -98,7 +108,9 @@ export function OrderSummaryCard() {
     )
   }, [subAlim, subSnk, subOtr, tarifaEnvioBase, reglas, esDistribuidor, pctDescuentoDistribuidor, descuentoReferidoVet])
 
-  const isValid = items.length > 0 && clienteId && mascotaIds.length > 0 && metodoPago && !reglasError
+  const isValid =
+    items.length > 0 && clienteId && mascotaIds.length > 0 && metodoPago && !reglasError &&
+    (!esDonacion || (donacionDestinatario.trim() !== "" && donacionMotivo.trim() !== ""))
 
   const handleSave = async () => {
     if (!isValid) return
@@ -123,10 +135,17 @@ export function OrderSummaryCard() {
         complementoAlterna,
         barrioAlterna,
         zonaAlternaId,
+        esDonacion,
+        donacionDestinatario: esDonacion ? donacionDestinatario.trim() : null,
+        donacionMotivo: esDonacion ? donacionMotivo.trim() : null,
       })
 
       clearCart()
-      toast.success("Pedido guardado exitosamente")
+      toast.success(
+        esDonacion
+          ? "Donación registrada; queda pendiente de aprobación"
+          : "Pedido guardado exitosamente"
+      )
       router.push(`/ventas/${result.pedidoId}`)
     } catch (err) {
       console.error(err)
@@ -216,18 +235,32 @@ export function OrderSummaryCard() {
         <div className="flex justify-between items-center pt-2">
           <span className="text-lg font-bold">Total a Cobrar</span>
           <span className="text-2xl font-black text-primary">
-            {formatCOP(calculo.total)}
+            {formatCOP(esDonacion ? 0 : calculo.total)}
           </span>
         </div>
+
+        {esDonacion && (
+          <p className="text-xs text-muted-foreground">
+            Donación: no se cobra nada. El valor comercial de{" "}
+            <span className="font-medium">{formatCOP(calculo.total)}</span> se guarda solo para
+            auditar cuánto se donó.
+          </p>
+        )}
       </CardContent>
       <CardFooter>
-        <Button 
-          className="w-full h-12 text-lg font-bold gap-2" 
+        <Button
+          className="w-full h-12 text-lg font-bold gap-2"
           disabled={!isValid || isSaving}
           onClick={handleSave}
         >
-          <CheckCircle className="h-5 w-5" />
-          {isSaving ? "Guardando..." : isValid ? "Confirmar Pedido" : "Faltan datos"}
+          {esDonacion ? <HeartHandshake className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+          {isSaving
+            ? "Guardando..."
+            : !isValid
+              ? "Faltan datos"
+              : esDonacion
+                ? "Registrar Donación"
+                : "Confirmar Pedido"}
         </Button>
       </CardFooter>
     </Card>

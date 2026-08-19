@@ -19,6 +19,10 @@ export interface CreateOrderInput {
   zonaAlternaId: string | null
   // B5: aliado referido
   aliadoId: string | null
+  // ERP-DON-01: donación (admin-only; la RPC vuelve a validar el rol)
+  esDonacion: boolean
+  donacionDestinatario: string | null
+  donacionMotivo: string | null
 }
 
 export interface CreateOrderOutput {
@@ -59,6 +63,9 @@ export async function createOrder(
     complemento_entrega: input.complementoAlterna,
     barrio_entrega: input.barrioAlterna,
     zona_entrega_id: input.zonaAlternaId,
+    es_donacion: input.esDonacion,
+    donacion_destinatario: input.donacionDestinatario,
+    donacion_motivo: input.donacionMotivo,
   }
 
   const items = input.items.map((i) => ({

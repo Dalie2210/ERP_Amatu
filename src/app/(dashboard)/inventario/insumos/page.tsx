@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -45,11 +46,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Plus, Search, Warehouse, Edit, Eye, ChevronRight, ChevronLeft, Trash2 } from "lucide-react"
+import { Plus, Search, Warehouse, Edit, Eye, ChevronRight, ChevronLeft, Trash2, Copy } from "lucide-react"
 import Link from "next/link"
 import type { Insumo, TipoInsumo, UnidadMedida, VStockInsumo } from "@/types"
 import type { Database } from "@/types/database.types"
 import { TIPO_INSUMO_LABELS, UNIDAD_MEDIDA_LABELS } from "@/lib/constants/labels"
+import { buildMensajeBajoMinimo } from "@/lib/inventario/mensajeBajoMinimo"
 
 const PAGE_SIZE = 20
 
@@ -86,11 +88,13 @@ export default function InsumosPage() {
   const supabase = useMemo(() => createClient(), [])
   const { role } = useAuth()
   const searchParams = useSearchParams()
-  const filtro = searchParams.get("filtro") // "bajo_minimo" | "por_vencer"
+  const filtro = searchParams.get("filtro") // "por_vencer" (bajo_minimo ahora es un toggle local)
   const [insumos, setInsumos] = useState<InsumoRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTipo, setSelectedTipo] = useState<TipoInsumo | "all">("all")
+  const [soloBajoMinimo, setSoloBajoMinimo] = useState(() => searchParams.get("filtro") === "bajo_minimo")
+  const [isCopiandoReporte, setIsCopiandoReporte] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -121,7 +125,8 @@ export default function InsumosPage() {
       query = query.ilike("nombre", `%${debouncedSearch}%`)
     }
     // Con filtro de alerta (bajo mínimo / por vencer) traemos todo para filtrar en cliente
-    if (!filtro) {
+    const requiereDatasetCompleto = soloBajoMinimo || filtro === "por_vencer"
+    if (!requiereDatasetCompleto) {
       const from = page * PAGE_SIZE
       const to = from + PAGE_SIZE - 1
       query = query.range(from, to)
@@ -137,16 +142,56 @@ export default function InsumosPage() {
     const stockById = new Map((stockData ?? []).map((s) => [s.insumo_id, s as unknown as VStockInsumo]))
 
     let rows = data.map((i: Insumo) => ({ ...i, stock: stockById.get(i.id) ?? null }))
-    if (filtro === "bajo_minimo") rows = rows.filter((r: InsumoRow) => r.stock?.bajo_minimo)
+    if (soloBajoMinimo) rows = rows.filter((r: InsumoRow) => r.stock?.bajo_minimo)
     if (filtro === "por_vencer") rows = rows.filter((r: InsumoRow) => (r.stock?.lotes_por_vencer ?? 0) > 0)
 
     setInsumos(rows)
-    setTotalCount(filtro ? rows.length : count ?? 0)
+    setTotalCount(requiereDatasetCompleto ? rows.length : count ?? 0)
     setIsLoading(false)
-  }, [supabase, selectedTipo, debouncedSearch, page, filtro])
+  }, [supabase, selectedTipo, debouncedSearch, page, filtro, soloBajoMinimo])
 
-  useEffect(() => { setPage(0) }, [debouncedSearch, selectedTipo])
+  useEffect(() => { setPage(0) }, [debouncedSearch, selectedTipo, soloBajoMinimo])
   useEffect(() => { fetchInsumos() }, [fetchInsumos])
+
+  const handleCopiarReporte = async () => {
+    setIsCopiandoReporte(true)
+    try {
+      const [{ data: insumosData, error: insumosError }, { data: stockData }] = await Promise.all([
+        supabase.from("insumos").select("*"),
+        supabase.from("v_stock_insumos").select("*"),
+      ])
+      if (insumosError || !insumosData) {
+        toast.error("No se pudo generar el reporte.")
+        return
+      }
+      const stockById = new Map((stockData ?? []).map((s) => [s.insumo_id, s as unknown as VStockInsumo]))
+      const bajoMinimo = insumosData
+        .map((i: Insumo) => ({ ...i, stock: stockById.get(i.id) ?? null }))
+        .filter((r: InsumoRow) => r.stock?.bajo_minimo)
+
+      if (bajoMinimo.length === 0) {
+        toast.info("No hay insumos bajo mínimo.")
+        return
+      }
+
+      await navigator.clipboard.writeText(
+        buildMensajeBajoMinimo(
+          bajoMinimo.map((r) => ({
+            nombre: r.nombre,
+            tipo: r.tipo,
+            unidad_medida: r.unidad_medida,
+            stock_disponible: r.stock?.stock_disponible ?? 0,
+            stock_minimo: r.stock_minimo,
+          }))
+        )
+      )
+      toast.success("Reporte copiado al portapapeles")
+    } catch {
+      toast.error("No se pudo copiar el reporte")
+    } finally {
+      setIsCopiandoReporte(false)
+    }
+  }
 
   const openCreate = () => {
     setEditingId(null)
@@ -235,9 +280,9 @@ export default function InsumosPage() {
             Maestro de materia prima, producto seco, aseo y empaque.
           </p>
         </div>
-        {filtro && (
+        {filtro === "por_vencer" && (
           <Badge className="gap-1">
-            {filtro === "bajo_minimo" ? "Filtrando: bajo mínimo" : "Filtrando: por vencer (≤30 días)"}
+            Filtrando: por vencer (≤30 días)
             <Link href="/inventario/insumos" className="ml-1 underline">Quitar</Link>
           </Badge>
         )}
@@ -392,6 +437,22 @@ export default function InsumosPage() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2 shrink-0">
+              <Switch id="solo-bajo-minimo" checked={soloBajoMinimo} onCheckedChange={setSoloBajoMinimo} />
+              <Label htmlFor="solo-bajo-minimo" className="text-sm font-medium whitespace-nowrap">
+                Solo bajo mínimo
+              </Label>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={handleCopiarReporte}
+              disabled={isCopiandoReporte}
+            >
+              <Copy className="h-4 w-4" />
+              Copiar reporte
+            </Button>
           </div>
         </CardContent>
       </Card>

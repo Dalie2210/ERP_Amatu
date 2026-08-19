@@ -71,7 +71,7 @@ export function GuardarConteoDialog({
       }
       toast.success(
         conDiferencia.length > 0
-          ? `Conteo guardado: ${conDiferencia.length} ajuste(s) aplicado(s)`
+          ? `Conteo enviado para aprobación (${conDiferencia.length} diferencia(s))`
           : "Conteo guardado sin diferencias"
       )
       onSaved()
@@ -90,8 +90,10 @@ export function GuardarConteoDialog({
         <DialogHeader>
           <DialogTitle>Guardar conteo — {CATEGORIA_CONTEO_LABELS[categoria]}</DialogTitle>
           <DialogDescription>
-            Se registrarán {draftItems.length} ítem(s) contados y se aplicarán {conDiferencia.length} ajuste(s)
-            de inventario en una sola operación.
+            Se registrarán {draftItems.length} ítem(s) contados.
+            {conDiferencia.length > 0
+              ? ` El conteo quedará pendiente de aprobación por un administrador (${conDiferencia.length} diferencia(s) encontrada(s)); el stock no cambia hasta que se apruebe.`
+              : " No hay diferencias, así que se guarda como constancia sin necesitar aprobación."}
           </DialogDescription>
         </DialogHeader>
 

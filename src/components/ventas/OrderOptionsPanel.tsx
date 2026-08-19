@@ -16,13 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Settings2, MapPin } from "lucide-react"
+import { Settings2, MapPin, HeartHandshake } from "lucide-react"
 import type { FuenteCliente, FranjaHoraria, MetodoPago, TipoAliado } from "@/types"
 import {
   FUENTE_LABELS,
   METODO_PAGO_LABELS,
   FRANJA_LABELS,
 } from "@/lib/constants/labels"
+import { usePermissions } from "@/hooks/usePermissions"
 
 interface Aliado {
   id: string
@@ -37,6 +38,8 @@ interface ZonaEnvio {
 
 export function OrderOptionsPanel() {
   const supabase = useMemo(() => createClient(), [])
+  // ERP-DON-01: el toggle de donación solo existe para admin.
+  const { isAdmin } = usePermissions()
 
   const fuente = useCartStore((s) => s.fuente)
   const franjaHoraria = useCartStore((s) => s.franjaHoraria)
@@ -49,6 +52,9 @@ export function OrderOptionsPanel() {
   const complementoAlterna = useCartStore((s) => s.complementoAlterna)
   const barrioAlterna = useCartStore((s) => s.barrioAlterna)
   const zonaAlternaId = useCartStore((s) => s.zonaAlternaId)
+  const esDonacion = useCartStore((s) => s.esDonacion)
+  const donacionDestinatario = useCartStore((s) => s.donacionDestinatario)
+  const donacionMotivo = useCartStore((s) => s.donacionMotivo)
 
   const setFuente = useCartStore((s) => s.setFuente)
   const setFranjaHoraria = useCartStore((s) => s.setFranjaHoraria)
@@ -61,6 +67,9 @@ export function OrderOptionsPanel() {
   const setComplementoAlterna = useCartStore((s) => s.setComplementoAlterna)
   const setBarrioAlterna = useCartStore((s) => s.setBarrioAlterna)
   const setZonaAlternaId = useCartStore((s) => s.setZonaAlternaId)
+  const setEsDonacion = useCartStore((s) => s.setEsDonacion)
+  const setDonacionDestinatario = useCartStore((s) => s.setDonacionDestinatario)
+  const setDonacionMotivo = useCartStore((s) => s.setDonacionMotivo)
 
   const [pendingReferido, setPendingReferido] = useState(false)
   const showReferidoType = pendingReferido || fuente?.startsWith("referido_")
@@ -323,6 +332,55 @@ export function OrderOptionsPanel() {
             </div>
           )}
         </div>
+
+        {/* Donación (ERP-DON-01) — solo admin */}
+        {isAdmin && (
+          <div className="space-y-3 border-t pt-3">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="es-donacion"
+                checked={esDonacion}
+                onCheckedChange={(v) => {
+                  setEsDonacion(v)
+                  if (!v) {
+                    setDonacionDestinatario("")
+                    setDonacionMotivo("")
+                  }
+                }}
+              />
+              <Label htmlFor="es-donacion" className="text-sm flex items-center gap-1.5">
+                <HeartHandshake className="h-3.5 w-3.5" />
+                Es donación
+              </Label>
+            </div>
+
+            {esDonacion && (
+              <div className="space-y-3 pl-2 border-l-2 border-primary/20">
+                <div className="space-y-2">
+                  <Label className="text-sm">Destinatario</Label>
+                  <Input
+                    placeholder="Fundación, refugio, persona..."
+                    value={donacionDestinatario}
+                    onChange={(e) => setDonacionDestinatario(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Motivo de la donación</Label>
+                  <Textarea
+                    rows={2}
+                    placeholder="Por qué se dona"
+                    value={donacionMotivo}
+                    onChange={(e) => setDonacionMotivo(e.target.value)}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  La orden se guarda con total $0 y sin comisión, y queda pendiente hasta que un
+                  administrador la apruebe.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Notas */}
         <div className="space-y-2">

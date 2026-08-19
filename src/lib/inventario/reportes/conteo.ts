@@ -3,15 +3,19 @@ import type { Database } from "@/types/database.types"
 import type { TipoInsumo } from "@/types"
 import { UNIDAD_MEDIDA_LABELS } from "@/lib/constants/labels"
 import { fetchAll } from "./fetchAll"
-import type { ColumnSpec } from "./workbook"
+import type { PrintColumnSpec } from "./workbook"
 
-export const CONTEO_COLUMNS: ColumnSpec[] = [
-  { header: "Código", key: "codigo", minWidth: 12 },
-  { header: "Nombre", key: "nombre", minWidth: 24 },
-  { header: "Stock Disponible", key: "stockDisponible", format: "number", minWidth: 14 },
-  { header: "Unidad de Medida", key: "unidadMedida", minWidth: 16 },
-  { header: "Conteo Físico", key: "conteoFisico", format: "number", minWidth: 14 },
-  { header: "Observaciones", key: "observaciones", minWidth: 28 },
+export const CONTEO_INSTRUCCIONES =
+  "Diligenciar a mano: en \"Conteo por ubicación\" anote (y tache si corrige) cada ubicación física por separado — ej. \"Bulto abierto planta baja: 12kg / Bulto segundo piso: 25kg\". Sume todo y escriba el resultado final SOLO en la casilla TOTAL: esa es la única casilla que se digitaliza."
+
+export const CONTEO_COLUMNS: PrintColumnSpec[] = [
+  { header: "Código", key: "codigo", width: 12 },
+  { header: "Nombre", key: "nombre", width: 26 },
+  { header: "Unidad", key: "unidadMedida", width: 12 },
+  { header: "Stock Sistema (ref.)", key: "stockDisponible", format: "number", width: 14 },
+  { header: "Conteo por ubicación (anotar a mano)", key: "conteoFisico", width: 48, handwritten: true },
+  { header: "TOTAL", key: "total", width: 14, totalBox: true },
+  { header: "Observaciones", key: "observaciones", width: 24, handwritten: true },
 ]
 
 export interface ConteoRow {
@@ -20,6 +24,7 @@ export interface ConteoRow {
   stockDisponible: number
   unidadMedida: string
   conteoFisico: string
+  total: string
   observaciones: string
 }
 
@@ -59,6 +64,7 @@ export async function fetchConteoInsumos(
       stockDisponible: Number(r.stock_disponible ?? 0),
       unidadMedida: (r.unidad_medida && UNIDAD_MEDIDA_LABELS[r.unidad_medida]) ?? r.unidad_medida ?? "",
       conteoFisico: "",
+      total: "",
       observaciones: "",
     })),
     truncated,
@@ -107,6 +113,7 @@ export async function fetchConteoProductoTerminado(
     stockDisponible: stockByVariante.get(v.id) ?? 0,
     unidadMedida: v.presentacion,
     conteoFisico: "",
+    total: "",
     observaciones: "",
   }))
 
