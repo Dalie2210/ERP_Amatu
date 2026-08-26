@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/useAuth"
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, ClipboardList, Edit, Trash2 } from "lucide-react"
+import { PORCION_ESTANDAR_G, formatGramaje } from "@/lib/inventario/mezcla"
 import type { RecetaExpanded } from "@/types"
 
 export default function RecetasPage() {
@@ -88,15 +90,24 @@ export default function RecetasPage() {
         <div>
           <h1 className="text-3xl font-bold font-heading tracking-tight">Recetas (BOM)</h1>
           <p className="text-muted-foreground mt-1">
-            Fórmula de cada dieta por presentación, en peso cocido/procesado.
+            Fórmula de cada dieta por porción estándar de {formatGramaje(PORCION_ESTANDAR_G)}, en
+            peso cocido/procesado. Las demás presentaciones se derivan de esta base.
           </p>
         </div>
-        {canWrite && (
-          <Button className="gap-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            Nueva Receta
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <Link href="/inventario/recetas/resumen">
+            <Button variant="outline" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Amarre de cocción
+            </Button>
+          </Link>
+          {canWrite && (
+            <Button className="gap-2" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              Nueva Receta
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -120,7 +131,7 @@ export default function RecetasPage() {
                   <TableHead>Producto</TableHead>
                   <TableHead>Presentación</TableHead>
                   <TableHead>Receta</TableHead>
-                  <TableHead className="text-right">Rendimiento</TableHead>
+                  <TableHead className="text-right">Base</TableHead>
                   <TableHead className="text-right">Ingredientes</TableHead>
                   <TableHead className="text-center">Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -133,8 +144,19 @@ export default function RecetasPage() {
                     <TableCell className="text-muted-foreground">
                       {r.variante?.presentacion ?? "Todas"}
                     </TableCell>
-                    <TableCell>{r.nombre}</TableCell>
-                    <TableCell className="text-right">{r.rendimiento}</TableCell>
+                    <TableCell>
+                      {r.nombre}
+                      {r.reemplazada_por && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (reemplazada por otra receta)
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.base_modo === "unidades"
+                        ? `${r.base_gramos ?? r.rendimiento} u.`
+                        : formatGramaje(r.base_gramos)}
+                    </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {r.receta_items.length}
                     </TableCell>

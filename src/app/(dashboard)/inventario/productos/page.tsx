@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/useAuth"
 import { EmpacarLoteDialog } from "@/components/inventario/EmpacarLoteDialog"
 import { NuevaOrdenProduccionDialog, type OrdenPreset } from "@/components/inventario/NuevaOrdenProduccionDialog"
+import { BuscadorLotesPT } from "@/components/inventario/BuscadorLotesPT"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +16,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Package, Search, PackageCheck, FlaskConical, X, CheckSquare } from "lucide-react"
+import { Package, Search, PackageCheck, FlaskConical, X, CheckSquare, ListOrdered } from "lucide-react"
 import type { VStockProducto } from "@/types"
 
 interface GroupedRow {
@@ -30,6 +32,7 @@ interface GroupedRow {
 
 export default function ProductosPage() {
   const supabase = useMemo(() => createClient(), [])
+  const router = useRouter()
   const { role } = useAuth()
 
   const [rows, setRows] = useState<GroupedRow[]>([])
@@ -153,6 +156,8 @@ export default function ProductosPage() {
         </p>
       </div>
 
+      <BuscadorLotesPT />
+
       <Card className="border-none shadow-sm">
         <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative max-w-sm flex-1">
@@ -274,6 +279,15 @@ export default function ProductosPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => router.push(`/inventario/productos/${r.variante_id}`)}
+                          >
+                            <ListOrdered className="h-3.5 w-3.5" />
+                            Ver lotes
+                          </Button>
                           {canWrite && deficit && (
                             <Button
                               size="sm"

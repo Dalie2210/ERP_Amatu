@@ -12,11 +12,14 @@ import {
 } from "@/components/ui/select"
 import { AlertTriangle, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { crudoDesdeCocido, porcionesBase, cocidoRequerido } from "@/lib/inventario/receta"
 
 interface RecetaOption {
   id: string
   nombre: string
   rendimiento: number
+  base_gramos: number | null
+  base_modo: "gramos" | "unidades"
   producto_id: string
   variante_id: string | null
   producto: { nombre: string } | null
@@ -24,13 +27,23 @@ interface RecetaOption {
   receta_items: { insumo_id: string; cantidad: number; insumo: { nombre: string; merma_pct: number; rendimiento_pct: number } }[]
 }
 
+interface VarianteOption {
+  id: string
+  producto_id: string
+  presentacion: string
+  gramaje_g: number | null
+}
+
 interface StockRow {
   insumo_id: string
   stock_disponible: number
 }
 
+// La receta ya no fija la presentación (ERP-PROD-09): se elige la dieta y el
+// gramaje por separado, y el sistema deriva las cantidades de la receta base.
 interface ItemRow {
   recetaId: string
+  varianteId: string
   cantidad: string
 }
 
@@ -47,12 +60,13 @@ interface Props {
   presets?: OrdenPreset[]
 }
 
-const emptyRow = (): ItemRow => ({ recetaId: "", cantidad: "" })
+const emptyRow = (): ItemRow => ({ recetaId: "", varianteId: "", cantidad: "" })
 
 export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, presets }: Props) {
   const supabase = useMemo(() => createClient(), [])
 
   const [recetas, setRecetas] = useState<RecetaOption[]>([])
+  const [variantes, setVariantes] = useState<VarianteOption[]>([])
   const [items, setItems] = useState<ItemRow[]>([emptyRow()])
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
   const [notas, setNotas] = useState("")
@@ -72,7 +86,7 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
     supabase
       .from("recetas")
       .select(`
-        id, nombre, rendimiento, producto_id, variante_id,
+        id, nombre, rendimiento, base_gramos, base_modo, producto_id, variante_id,
         producto:productos!producto_id(nombre),
         variante:producto_variantes!variante_id(presentacion),
         receta_items(insumo_id, cantidad, insumo:insumos!insumo_id(nombre, merma_pct, rendimiento_pct))
@@ -92,7 +106,11 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
               list.find((r) => r.producto_id === p.producto_id && r.variante_id === p.variante_id) ??
               list.find((r) => r.producto_id === p.producto_id && r.variante_id === null)
             if (receta) {
-              rows.push({ recetaId: receta.id, cantidad: p.cantidad > 0 ? String(p.cantidad) : "" })
+              rows.push({
+                recetaId: receta.id,
+                varianteId: p.variante_id ?? "",
+                cantidad: p.cantidad > 0 ? String(p.cantidad) : "",
+              })
             } else {
               sinReceta++
             }
@@ -101,6 +119,13 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
           setPresetsSinReceta(sinReceta)
         }
       })
+
+    supabase
+      .from("producto_variantes")
+      .select("id, producto_id, presentacion, gramaje_g")
+      .eq("is_active", true)
+      .order("gramaje_g")
+      .then(({ data }) => setVariantes((data ?? []) as unknown as VarianteOption[]))
 
     supabase
       .from("v_stock_insumos")
@@ -114,6 +139,9 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
     setItems((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
 
   const recetaById = (id: string) => recetas.find((r) => r.id === id) ?? null
+  const varianteById = (id: string) => variantes.find((v) => v.id === id) ?? null
+  const variantesDe = (productoId: string | undefined) =>
+    productoId ? variantes.filter((v) => v.producto_id === productoId) : []
 
   // Requerimiento de insumos agregado sobre todas las filas (informativo)
   const faltantes = useMemo(() => {
@@ -121,12 +149,20 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
     for (const it of items) {
       const receta = recetaById(it.recetaId)
       const cant = parseFloat(it.cantidad)
-      if (!receta || isNaN(cant) || cant <= 0 || receta.rendimiento <= 0) continue
+      if (!receta || isNaN(cant) || cant <= 0) continue
+      const porciones = porcionesBase({
+        cantidad: cant,
+        gramajeG: varianteById(it.varianteId)?.gramaje_g ?? null,
+        baseGramos: receta.base_gramos,
+        baseModo: receta.base_modo,
+        rendimiento: receta.rendimiento,
+      })
+      if (porciones == null || porciones <= 0) continue
       for (const ri of receta.receta_items) {
-        const cocido = ri.cantidad * (cant / receta.rendimiento)
-        const factorMerma = 1 - ri.insumo.merma_pct / 100
-        const factorRendimiento = ri.insumo.rendimiento_pct / 100
-        const crudo = factorMerma > 0 && factorRendimiento > 0 ? cocido / factorRendimiento / factorMerma : Infinity
+        const cocido = cocidoRequerido(ri.cantidad, porciones)
+        // Factores inválidos → crudo inalcanzable: se reporta como faltante en
+        // lugar de desaparecer del aviso de stock insuficiente.
+        const crudo = crudoDesdeCocido(cocido, ri.insumo) ?? Infinity
         const disponible = stockInsumos.find((s) => s.insumo_id === ri.insumo_id)?.stock_disponible ?? 0
         const prev = req.get(ri.insumo_id)
         req.set(ri.insumo_id, {
@@ -137,14 +173,16 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
       }
     }
     return Array.from(req.values()).filter((f) => f.crudo > f.disponible)
-  }, [items, recetas, stockInsumos])
+  }, [items, recetas, variantes, stockInsumos])
 
-  const validItems = items.filter((it) => it.recetaId && parseFloat(it.cantidad) > 0)
+  const validItems = items.filter(
+    (it) => it.recetaId && it.varianteId && parseFloat(it.cantidad) > 0
+  )
 
   async function handleSave() {
     setError(null)
     if (validItems.length === 0) {
-      setError("Agrega al menos un producto con receta y cantidad mayor a cero.")
+      setError("Agrega al menos una dieta con presentación y cantidad mayor a cero.")
       return
     }
 
@@ -153,7 +191,7 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
       return {
         receta_id: receta.id,
         producto_id: receta.producto_id,
-        variante_id: receta.variante_id,
+        variante_id: it.varianteId,
         cantidad: parseFloat(it.cantidad),
       }
     })
@@ -182,7 +220,8 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
         <DialogHeader>
           <DialogTitle>Nueva Orden de Producción</DialogTitle>
           <DialogDescription>
-            Agrega uno o varios productos (solo se listan los que tienen receta activa).
+            Elige la dieta y la presentación por separado: las cantidades de insumo se
+            derivan de la receta base. Solo se listan las dietas con receta activa.
           </DialogDescription>
         </DialogHeader>
 
@@ -195,27 +234,54 @@ export function NuevaOrdenProduccionDialog({ open, onOpenChange, onSaved, preset
           )}
 
           <div className="space-y-2">
-            <div className="grid grid-cols-[1fr_140px_auto] gap-2 text-xs text-muted-foreground px-1">
-              <span>Producto / Presentación (receta)</span>
+            <div className="grid grid-cols-[1fr_130px_110px_auto] gap-2 text-xs text-muted-foreground px-1">
+              <span>Dieta (receta)</span>
+              <span>Presentación</span>
               <span>Cantidad</span>
               <span className="w-8" />
             </div>
             {items.map((it, i) => {
               const receta = recetaById(it.recetaId)
+              const opcionesVariante = variantesDe(receta?.producto_id)
               return (
-                <div key={i} className="grid grid-cols-[1fr_140px_auto] gap-2 items-center">
-                  <Select value={it.recetaId} onValueChange={(v) => v && updateRow(i, { recetaId: v })}>
+                <div key={i} className="grid grid-cols-[1fr_130px_110px_auto] gap-2 items-center">
+                  <Select
+                    value={it.recetaId}
+                    onValueChange={(v) => {
+                      if (!v) return
+                      // Cambiar de dieta invalida la presentación elegida: las
+                      // variantes pertenecen a otro producto.
+                      updateRow(i, { recetaId: v, varianteId: "" })
+                    }}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar receta...">
-                        {receta
-                          ? `${receta.producto?.nombre ?? ""} — ${receta.variante?.presentacion ?? "Todas"}`
-                          : null}
+                      <SelectValue placeholder="Seleccionar dieta...">
+                        {receta ? (receta.producto?.nombre ?? receta.nombre) : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {recetas.map((r) => (
                         <SelectItem key={r.id} value={r.id}>
-                          {r.producto?.nombre ?? ""} — {r.variante?.presentacion ?? "Todas"} ({r.nombre})
+                          {r.producto?.nombre ?? ""} ({r.nombre})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={it.varianteId}
+                    onValueChange={(v) => v && updateRow(i, { varianteId: v })}
+                    disabled={!receta}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Gramaje...">
+                        {varianteById(it.varianteId)?.presentacion ?? null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opcionesVariante.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.presentacion}
+                          {v.gramaje_g == null ? " (sin gramaje)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

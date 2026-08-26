@@ -26,6 +26,10 @@ interface CartActions {
   setAliadoId: (id: string | null) => void;
   // B6: referido vet discount
   setDescuentoReferidoVet: (pct: number) => void;
+  // ERP-DON-01: donación (solo admin)
+  setEsDonacion: (esDonacion: boolean) => void;
+  setDonacionDestinatario: (v: string) => void;
+  setDonacionMotivo: (v: string) => void;
   setItems: (items: CartItem[]) => void;
   togglePromoEnabled: (promoId: string) => void;
   clearCart: () => void;
@@ -60,6 +64,9 @@ const initialState: CartState = {
   aliadoId: null,
   descuentoReferidoVet: 0,
   disabledPromoIds: [],
+  esDonacion: false,
+  donacionDestinatario: "",
+  donacionMotivo: "",
 };
 
 export const useCartStore = create<CartState & CartActions>()(
@@ -138,6 +145,9 @@ export const useCartStore = create<CartState & CartActions>()(
   setZonaAlternaId: (zonaAlternaId) => set({ zonaAlternaId }),
   setAliadoId: (aliadoId) => set({ aliadoId }),
   setDescuentoReferidoVet: (descuentoReferidoVet) => set({ descuentoReferidoVet }),
+  setEsDonacion: (esDonacion) => set({ esDonacion }),
+  setDonacionDestinatario: (donacionDestinatario) => set({ donacionDestinatario }),
+  setDonacionMotivo: (donacionMotivo) => set({ donacionMotivo }),
   setItems: (items) => set({ items }),
   togglePromoEnabled: (promoId) =>
     set((state) => ({
@@ -188,6 +198,9 @@ export const useCartStore = create<CartState & CartActions>()(
         aliadoId: state.aliadoId,
         descuentoReferidoVet: state.descuentoReferidoVet,
         disabledPromoIds: state.disabledPromoIds,
+        esDonacion: state.esDonacion,
+        donacionDestinatario: state.donacionDestinatario,
+        donacionMotivo: state.donacionMotivo,
       }),
     }
   )

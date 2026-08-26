@@ -3,12 +3,13 @@ import { createClient } from "@/lib/supabase/server"
 import type { UserRole } from "@/types"
 import {
   CONTEO_COLUMNS,
+  CONTEO_INSTRUCCIONES,
   CONTEO_INSUMO_CATEGORIAS,
   CONTEO_PT_SHEET_NAME,
   fetchConteoInsumos,
   fetchConteoProductoTerminado,
 } from "@/lib/inventario/reportes/conteo"
-import { addFormattedSheet, createWorkbook, workbookToBuffer, xlsxHeaders } from "@/lib/inventario/reportes/workbook"
+import { addPrintableSheet, createWorkbook, workbookToBuffer, xlsxHeaders } from "@/lib/inventario/reportes/workbook"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -33,13 +34,13 @@ export async function GET() {
     const { rows, truncated: t } = await fetchConteoInsumos(supabase, tipo)
     totalRows += rows.length
     truncated = truncated || t
-    addFormattedSheet(workbook, sheetName, CONTEO_COLUMNS, rows)
+    addPrintableSheet(workbook, sheetName, CONTEO_COLUMNS, rows, { instructions: CONTEO_INSTRUCCIONES })
   }
 
   const { rows: ptRows, truncated: ptTruncated } = await fetchConteoProductoTerminado(supabase)
   totalRows += ptRows.length
   truncated = truncated || ptTruncated
-  addFormattedSheet(workbook, CONTEO_PT_SHEET_NAME, CONTEO_COLUMNS, ptRows)
+  addPrintableSheet(workbook, CONTEO_PT_SHEET_NAME, CONTEO_COLUMNS, ptRows, { instructions: CONTEO_INSTRUCCIONES })
 
   const buffer = await workbookToBuffer(workbook)
   const fecha = new Date().toISOString().slice(0, 10)

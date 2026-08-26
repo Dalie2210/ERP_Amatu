@@ -101,6 +101,26 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
     canManageProduccion: true,
     isAdmin: false,
   },
+  // El gating real de 'personalizado' vive en useSeccionPermisos() (permisos
+  // por sección desde user_permisos), no en este mapa estático — se deja en
+  // false para que cualquier componente que aún consulte usePermissions()
+  // por error no le otorgue accesos de más.
+  personalizado: {
+    canCreateOrders: false,
+    canEditOwnOrders: false,
+    canEditAnyOrder: false,
+    canConfirmPayment: false,
+    canManageLogistics: false,
+    canViewAllSales: false,
+    canManageCatalog: false,
+    canManageUsers: false,
+    canManageConfig: false,
+    canViewCommissions: false,
+    canLiquidateCommissions: false,
+    canDispatchRoutes: false,
+    canManageProduccion: false,
+    isAdmin: false,
+  },
 };
 
 /**

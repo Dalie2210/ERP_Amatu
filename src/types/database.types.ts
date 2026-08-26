@@ -354,6 +354,45 @@ export type Database = {
         }
         Relationships: []
       }
+      config_produccion: {
+        Row: {
+          created_at: string
+          duracion_mezcla_min: number
+          id: string
+          is_active: boolean
+          is_default: boolean
+          mezcla_max_g: number
+          mezcla_min_g: number
+          nombre: string
+          porcion_estandar_g: number
+          tolerancia_ajuste_g: number
+        }
+        Insert: {
+          created_at?: string
+          duracion_mezcla_min?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          mezcla_max_g?: number
+          mezcla_min_g?: number
+          nombre: string
+          porcion_estandar_g?: number
+          tolerancia_ajuste_g?: number
+        }
+        Update: {
+          created_at?: string
+          duracion_mezcla_min?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          mezcla_max_g?: number
+          mezcla_min_g?: number
+          nombre?: string
+          porcion_estandar_g?: number
+          tolerancia_ajuste_g?: number
+        }
+        Relationships: []
+      }
       conteo_items: {
         Row: {
           cantidad_contada: number
@@ -442,30 +481,138 @@ export type Database = {
           categoria: Database["public"]["Enums"]["categoria_conteo"]
           created_at: string
           created_by: string | null
+          estado: Database["public"]["Enums"]["estado_conteo"]
           fecha: string
           id: string
+          motivo_rechazo: string | null
           notas: string | null
+          revisado_at: string | null
+          revisado_por: string | null
         }
         Insert: {
           categoria: Database["public"]["Enums"]["categoria_conteo"]
           created_at?: string
           created_by?: string | null
+          estado?: Database["public"]["Enums"]["estado_conteo"]
           fecha?: string
           id?: string
+          motivo_rechazo?: string | null
           notas?: string | null
+          revisado_at?: string | null
+          revisado_por?: string | null
         }
         Update: {
           categoria?: Database["public"]["Enums"]["categoria_conteo"]
           created_at?: string
           created_by?: string | null
+          estado?: Database["public"]["Enums"]["estado_conteo"]
           fecha?: string
           id?: string
+          motivo_rechazo?: string | null
           notas?: string | null
+          revisado_at?: string | null
+          revisado_por?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "conteos_inventario_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conteos_inventario_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificaciones: {
+        Row: {
+          created_at: string
+          destinatario_id: string | null
+          entidad_id: string | null
+          entidad_tipo: string | null
+          id: string
+          leida_por: string[]
+          mensaje: string | null
+          tipo: Database["public"]["Enums"]["tipo_notificacion"]
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          destinatario_id?: string | null
+          entidad_id?: string | null
+          entidad_tipo?: string | null
+          id?: string
+          leida_por?: string[]
+          mensaje?: string | null
+          tipo: Database["public"]["Enums"]["tipo_notificacion"]
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          destinatario_id?: string | null
+          entidad_id?: string | null
+          entidad_tipo?: string | null
+          id?: string
+          leida_por?: string[]
+          mensaje?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_notificacion"]
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_destinatario_id_fkey"
+            columns: ["destinatario_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_permisos: {
+        Row: {
+          id: string
+          puede_editar: boolean
+          puede_ver: boolean
+          seccion: Database["public"]["Enums"]["app_seccion"]
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          puede_editar?: boolean
+          puede_ver?: boolean
+          seccion: Database["public"]["Enums"]["app_seccion"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          puede_editar?: boolean
+          puede_ver?: boolean
+          seccion?: Database["public"]["Enums"]["app_seccion"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permisos_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permisos_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -572,6 +719,186 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_stock_productos"
             referencedColumns: ["variante_id"]
+          },
+        ]
+      }
+      donaciones: {
+        Row: {
+          cantidad: number | null
+          created_at: string
+          created_by: string | null
+          destinatario: string
+          estado: Database["public"]["Enums"]["estado_donacion"]
+          id: string
+          motivo: string
+          motivo_rechazo: string | null
+          origen: Database["public"]["Enums"]["origen_donacion"]
+          pedido_id: string | null
+          producto_lote_id: string | null
+          revisado_at: string | null
+          revisado_por: string | null
+          valor_comercial: number
+        }
+        Insert: {
+          cantidad?: number | null
+          created_at?: string
+          created_by?: string | null
+          destinatario: string
+          estado?: Database["public"]["Enums"]["estado_donacion"]
+          id?: string
+          motivo: string
+          motivo_rechazo?: string | null
+          origen: Database["public"]["Enums"]["origen_donacion"]
+          pedido_id?: string | null
+          producto_lote_id?: string | null
+          revisado_at?: string | null
+          revisado_por?: string | null
+          valor_comercial?: number
+        }
+        Update: {
+          cantidad?: number | null
+          created_at?: string
+          created_by?: string | null
+          destinatario?: string
+          estado?: Database["public"]["Enums"]["estado_donacion"]
+          id?: string
+          motivo?: string
+          motivo_rechazo?: string | null
+          origen?: Database["public"]["Enums"]["origen_donacion"]
+          pedido_id?: string | null
+          producto_lote_id?: string | null
+          revisado_at?: string | null
+          revisado_por?: string | null
+          valor_comercial?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donaciones_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donaciones_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: true
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donaciones_producto_lote_id_fkey"
+            columns: ["producto_lote_id"]
+            isOneToOne: false
+            referencedRelation: "producto_lotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donaciones_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      desperdicios: {
+        Row: {
+          accion_correctiva: string | null
+          cantidad_kg: number
+          codigo_lote: string | null
+          created_at: string
+          created_by: string | null
+          fecha: string
+          id: string
+          insumo_id: string | null
+          insumo_lote_id: string | null
+          motivo: Database["public"]["Enums"]["motivo_desperdicio"]
+          producto_id: string | null
+          producto_lote_id: string | null
+          proveedor: string | null
+          razon_dano: string
+          temperatura_c: number | null
+          variante_id: string | null
+        }
+        Insert: {
+          accion_correctiva?: string | null
+          cantidad_kg: number
+          codigo_lote?: string | null
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          insumo_id?: string | null
+          insumo_lote_id?: string | null
+          motivo?: Database["public"]["Enums"]["motivo_desperdicio"]
+          producto_id?: string | null
+          producto_lote_id?: string | null
+          proveedor?: string | null
+          razon_dano: string
+          temperatura_c?: number | null
+          variante_id?: string | null
+        }
+        Update: {
+          accion_correctiva?: string | null
+          cantidad_kg?: number
+          codigo_lote?: string | null
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          insumo_id?: string | null
+          insumo_lote_id?: string | null
+          motivo?: Database["public"]["Enums"]["motivo_desperdicio"]
+          producto_id?: string | null
+          producto_lote_id?: string | null
+          proveedor?: string | null
+          razon_dano?: string
+          temperatura_c?: number | null
+          variante_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desperdicios_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desperdicios_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desperdicios_insumo_lote_id_fkey"
+            columns: ["insumo_lote_id"]
+            isOneToOne: false
+            referencedRelation: "insumo_lotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desperdicios_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desperdicios_producto_lote_id_fkey"
+            columns: ["producto_lote_id"]
+            isOneToOne: false
+            referencedRelation: "producto_lotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desperdicios_variante_id_fkey"
+            columns: ["variante_id"]
+            isOneToOne: false
+            referencedRelation: "producto_variantes"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1465,55 +1792,73 @@ export type Database = {
       }
       orden_mezcla: {
         Row: {
+          config_produccion_id: string | null
           created_at: string
           desglose_presentaciones: Json | null
+          grupo_firma: string | null
+          grupo_id: string | null
           firma_empaco: string | null
           firma_fecho: string | null
           firma_mezclo: string | null
           firma_sello: string | null
           firma_verifico: string | null
           id: string
+          mezcla_max_g: number | null
+          mezcla_min_g: number | null
           num_mezclas: number | null
           num_mezclas_sugerido: number | null
           observaciones: string | null
           orden_id: string
           orden_index: number
+          plan_mezclas: Json | null
           porcion_estandar: number
           producto_id: string
           total_gramos: number | null
         }
         Insert: {
+          config_produccion_id?: string | null
           created_at?: string
           desglose_presentaciones?: Json | null
+          grupo_firma?: string | null
+          grupo_id?: string | null
           firma_empaco?: string | null
           firma_fecho?: string | null
           firma_mezclo?: string | null
           firma_sello?: string | null
           firma_verifico?: string | null
           id?: string
+          mezcla_max_g?: number | null
+          mezcla_min_g?: number | null
           num_mezclas?: number | null
           num_mezclas_sugerido?: number | null
           observaciones?: string | null
           orden_id: string
           orden_index?: number
+          plan_mezclas?: Json | null
           porcion_estandar?: number
           producto_id: string
           total_gramos?: number | null
         }
         Update: {
+          config_produccion_id?: string | null
           created_at?: string
           desglose_presentaciones?: Json | null
+          grupo_firma?: string | null
+          grupo_id?: string | null
           firma_empaco?: string | null
           firma_fecho?: string | null
           firma_mezclo?: string | null
           firma_sello?: string | null
           firma_verifico?: string | null
           id?: string
+          mezcla_max_g?: number | null
+          mezcla_min_g?: number | null
           num_mezclas?: number | null
           num_mezclas_sugerido?: number | null
           observaciones?: string | null
           orden_id?: string
           orden_index?: number
+          plan_mezclas?: Json | null
           porcion_estandar?: number
           producto_id?: string
           total_gramos?: number | null
@@ -1573,11 +1918,94 @@ export type Database = {
           },
         ]
       }
+      insumo_sobrante: {
+        Row: {
+          cantidad_cocido: number
+          cantidad_crudo_equiv: number
+          cocido_consumido: number
+          created_at: string
+          created_by: string | null
+          estado: string
+          fecha: string
+          id: string
+          insumo_id: string
+          merma_pct_snap: number
+          nota: string | null
+          orden_mezcla_id: string | null
+          orden_origen_id: string
+          rendimiento_pct_snap: number
+        }
+        Insert: {
+          cantidad_cocido: number
+          cantidad_crudo_equiv: number
+          cocido_consumido?: number
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha?: string
+          id?: string
+          insumo_id: string
+          merma_pct_snap: number
+          nota?: string | null
+          orden_mezcla_id?: string | null
+          orden_origen_id: string
+          rendimiento_pct_snap: number
+        }
+        Update: {
+          cantidad_cocido?: number
+          cantidad_crudo_equiv?: number
+          cocido_consumido?: number
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha?: string
+          id?: string
+          insumo_id?: string
+          merma_pct_snap?: number
+          nota?: string | null
+          orden_mezcla_id?: string | null
+          orden_origen_id?: string
+          rendimiento_pct_snap?: number
+        }
+        Relationships: []
+      }
+      insumo_sobrante_aplicacion: {
+        Row: {
+          cantidad_cocido: number
+          cantidad_crudo: number
+          created_at: string
+          id: string
+          orden_destino_id: string
+          sobrante_id: string
+        }
+        Insert: {
+          cantidad_cocido: number
+          cantidad_crudo: number
+          created_at?: string
+          id?: string
+          orden_destino_id: string
+          sobrante_id: string
+        }
+        Update: {
+          cantidad_cocido?: number
+          cantidad_crudo?: number
+          created_at?: string
+          id?: string
+          orden_destino_id?: string
+          sobrante_id?: string
+        }
+        Relationships: []
+      }
       orden_produccion_procesos: {
         Row: {
+          cant_a_cocinar_crudo: number | null
+          cant_cocido_requerido: number | null
+          cant_obtenida_cocido: number | null
           cant_real_crudo: number | null
           cant_requerida_crudo: number | null
+          cant_saldo_crudo: number
           created_at: string
+          factor_conversion: number | null
           empaque_conforme: boolean | null
           id: string
           insumo_id: string
@@ -1596,9 +2024,14 @@ export type Database = {
           tiempo_molienda: number | null
         }
         Insert: {
+          cant_a_cocinar_crudo?: number | null
+          cant_cocido_requerido?: number | null
+          cant_obtenida_cocido?: number | null
           cant_real_crudo?: number | null
           cant_requerida_crudo?: number | null
+          cant_saldo_crudo?: number
           created_at?: string
+          factor_conversion?: number | null
           empaque_conforme?: boolean | null
           id?: string
           insumo_id: string
@@ -1617,9 +2050,14 @@ export type Database = {
           tiempo_molienda?: number | null
         }
         Update: {
+          cant_a_cocinar_crudo?: number | null
+          cant_cocido_requerido?: number | null
+          cant_obtenida_cocido?: number | null
           cant_real_crudo?: number | null
           cant_requerida_crudo?: number | null
+          cant_saldo_crudo?: number
           created_at?: string
+          factor_conversion?: number | null
           empaque_conforme?: boolean | null
           id?: string
           insumo_id?: string
@@ -1798,6 +2236,7 @@ export type Database = {
           editado_en: string | null
           editado_por_id: string | null
           es_contraentrega: boolean
+          es_donacion: boolean
           estado: Database["public"]["Enums"]["estado_pedido"]
           estado_pago: Database["public"]["Enums"]["estado_pago"]
           fecha_confirmacion_pago: string | null
@@ -1838,6 +2277,7 @@ export type Database = {
           editado_en?: string | null
           editado_por_id?: string | null
           es_contraentrega?: boolean
+          es_donacion?: boolean
           estado?: Database["public"]["Enums"]["estado_pedido"]
           estado_pago?: Database["public"]["Enums"]["estado_pago"]
           fecha_confirmacion_pago?: string | null
@@ -1878,6 +2318,7 @@ export type Database = {
           editado_en?: string | null
           editado_por_id?: string | null
           es_contraentrega?: boolean
+          es_donacion?: boolean
           estado?: Database["public"]["Enums"]["estado_pedido"]
           estado_pago?: Database["public"]["Enums"]["estado_pago"]
           fecha_confirmacion_pago?: string | null
@@ -2139,6 +2580,7 @@ export type Database = {
       producto_variantes: {
         Row: {
           created_at: string
+          gramaje_g: number | null
           id: string
           is_active: boolean
           precio_por_gramo: number | null
@@ -2150,6 +2592,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          gramaje_g?: number | null
           id?: string
           is_active?: boolean
           precio_por_gramo?: number | null
@@ -2161,6 +2604,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          gramaje_g?: number | null
           id?: string
           is_active?: boolean
           precio_por_gramo?: number | null
@@ -2421,29 +2865,41 @@ export type Database = {
       }
       recetas: {
         Row: {
+          base_gramos: number | null
+          base_modo: string
           created_at: string
+          firma: string | null
           id: string
           is_active: boolean
           nombre: string
           producto_id: string
+          reemplazada_por: string | null
           rendimiento: number
           variante_id: string | null
         }
         Insert: {
+          base_gramos?: number | null
+          base_modo?: string
           created_at?: string
+          firma?: string | null
           id?: string
           is_active?: boolean
           nombre: string
           producto_id: string
+          reemplazada_por?: string | null
           rendimiento: number
           variante_id?: string | null
         }
         Update: {
+          base_gramos?: number | null
+          base_modo?: string
           created_at?: string
+          firma?: string | null
           id?: string
           is_active?: boolean
           nombre?: string
           producto_id?: string
+          reemplazada_por?: string | null
           rendimiento?: number
           variante_id?: string | null
         }
@@ -2778,6 +3234,20 @@ export type Database = {
       }
     }
     Views: {
+      v_desperdicio_resumen: {
+        Row: {
+          eventos: number | null
+          fecha: string | null
+          insumo_id: string | null
+          item_nombre: string | null
+          kg: number | null
+          motivo: Database["public"]["Enums"]["motivo_desperdicio"] | null
+          producto_id: string | null
+          proveedor: string | null
+          variante_id: string | null
+        }
+        Relationships: []
+      }
       v_componentes_venta: {
         Row: {
           cantidad_componente: number | null
@@ -3081,9 +3551,93 @@ export type Database = {
         Args: { p_ingreso_id: string; p_motivo: string }
         Returns: undefined
       }
+      fn_calcular_firma_receta: {
+        Args: { p_receta_id: string }
+        Returns: string
+      }
       fn_calcular_pct_cierre_meta: {
         Args: { p_periodo_mes: string; p_vendedor_id: string }
         Returns: number
+      }
+      fn_aplicar_saldos_orden: {
+        Args: { p_orden_id: string }
+        Returns: {
+          a_cocinar_crudo: number
+          insumo_id: string
+          saldo_crudo: number
+        }[]
+      }
+      fn_crudo_desde_cocido: {
+        Args: {
+          p_cocido: number
+          p_merma_pct: number
+          p_rendimiento_pct: number
+        }
+        Returns: number
+      }
+      fn_insumos_mezcla: {
+        Args: { p_orden_mezcla_id: string }
+        Returns: {
+          cocido_requerido: number
+          factor_conversion: number
+          insumo_id: string
+          insumo_nombre: string
+          merma_pct: number
+          rendimiento_pct: number
+          sobrante_actual: number
+          unidad_medida: Database["public"]["Enums"]["unidad_medida"]
+        }[]
+      }
+      fn_liberar_saldos_orden: {
+        Args: { p_orden_id: string }
+        Returns: undefined
+      }
+      fn_porciones_base: {
+        Args: {
+          p_cantidad: number
+          p_receta_id: string
+          p_variante_id: string
+        }
+        Returns: number
+      }
+      fn_registrar_sobrante_mezcla: {
+        Args: { p_items: Json; p_orden_mezcla_id: string }
+        Returns: number
+      }
+      fn_agrupar_mezclas: {
+        Args: { p_grupos: Json; p_orden_id: string }
+        Returns: number
+      }
+      fn_sugerir_grupos_mezcla: {
+        Args: { p_orden_id: string }
+        Returns: {
+          firma: string
+          orden_mezcla_id: string
+          producto_id: string
+          producto_nombre: string
+          total_gramos: number
+        }[]
+      }
+      fn_resumen_receta: {
+        Args: {
+          p_cantidad: number
+          p_producto_id: string
+          p_variante_id?: string | null
+        }
+        Returns: {
+          cocido_por_porcion: number
+          cocido_total: number
+          crudo_total: number
+          factor_conversion: number
+          faltante: number
+          insumo_codigo: string
+          insumo_id: string
+          insumo_nombre: string
+          merma_pct: number
+          rendimiento_pct: number
+          stock_disponible: number
+          unidad_medida: Database["public"]["Enums"]["unidad_medida"]
+        }[]
       }
       fn_completar_item_produccion: {
         Args: {
@@ -3308,6 +3862,27 @@ export type Database = {
         Args: { p_cabecera: Json; p_ingreso_id: string; p_items: Json }
         Returns: { ingreso_id: string; numero: string }[]
       }
+      fn_registrar_desperdicio: {
+        Args: { p_items: Json }
+        Returns: number
+      }
+      fn_donar_lote_pt: {
+        Args: {
+          p_cantidad: number
+          p_destinatario: string
+          p_lote_id: string
+          p_motivo: string
+        }
+        Returns: string
+      }
+      fn_aprobar_donacion: {
+        Args: { p_donacion_id: string }
+        Returns: undefined
+      }
+      fn_rechazar_donacion: {
+        Args: { p_donacion_id: string; p_motivo: string }
+        Returns: undefined
+      }
       fn_registrar_conteo: {
         Args: {
           p_categoria: Database["public"]["Enums"]["categoria_conteo"]
@@ -3315,6 +3890,14 @@ export type Database = {
           p_motivo: string
         }
         Returns: string
+      }
+      fn_aprobar_conteo: {
+        Args: { p_conteo_id: string }
+        Returns: undefined
+      }
+      fn_rechazar_conteo: {
+        Args: { p_conteo_id: string; p_motivo: string }
+        Returns: undefined
       }
       fn_registrar_ingreso: {
         Args: { p_cabecera: Json; p_items: Json }
@@ -3352,12 +3935,44 @@ export type Database = {
       }
     }
     Enums: {
+      app_seccion:
+        | "ventas"
+        | "catalogo"
+        | "clientes"
+        | "comisiones"
+        | "aliados"
+        | "logistica_tablero"
+        | "logistica_rutas"
+        | "logistica_mensajeros"
+        | "logistica_liquidacion"
+        | "inventario_dashboard"
+        | "inventario_explosion"
+        | "inventario_ingresos"
+        | "inventario_insumos"
+        | "inventario_recetas"
+        | "inventario_produccion"
+        | "inventario_productos"
+        | "inventario_remisiones"
+        | "inventario_conteo"
+        | "inventario_desperdicio"
+        | "admin"
+      motivo_desperdicio:
+        | "vencimiento"
+        | "quemado"
+        | "cambio_temperatura"
+        | "nevera_danada"
+        | "bolsa_rota"
+        | "contaminacion"
+        | "otro"
       categoria_conteo:
         | "materia_prima"
         | "producto_seco"
         | "aseo"
         | "producto_terminado"
       estado_comision_aliado: "pendiente" | "liquidada"
+      estado_conteo: "pendiente" | "aplicado" | "rechazado"
+      estado_donacion: "pendiente" | "aprobada" | "rechazada"
+      origen_donacion: "pedido" | "lote_pt"
       estado_liquidacion: "borrador" | "cerrado" | "pagado"
       estado_pago: "pendiente" | "confirmado"
       estado_pedido:
@@ -3409,10 +4024,18 @@ export type Database = {
         | "ajuste_negativo"
         | "merma"
         | "devolucion"
+        | "donacion"
+      tipo_notificacion: "conteo_pendiente" | "donacion_pendiente"
       tipo_precio: "fijo" | "por_variante" | "por_gramo" | "escala"
       tipo_promocion: "paga_x_lleva_mas" | "producto_gratis"
       unidad_medida: "g" | "kg" | "ml" | "l" | "unidad"
-      user_role: "admin" | "vendedor" | "logistica" | "contable" | "jefe_produccion"
+      user_role:
+        | "admin"
+        | "vendedor"
+        | "logistica"
+        | "contable"
+        | "jefe_produccion"
+        | "personalizado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3540,6 +4163,37 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_seccion: [
+        "ventas",
+        "catalogo",
+        "clientes",
+        "comisiones",
+        "aliados",
+        "logistica_tablero",
+        "logistica_rutas",
+        "logistica_mensajeros",
+        "logistica_liquidacion",
+        "inventario_dashboard",
+        "inventario_explosion",
+        "inventario_ingresos",
+        "inventario_insumos",
+        "inventario_recetas",
+        "inventario_produccion",
+        "inventario_productos",
+        "inventario_remisiones",
+        "inventario_conteo",
+        "inventario_desperdicio",
+        "admin",
+      ],
+      motivo_desperdicio: [
+        "vencimiento",
+        "quemado",
+        "cambio_temperatura",
+        "nevera_danada",
+        "bolsa_rota",
+        "contaminacion",
+        "otro",
+      ],
       categoria_conteo: [
         "materia_prima",
         "producto_seco",
@@ -3547,6 +4201,9 @@ export const Constants = {
         "producto_terminado",
       ],
       estado_comision_aliado: ["pendiente", "liquidada"],
+      estado_conteo: ["pendiente", "aplicado", "rechazado"],
+      estado_donacion: ["pendiente", "aprobada", "rechazada"],
+      origen_donacion: ["pedido", "lote_pt"],
       estado_liquidacion: ["borrador", "cerrado", "pagado"],
       estado_pago: ["pendiente", "confirmado"],
       estado_pedido: [
@@ -3602,11 +4259,20 @@ export const Constants = {
         "ajuste_negativo",
         "merma",
         "devolucion",
+        "donacion",
       ],
+      tipo_notificacion: ["conteo_pendiente", "donacion_pendiente"],
       tipo_precio: ["fijo", "por_variante", "por_gramo", "escala"],
       tipo_promocion: ["paga_x_lleva_mas", "producto_gratis"],
       unidad_medida: ["g", "kg", "ml", "l", "unidad"],
-      user_role: ["admin", "vendedor", "logistica", "contable", "jefe_produccion"],
+      user_role: [
+        "admin",
+        "vendedor",
+        "logistica",
+        "contable",
+        "jefe_produccion",
+        "personalizado",
+      ],
     },
   },
 } as const

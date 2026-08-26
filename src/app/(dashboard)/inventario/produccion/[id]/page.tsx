@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table"
 import {
   ArrowLeft, Save, FlaskConical, History, ClipboardList, CheckCircle2,
-  AlertTriangle, ChevronRight, Clock, Blend,
+  AlertTriangle, ChevronRight, Clock, Blend, PackageMinus,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -35,6 +35,7 @@ import type {
 import { ESTADO_PRODUCCION_LABELS } from "@/lib/constants/labels"
 import { CompletarItemCard } from "@/components/inventario/CompletarItemCard"
 import { MezclaPanel } from "@/components/inventario/MezclaPanel"
+import { SobrantePanel } from "@/components/inventario/SobrantePanel"
 import { cn } from "@/lib/utils"
 
 // ------------------------------------------------------------
@@ -60,9 +61,18 @@ const ESTADO_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   cancelada: "destructive",
 }
 
+/** Formato numérico corto y consistente para las columnas del amarre. */
+function fmtNum(n: number | null | undefined): string {
+  if (n == null) return "—"
+  return n.toLocaleString("es-CO", { maximumFractionDigits: 2 })
+}
+
 const ACTIVIDAD_ICONS: Record<string, React.ReactNode> = {
   proceso_guardado: <Save className="h-3 w-3" />,
   mezcla_guardada: <Blend className="h-3 w-3" />,
+  mezcla_agrupada: <Blend className="h-3 w-3" />,
+  sobrante_registrado: <PackageMinus className="h-3 w-3" />,
+  saldos_aplicados: <PackageMinus className="h-3 w-3" />,
   item_completado: <CheckCircle2 className="h-3 w-3" />,
   item_parcial: <AlertTriangle className="h-3 w-3" />,
   orden_completada: <CheckCircle2 className="h-3 w-3" />,
@@ -84,6 +94,12 @@ function actividadTexto(a: OrdenProduccionActividad): string {
         ? `Guardó la hoja de mezcla (${cambios} cambio${cambios !== 1 ? "s" : ""})`
         : "Guardó la hoja de mezcla"
     }
+    case "mezcla_agrupada":
+      return `Combinó ${p.dietas ?? "varias"} dietas en una misma mezcla`
+    case "sobrante_registrado":
+      return `Registró sobrante de producto cocido${p.dieta ? ` en "${p.dieta}"` : ""}`
+    case "saldos_aplicados":
+      return `Aplicó los saldos a favor${p.insumos ? ` (${p.insumos} insumo${p.insumos === 1 ? "" : "s"})` : ""}`
     case "item_completado":
       return `Completó ${p.producto ? `"${p.producto}"` : "un producto"}${p.cantidad ? ` (${p.cantidad})` : ""}`
     case "item_parcial":
@@ -100,6 +116,7 @@ function actividadTexto(a: OrdenProduccionActividad): string {
 // Etiquetas legibles de los campos editables de la hoja de proceso, usadas
 // tanto para construir el diff al guardar como para mostrarlo en el historial.
 const CAMPO_LABELS: Record<string, string> = {
+  cant_obtenida_cocido: "Cantidad obtenida (cocido)",
   temp_descongelacion: "Temp. descongelación (°C)",
   cant_real_crudo: "Cantidad real en crudo",
   lotes: "Lote(s)",
@@ -173,6 +190,7 @@ function iniciales(nombre: string | null | undefined): string {
 
 // Campos numéricos y de texto editables de la fila de proceso.
 type CampoNumerico =
+  | "cant_obtenida_cocido"
   | "temp_descongelacion" | "cant_real_crudo" | "tiempo_coccion_horas"
   | "temp_final_coccion" | "kilos_antes_molido" | "tiempo_molienda" | "kilos_final_molido"
 type CampoTexto = "lotes" | "responsable_coccion" | "responsable"
@@ -197,6 +215,9 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
   const [actividad, setActividad] = useState<OrdenProduccionActividad[]>([])
   const [loading, setLoading] = useState(true)
   const [savingProcesos, setSavingProcesos] = useState(false)
+  const [aplicandoSaldos, setAplicandoSaldos] = useState(false)
+  // Insumo y cantidad con los que precargar el panel de sobrantes desde el Δ.
+  const [sobrantePrecarga, setSobrantePrecarga] = useState<{ insumoId: string; cocido: number } | null>(null)
   const [dirty, setDirty] = useState(false)
 
   const tab = searchParams.get("tab") ?? "proceso"
@@ -318,6 +339,46 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
     setDirty(true)
   }
 
+  // El sobrante se registra contra una DIETA, pero la hoja de proceso está
+  // organizada por insumo, y un mismo insumo puede alimentar varias dietas de
+  // la orden. Con una sola dieta la atribución es inequívoca y se abre directo;
+  // con varias hay que elegirla a mano en la hoja de mezcla.
+  function abrirSobrante(insumoId: string, cocido: number) {
+    if (mezclas.length === 1) {
+      setSobrantePrecarga({ insumoId, cocido })
+      return
+    }
+    setTab("mezcla")
+    toast.info(
+      "Elige la dieta en la que sobró: pulsa \"Sobró producto\" en su hoja de mezcla."
+    )
+  }
+
+  // Consume los sobrantes de días anteriores y baja lo que hay que cocinar hoy
+  // (ERP-PROD-02). La RPC es idempotente: suelta primero lo que esta orden ya
+  // tenía tomado, así que pulsar dos veces no duplica el descuento.
+  async function handleAplicarSaldos() {
+    if (!canEdit) return
+    setAplicandoSaldos(true)
+    const res = await fetch("/api/inventario/produccion/sobrantes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion: "aplicar", orden_id: ordenId }),
+    })
+    const json = await res.json().catch(() => ({}))
+    setAplicandoSaldos(false)
+
+    if (!res.ok) {
+      toast.error(json.error ?? "No se pudieron aplicar los saldos.")
+      return
+    }
+    await logActividad("saldos_aplicados", {
+      insumos: Array.isArray(json.aplicados) ? json.aplicados.length : 0,
+    })
+    toast.success("Saldos a favor aplicados.")
+    await fetchData()
+  }
+
   async function handleGuardarProcesos() {
     if (!canEdit) return
     setSavingProcesos(true)
@@ -327,6 +388,7 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
       orden_id: p.orden_id,
       insumo_id: p.insumo_id,
       cant_requerida_crudo: p.cant_requerida_crudo,
+      cant_obtenida_cocido: p.cant_obtenida_cocido,
       temp_descongelacion: p.temp_descongelacion,
       cant_real_crudo: p.cant_real_crudo,
       lotes: p.lotes,
@@ -519,14 +581,32 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
               <>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-muted-foreground">
-                    Documenta el proceso por materia prima. Puedes guardar y continuar más tarde.
+                    Documenta el proceso por materia prima. Al pesar lo cocinado, ingresa la
+                    cantidad obtenida: verás al instante si falta o sobra. Puedes guardar y
+                    continuar más tarde.
                   </p>
-                  {canEdit && (
-                    <Button onClick={handleGuardarProcesos} disabled={savingProcesos || !dirty} className="gap-2">
-                      <Save className="h-4 w-4" />
-                      {savingProcesos ? "Guardando..." : "Guardar cambios"}
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canEdit && (
+                      // No se auto-aplica al cargar: dos personas abriendo dos
+                      // órdenes competirían por el mismo sobrante. Aplicar es un
+                      // acto explícito y queda en el historial.
+                      <Button
+                        variant="outline"
+                        onClick={handleAplicarSaldos}
+                        disabled={aplicandoSaldos}
+                        className="gap-2"
+                      >
+                        <PackageMinus className="h-4 w-4" />
+                        {aplicandoSaldos ? "Aplicando..." : "Aplicar saldos a favor"}
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button onClick={handleGuardarProcesos} disabled={savingProcesos || !dirty} className="gap-2">
+                        <Save className="h-4 w-4" />
+                        {savingProcesos ? "Guardando..." : "Guardar cambios"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto border rounded-lg bg-white">
@@ -535,6 +615,7 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
                       {/* Grupos */}
                       <TableRow className="bg-muted/40">
                         <TableHead className="sticky left-0 bg-muted/40 z-10 w-[220px]">Materia prima</TableHead>
+                        <TableHead className="text-center border-l" colSpan={5}>Amarre de cocción</TableHead>
                         <TableHead className="text-center border-l">Descong.</TableHead>
                         <TableHead className="text-center border-l" colSpan={5}>Cocción</TableHead>
                         <TableHead className="text-center border-l" colSpan={3}>Molido</TableHead>
@@ -545,6 +626,11 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
                         <TableHead className="sticky left-0 bg-background z-10 w-[220px] text-xs">
                           Requerido en crudo
                         </TableHead>
+                        <TableHead className="text-xs text-center border-l">Req. crudo</TableHead>
+                        <TableHead className="text-xs text-center">Factor</TableHead>
+                        <TableHead className="text-xs text-center">Saldo a favor</TableHead>
+                        <TableHead className="text-xs text-center font-semibold">A cocinar</TableHead>
+                        <TableHead className="text-xs text-center">Obtenido / Δ</TableHead>
                         <TableHead className="text-xs text-center border-l">Temp °C</TableHead>
                         <TableHead className="text-xs text-center border-l">Real crudo</TableHead>
                         <TableHead className="text-xs text-center">Lote(s)</TableHead>
@@ -561,15 +647,75 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {procesos.map((p) => (
+                      {procesos.map((p) => {
+                        const unidad = p.insumo?.unidad_medida ?? ""
+                        // Δ se calcula en render, no se persiste: reacciona al
+                        // tecleo para que el jefe de planta decida en el momento
+                        // si cocina más o registra el excedente como sobrante.
+                        const delta =
+                          p.cant_obtenida_cocido != null && p.cant_cocido_requerido != null
+                            ? p.cant_obtenida_cocido - p.cant_cocido_requerido
+                            : null
+                        const deltaClase =
+                          delta == null || Math.abs(delta) < 0.01
+                            ? "text-muted-foreground"
+                            : delta < 0
+                              ? "text-destructive"
+                              : "text-amber-600"
+                        return (
                         <TableRow key={p.id}>
                           <TableCell className="sticky left-0 bg-background z-10 w-[220px]">
                             <div className="font-medium text-sm">{p.insumo?.nombre ?? "—"}</div>
                             <div className="text-xs text-muted-foreground">
                               {p.cant_requerida_crudo != null
-                                ? `${p.cant_requerida_crudo.toLocaleString("es-CO", { maximumFractionDigits: 2 })} ${p.insumo?.unidad_medida ?? ""}`
+                                ? `${p.cant_requerida_crudo.toLocaleString("es-CO", { maximumFractionDigits: 2 })} ${unidad}`
                                 : "—"}
                             </div>
+                          </TableCell>
+                          {/* Amarre de cocción (ERP-PROD-03) */}
+                          <TableCell className="border-l text-center text-xs tabular-nums">
+                            {fmtNum(p.cant_requerida_crudo)}
+                          </TableCell>
+                          <TableCell className="text-center text-xs tabular-nums text-muted-foreground">
+                            {p.factor_conversion != null
+                              ? p.factor_conversion.toLocaleString("es-CO", { maximumFractionDigits: 3 })
+                              : "—"}
+                          </TableCell>
+                          <TableCell className="text-center text-xs tabular-nums">
+                            {p.cant_saldo_crudo > 0 ? (
+                              <span className="text-emerald-600 font-medium">
+                                −{fmtNum(p.cant_saldo_crudo)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center text-sm tabular-nums font-semibold">
+                            {fmtNum(p.cant_a_cocinar_crudo ?? p.cant_requerida_crudo)}
+                          </TableCell>
+                          <TableCell className="min-w-[150px]">
+                            <NumInput
+                              value={p.cant_obtenida_cocido}
+                              disabled={!canEdit}
+                              onChange={(v) => updateNumerico(p.id, "cant_obtenida_cocido", v)}
+                            />
+                            {delta != null && Math.abs(delta) >= 0.01 && (
+                              <div className={`mt-0.5 text-[11px] text-center ${deltaClase}`}>
+                                {delta > 0 ? "+" : ""}
+                                {fmtNum(delta)} {unidad}
+                                {delta > 0 && canEdit && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="ml-1 h-5 px-1 text-[11px]"
+                                    onClick={() => abrirSobrante(p.insumo_id, delta)}
+                                  >
+                                    Registrar sobrante
+                                  </Button>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           {/* Descongelación */}
                           <TableCell className="border-l">
@@ -654,7 +800,8 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
                             />
                           </TableCell>
                         </TableRow>
-                      ))}
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -739,6 +886,23 @@ export default function OrdenProduccionDetallePage({ params }: { params: Promise
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Registro de sobrante disparado desde el Δ de la hoja de proceso */}
+      <SobrantePanel
+        open={sobrantePrecarga !== null}
+        onOpenChange={(v) => { if (!v) setSobrantePrecarga(null) }}
+        ordenMezclaId={mezclas.length === 1 ? mezclas[0].id : null}
+        dietaNombre={mezclas[0]?.producto?.nombre ?? ""}
+        precarga={
+          sobrantePrecarga ? { [sobrantePrecarga.insumoId]: sobrantePrecarga.cocido } : undefined
+        }
+        onSaved={() => {
+          void logActividad("sobrante_registrado", {
+            dieta: mezclas[0]?.producto?.nombre ?? null,
+          })
+          void fetchData()
+        }}
+      />
     </div>
   )
 }

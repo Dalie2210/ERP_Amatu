@@ -7,7 +7,36 @@
 // Enums (mirror PostgreSQL enums for type safety)
 // ============================================================
 
-export type UserRole = "admin" | "vendedor" | "logistica" | "contable" | "jefe_produccion";
+export type UserRole = "admin" | "vendedor" | "logistica" | "contable" | "jefe_produccion" | "personalizado";
+
+// ERP-ADM-01: secciones configurables para el rol 'personalizado'. Mirror de
+// app_seccion (enum DB) y de las urls del sidebar (src/components/app-sidebar.tsx).
+export type Seccion =
+  | "ventas"
+  | "catalogo"
+  | "clientes"
+  | "comisiones"
+  | "aliados"
+  | "logistica_tablero"
+  | "logistica_rutas"
+  | "logistica_mensajeros"
+  | "logistica_liquidacion"
+  | "inventario_dashboard"
+  | "inventario_explosion"
+  | "inventario_ingresos"
+  | "inventario_insumos"
+  | "inventario_recetas"
+  | "inventario_produccion"
+  | "inventario_productos"
+  | "inventario_remisiones"
+  | "inventario_conteo"
+  | "inventario_desperdicio"
+  | "admin";
+
+export interface SeccionPermiso {
+  puede_ver: boolean;
+  puede_editar: boolean;
+}
 
 export type TipoDocumento = "CC" | "CE" | "NIT" | "Pasaporte";
 
@@ -107,7 +136,18 @@ export interface CartState {
   descuentoReferidoVet: number;
   // Promo IDs desactivados manualmente por el vendedor para este pedido
   disabledPromoIds: string[];
+  // ERP-DON-01: donación. Solo un admin puede activarla; la orden se guarda
+  // con total 0, sin comisión, y espera aprobación (ERP-DON-03).
+  esDonacion: boolean;
+  donacionDestinatario: string;
+  donacionMotivo: string;
 }
+
+/** Estado de aprobación de una donación (ERP-DON-03). */
+export type EstadoDonacion = "pendiente" | "aprobada" | "rechazada";
+
+/** De dónde nació la donación: una orden de venta o un lote de stock. */
+export type OrigenDonacion = "pedido" | "lote_pt";
 
 // ============================================================
 // Discount engine types
@@ -494,6 +534,42 @@ export type CategoriaConteo =
   | "aseo"
   | "producto_terminado";
 
+export type EstadoConteo = "pendiente" | "aplicado" | "rechazado";
+
+/** Clasificador del reporte de desperdicio (ERP-DESP-01). */
+export type MotivoDesperdicio =
+  | "vencimiento"
+  | "quemado"
+  | "cambio_temperatura"
+  | "nevera_danada"
+  | "bolsa_rota"
+  | "contaminacion"
+  | "otro";
+
+/**
+ * Una fila del reporte de desperdicio (ERP-DESP-01), espejo de la hoja que
+ * diligencia el jefe de planta. Es informativo: no descuenta stock, eso lo
+ * hace el conteo físico (ERP-DESP-02).
+ */
+export interface Desperdicio {
+  id: string;
+  fecha: string;
+  insumo_id: string | null;
+  producto_id: string | null;
+  variante_id: string | null;
+  cantidad_kg: number;
+  temperatura_c: number | null;
+  proveedor: string | null;
+  codigo_lote: string | null;
+  insumo_lote_id: string | null;
+  producto_lote_id: string | null;
+  motivo: MotivoDesperdicio;
+  razon_dano: string;
+  accion_correctiva: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export type TipoMovimiento =
   | "ingreso_compra"
   | "consumo_produccion"
@@ -503,7 +579,8 @@ export type TipoMovimiento =
   | "ajuste_positivo"
   | "ajuste_negativo"
   | "merma"
-  | "devolucion";
+  | "devolucion"
+  | "donacion";
 
 // --- Master tables ---
 
@@ -523,12 +600,28 @@ export interface Insumo {
   updated_at: string;
 }
 
+/** Cómo se interpreta `Receta.base_gramos`. Ver ERP-PROD-09. */
+export type RecetaBaseModo = "gramos" | "unidades";
+
 export interface Receta {
   id: string;
   producto_id: string;
+  /**
+   * Presentación a la que aplica. Tras ERP-PROD-09 la receta de una dieta es
+   * `null` (sirve para todas las presentaciones: el gramaje lo aporta la
+   * variante del ítem de la orden).
+   */
   variante_id: string | null;
   nombre: string;
+  /** Legado: unidades de PT por corrida. Se conserva como respaldo de cálculo. */
   rendimiento: number;
+  /** Base sobre la que están expresados los `receta_items` (1200 g por defecto). */
+  base_gramos: number | null;
+  base_modo: RecetaBaseModo;
+  /** Hash del contenido: dos dietas con la misma firma comparten fórmula. */
+  firma: string | null;
+  /** Si fue deduplicada, la receta canónica que la sustituye. */
+  reemplazada_por: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -632,6 +725,17 @@ export interface OrdenProduccionProceso {
   orden_id: string;
   insumo_id: string;
   cant_requerida_crudo: number | null;
+  // --- Amarre de cocción en tiempo real (ERP-PROD-03) ---
+  /** Cocido requerido por la receta; contra esto se compara lo obtenido. */
+  cant_cocido_requerido: number | null;
+  /** Crudo necesario por unidad de cocido (snapshot). */
+  factor_conversion: number | null;
+  /** Saldo a favor en crudo, aplicado desde sobrantes anteriores. */
+  cant_saldo_crudo: number;
+  /** Lo que la planta debe cocinar hoy: requerido menos saldo. Congelado. */
+  cant_a_cocinar_crudo: number | null;
+  /** Peso cocido realmente obtenido, que ingresa el jefe de planta. */
+  cant_obtenida_cocido: number | null;
   temp_descongelacion: number | null;
   cant_real_crudo: number | null;
   lotes: string | null;
@@ -663,6 +767,43 @@ export interface DesglosePresentacion {
   unidades: number;
 }
 
+/**
+ * Capacidad de la mezcladora y porción estándar. No se hardcodea en el sistema
+ * porque depende del equipo físico de la planta (ERP-PROD-07).
+ */
+export interface ConfigProduccion {
+  id: string;
+  nombre: string;
+  porcion_estandar_g: number;
+  mezcla_min_g: number;
+  mezcla_max_g: number;
+  /** Minutos operativos por mezcla: hace medible el objetivo "menos mezclas". */
+  duracion_mezcla_min: number;
+  /** Residuo aceptado sin alertar al no cuadrar a múltiplo de la porción. */
+  tolerancia_ajuste_g: number;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+/** Una mezcla física del plan de división (ERP-PROD-04). */
+export interface MezclaPlanificada {
+  porciones: number;
+  gramos: number;
+}
+
+/** Plan de división aplicado a una dieta, congelado en `orden_mezcla`. */
+export interface PlanMezclasGuardado {
+  porciones_totales: number;
+  num_mezclas: number;
+  mezclas: MezclaPlanificada[];
+  min_g: number;
+  max_g: number;
+  porcion_estandar_g: number;
+  ajuste_g: number;
+  generado_en: string;
+}
+
 export interface OrdenMezcla {
   id: string;
   orden_id: string;
@@ -671,6 +812,16 @@ export interface OrdenMezcla {
   num_mezclas_sugerido: number | null;
   num_mezclas: number | null;
   porcion_estandar: number;
+  /** Dietas con el mismo `grupo_id` se mezclan juntas (ERP-PROD-05). */
+  grupo_id: string | null;
+  /** Firma de receta compartida por el grupo, para auditar la combinación. */
+  grupo_firma: string | null;
+  /** Configuración de mezcladora vigente al generar la hoja. */
+  config_produccion_id: string | null;
+  /** Overrides manuales para esta orden; `null` = usa los de la configuración. */
+  mezcla_min_g: number | null;
+  mezcla_max_g: number | null;
+  plan_mezclas: PlanMezclasGuardado | null;
   desglose_presentaciones: DesglosePresentacion[] | null;
   firma_mezclo: string | null;
   firma_empaco: string | null;
@@ -685,10 +836,57 @@ export interface OrdenMezcla {
 export type TipoActividadProduccion =
   | "proceso_guardado"
   | "mezcla_guardada"
+  | "mezcla_agrupada"
+  | "sobrante_registrado"
+  | "saldos_aplicados"
   | "item_completado"
   | "item_parcial"
   | "orden_completada"
   | "orden_cancelada";
+
+/**
+ * Producto cocido que sobró al armar una mezcla (ERP-PROD-01). Es un saldo
+ * OPERATIVO: reduce lo que hay que cocinar mañana, pero no genera movimientos
+ * de inventario — el crudo ya se descontó al completar la orden que lo produjo.
+ */
+export interface InsumoSobrante {
+  id: string;
+  insumo_id: string;
+  orden_origen_id: string;
+  orden_mezcla_id: string | null;
+  fecha: string;
+  cantidad_cocido: number;
+  cantidad_crudo_equiv: number;
+  /** Factores vigentes al registrar: el equivalente no cambia retroactivamente. */
+  merma_pct_snap: number;
+  rendimiento_pct_snap: number;
+  cocido_consumido: number;
+  estado: "disponible" | "consumido" | "anulado";
+  nota: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Fila de `fn_sugerir_grupos_mezcla`: firma de receta por dieta de la orden. */
+export interface GrupoMezclaSugerido {
+  orden_mezcla_id: string;
+  producto_id: string;
+  producto_nombre: string;
+  firma: string | null;
+  total_gramos: number | null;
+}
+
+/** Fila de `fn_insumos_mezcla`: insumos de la receta de una dieta. */
+export interface InsumoMezclaRow {
+  insumo_id: string;
+  insumo_nombre: string;
+  unidad_medida: UnidadMedida;
+  merma_pct: number;
+  rendimiento_pct: number;
+  factor_conversion: number | null;
+  cocido_requerido: number | null;
+  sobrante_actual: number;
+}
 
 export interface OrdenProduccionActividad {
   id: string;
@@ -750,6 +948,10 @@ export interface ConteoInventario {
   notas: string | null;
   created_by: string | null;
   created_at: string;
+  estado: EstadoConteo;
+  motivo_rechazo: string | null;
+  revisado_por: string | null;
+  revisado_at: string | null;
 }
 
 export interface ConteoItem {

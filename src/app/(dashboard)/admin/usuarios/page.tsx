@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { ArrowLeft, Plus, UserCheck, UserX, KeyRound, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, UserCheck, UserX, KeyRound, Trash2, Settings2 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
+import { PermisosPersonalizadoDialog } from "@/components/admin/PermisosPersonalizadoDialog"
 import type { UserRole } from "@/types"
 
 interface UserRow {
@@ -38,6 +39,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   logistica: "Logística",
   contable: "Contable",
   jefe_produccion: "Jefe de Producción",
+  personalizado: "Personalizado",
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
@@ -46,6 +48,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   logistica: "border-orange-200 text-orange-700",
   contable: "border-green-200 text-green-700",
   jefe_produccion: "border-rose-200 text-rose-700",
+  personalizado: "border-slate-300 text-slate-700",
 }
 
 export default function AdminUsuariosPage() {
@@ -64,6 +67,9 @@ export default function AdminUsuariosPage() {
   const [resetPassword, setResetPassword] = useState("")
   const [isResetting, setIsResetting] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
+
+  // Permisos personalizados dialog state
+  const [permisosUser, setPermisosUser] = useState<UserRow | null>(null)
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
@@ -111,6 +117,10 @@ export default function AdminUsuariosPage() {
     if (res.ok) {
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u))
       toast.success("Rol actualizado.")
+      if (newRole === "personalizado") {
+        const user = users.find((u) => u.id === userId)
+        if (user) setPermisosUser({ ...user, role: newRole })
+      }
     } else {
       toast.error("Error actualizando rol.")
     }
@@ -236,6 +246,7 @@ export default function AdminUsuariosPage() {
                     <SelectItem value="jefe_produccion">Jefe de Producción</SelectItem>
                     <SelectItem value="contable">Contable</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="personalizado">Personalizado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -305,6 +316,16 @@ export default function AdminUsuariosPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {u.role === "personalizado" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-muted-foreground"
+                            onClick={() => setPermisosUser(u)}
+                          >
+                            <Settings2 className="h-3.5 w-3.5" />Permisos
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -371,6 +392,14 @@ export default function AdminUsuariosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {permisosUser && (
+        <PermisosPersonalizadoDialog
+          userId={permisosUser.id}
+          userLabel={permisosUser.full_name || permisosUser.email}
+          onOpenChange={(open) => { if (!open) setPermisosUser(null) }}
+        />
+      )}
     </div>
   )
 }

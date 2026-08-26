@@ -12,6 +12,7 @@ import {
   getContableDashboardStats,
 } from "@/lib/dashboard/getDashboardStats";
 import { createClient } from "@/lib/supabase/server";
+import { ConteosPendientesAlert } from "@/components/dashboard/ConteosPendientesAlert";
 import type { UserRole } from "@/types";
 
 export default async function DashboardPage() {
@@ -46,6 +47,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
+      {role === "admin"     && <ConteosPendientesAlert />}
       {role === "admin"     && <AdminDashboard stats={stats} />}
       {role === "vendedor"  && <VendedorDashboard stats={stats} />}
       {role === "logistica" && <LogisticaDashboard stats={stats} />}

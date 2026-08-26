@@ -1,6 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useState, useCallback, useMemo } from "react"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,8 +15,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { History, ChevronLeft, ChevronRight, ChevronDown, Loader2 } from "lucide-react"
-import type { CategoriaConteo } from "@/types"
-import { CATEGORIA_CONTEO_LABELS } from "@/lib/constants/labels"
+import type { CategoriaConteo, EstadoConteo } from "@/types"
+import { CATEGORIA_CONTEO_LABELS, ESTADO_CONTEO_LABELS, ESTADO_CONTEO_STYLES } from "@/lib/constants/labels"
 import { formatCantidad } from "./utils"
 
 const PAGE_SIZE = 20
@@ -26,6 +27,8 @@ interface SesionRow {
   categoria: CategoriaConteo
   notas: string | null
   created_at: string
+  estado: EstadoConteo
+  motivo_rechazo: string | null
   users: { full_name: string } | null
   conteo_items: { count: number }[]
 }
@@ -73,7 +76,7 @@ export function ConteoHistorialPanel() {
     let query = supabase
       .from("conteos_inventario")
       .select(
-        "id, fecha, categoria, notas, created_at, users(full_name), conteo_items(count)",
+        "id, fecha, categoria, notas, created_at, estado, motivo_rechazo, users!conteos_inventario_created_by_fkey(full_name), conteo_items(count)",
         { count: "exact" }
       )
       .order("created_at", { ascending: false })
@@ -84,6 +87,10 @@ export function ConteoHistorialPanel() {
     if (fechaHasta) query = query.lte("fecha", fechaHasta)
 
     const { data, count, error } = await query
+    if (error) {
+      toast.error("No se pudo cargar el histórico de conteos")
+      console.error(error)
+    }
     if (!error && data) {
       const sesiones = data as unknown as SesionRow[]
       setRows(sesiones)
@@ -181,6 +188,7 @@ export function ConteoHistorialPanel() {
                       <TableHead>Usuario</TableHead>
                       <TableHead className="text-right">Ítems</TableHead>
                       <TableHead className="text-right">Con diferencia</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Motivo</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -189,6 +197,7 @@ export function ConteoHistorialPanel() {
                       const totalItems = s.conteo_items?.[0]?.count ?? 0
                       const conDif = difCounts[s.id] ?? 0
                       const abierto = expandedId === s.id
+                      const colSpan = 8
                       return (
                         <Fragment key={s.id}>
                           <TableRow
@@ -209,6 +218,11 @@ export function ConteoHistorialPanel() {
                                 ? <Badge variant="secondary">{conDif}</Badge>
                                 : <span className="text-muted-foreground">0</span>}
                             </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-[10px] h-5 ${ESTADO_CONTEO_STYLES[s.estado]}`}>
+                                {ESTADO_CONTEO_LABELS[s.estado]}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate" title={s.notas ?? ""}>
                               {s.notas ?? "—"}
                             </TableCell>
@@ -216,7 +230,12 @@ export function ConteoHistorialPanel() {
 
                           {abierto && (
                             <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={7} className="bg-muted/30 p-0">
+                              <TableCell colSpan={colSpan} className="bg-muted/30 p-0">
+                                {s.estado === "rechazado" && s.motivo_rechazo && (
+                                  <p className="px-6 pt-4 text-sm text-destructive">
+                                    <span className="font-medium">Motivo de rechazo:</span> {s.motivo_rechazo}
+                                  </p>
+                                )}
                                 {isLoadingDetalle ? (
                                   <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
                                     <Loader2 className="h-4 w-4 animate-spin" />Cargando detalle...
@@ -297,6 +316,7 @@ export function ConteoHistorialPanel() {
           )}
         </CardContent>
       </Card>
+
     </div>
   )
 }

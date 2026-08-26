@@ -13,6 +13,8 @@ import {
 import { ProductSelector } from "@/components/admin/ProductSelector"
 import { Trash2, Plus } from "lucide-react"
 import { toast } from "sonner"
+import { crudoDesdeCocido } from "@/lib/inventario/receta"
+import { PORCION_ESTANDAR_G, formatGramaje } from "@/lib/inventario/mezcla"
 import type { Insumo, RecetaExpanded } from "@/types"
 
 interface ItemDraft {
@@ -39,7 +41,7 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
   const [productoId, setProductoId] = useState<string | null>(null)
   const [varianteId, setVarianteId] = useState<string | null>(null)
   const [nombre, setNombre] = useState("")
-  const [rendimiento, setRendimiento] = useState("")
+  const [baseGramos, setBaseGramos] = useState(String(PORCION_ESTANDAR_G))
   const [isActive, setIsActive] = useState(true)
   const [items, setItems] = useState<ItemDraft[]>([emptyItem()])
   const [insumos, setInsumos] = useState<Insumo[]>([])
@@ -63,7 +65,7 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
       setProductoId(receta.producto_id)
       setVarianteId(receta.variante_id)
       setNombre(receta.nombre)
-      setRendimiento(String(receta.rendimiento))
+      setBaseGramos(String(receta.base_gramos ?? PORCION_ESTANDAR_G))
       setIsActive(receta.is_active)
       setItems(
         receta.receta_items.length > 0
@@ -77,7 +79,7 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
       setProductoId(defaultProductoId ?? null)
       setVarianteId(null)
       setNombre("")
-      setRendimiento("")
+      setBaseGramos(String(PORCION_ESTANDAR_G))
       setIsActive(true)
       setItems([emptyItem()])
     }
@@ -89,10 +91,7 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
     const insumo = insumoById(item.insumoId)
     const cocido = parseFloat(item.cantidadCocido)
     if (!insumo || isNaN(cocido) || cocido <= 0) return null
-    const factorMerma = 1 - insumo.merma_pct / 100
-    const factorRendimiento = insumo.rendimiento_pct / 100
-    if (factorMerma <= 0 || factorRendimiento <= 0) return null
-    return cocido / factorRendimiento / factorMerma
+    return crudoDesdeCocido(cocido, insumo)
   }
 
   function updateItem(idx: number, patch: Partial<ItemDraft>) {
@@ -107,8 +106,8 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
     setError(null)
     if (!productoId) { setError("Selecciona un producto."); return }
     if (!nombre.trim()) { setError("El nombre de la receta es obligatorio."); return }
-    const rend = parseFloat(rendimiento)
-    if (isNaN(rend) || rend <= 0) { setError("El rendimiento debe ser mayor a cero."); return }
+    const baseG = parseFloat(baseGramos)
+    if (isNaN(baseG) || baseG <= 0) { setError("La base de la receta debe ser mayor a cero."); return }
     const validItems = items.filter(
       (it) => it.insumoId !== null && parseFloat(it.cantidadCocido) > 0
     )
@@ -118,9 +117,16 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
 
     const cabecera = {
       producto_id: productoId,
-      variante_id: varianteId,
+      // La receta de una dieta ya no se ata a una presentación: el gramaje lo
+      // aporta la variante del ítem de la orden (ERP-PROD-09).
+      variante_id: null,
       nombre: nombre.trim(),
-      rendimiento: rend,
+      base_gramos: baseG,
+      base_modo: "gramos" as const,
+      // `rendimiento` es el respaldo legado que se usa solo si a la variante le
+      // falta el gramaje. Se mantiene coherente con la base para que ese camino
+      // dé el mismo número que el principal.
+      rendimiento: baseG / PORCION_ESTANDAR_G,
       is_active: isActive,
     }
 
@@ -171,14 +177,16 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
         <SheetHeader>
           <SheetTitle>{isEdit ? "Editar Receta" : "Nueva Receta (BOM)"}</SheetTitle>
           <SheetDescription>
-            Ingresa las cantidades en peso cocido/procesado; la cantidad en crudo se calcula
-            automáticamente con la merma del insumo.
+            Una receta por dieta, expresada por porción estándar de{" "}
+            {formatGramaje(PORCION_ESTANDAR_G)}. Las demás presentaciones (500 g, 300 g)
+            se calculan solas desde esta base. Las cantidades van en peso cocido/procesado;
+            el crudo se calcula con la merma y el rendimiento del insumo.
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 py-2 px-4">
           <div className="space-y-1.5">
-            <Label>Producto / Presentación</Label>
+            <Label>Producto (dieta)</Label>
             <ProductSelector
               productoId={productoId}
               varianteId={varianteId}
@@ -186,31 +194,39 @@ export function RecetaFormDialog({ open, onOpenChange, receta, defaultProductoId
               onVarianteChange={setVarianteId}
               placeholder="Seleccionar producto..."
             />
+            <p className="text-xs text-muted-foreground">
+              La receta aplica a todas las presentaciones de la dieta.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Nombre de la Receta</Label>
               <Input
-                placeholder="Ej: Res 500g"
+                placeholder="Ej: Mid Power Res"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Rendimiento (PT por corrida)</Label>
+              <Label>Base de la receta (g)</Label>
               <Input
                 type="number"
-                placeholder="10"
-                value={rendimiento}
-                onChange={(e) => setRendimiento(e.target.value)}
+                placeholder={String(PORCION_ESTANDAR_G)}
+                value={baseGramos}
+                onChange={(e) => setBaseGramos(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Porción estándar: {formatGramaje(PORCION_ESTANDAR_G)}.
+              </p>
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Ingredientes (peso cocido)</Label>
+              <Label>
+                Ingredientes (peso cocido por {formatGramaje(parseFloat(baseGramos) || PORCION_ESTANDAR_G)})
+              </Label>
               <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setItems((p) => [...p, emptyItem()])}>
                 <Plus className="h-3.5 w-3.5" />
                 Agregar ingrediente

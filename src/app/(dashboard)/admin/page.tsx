@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Users, Percent, Handshake, Settings2, Scale, Gift } from "lucide-react"
+import { Users, Percent, Handshake, Settings2, Scale, Gift, Factory } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const adminModules = [
@@ -34,6 +34,12 @@ const adminModules = [
     description: "Configurar los gramajes disponibles para variantes de dietas magistrales.",
     href: "/admin/pesos-magistrales",
     icon: Scale,
+  },
+  {
+    title: "Config Producción",
+    description: "Capacidad de la mezcladora, porción estándar y duración de cada mezcla.",
+    href: "/admin/produccion-config",
+    icon: Factory,
   },
   {
     title: "Promociones & Kits",
